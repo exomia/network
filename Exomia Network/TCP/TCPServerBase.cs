@@ -1,95 +1,74 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
 
 namespace Exomia.Network.TCP
 {
-    internal sealed class ServerClientStateObject
-    {
-        public uint CommandID;
-        public byte[] Data;
-        public uint DataLength;
-        public byte[] Header;
-        public Socket Socket;
-        public uint Type;
-    }
-
     /// <inheritdoc />
     public abstract class TcpServerBase<TServerClient> : ServerBase<Socket, TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
-        #region Constants
-
-        #endregion
-
-        #region Variables
-
-        #region Statics
-
-        #endregion
-
-        #endregion
-
-        #region Properties
-
-        #region Statics
-
-        #endregion
-
-        #endregion
-
         #region Constructors
 
-        #region Statics
+        /// <inheritdoc />
+        protected TcpServerBase() { }
 
-        #endregion
-
-        /// <summary>
-        ///     TCPServerBase constructor
-        /// </summary>
-        public TcpServerBase() { }
-
-        /// <summary>
-        ///     TCPServerBase constructor
-        /// </summary>
-        /// <param name="max_data_size">max_data_size</param>
-        public TcpServerBase(int max_data_size)
-            : base(max_data_size) { }
+        /// <inheritdoc />
+        protected TcpServerBase(int maxDataSize)
+            : base(maxDataSize) { }
 
         #endregion
 
         #region Methods
 
-        #region Statics
-
-        #endregion
-
         /// <inheritdoc />
         protected override bool OnRun(int port, out Socket listener)
         {
+            listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             try
             {
-                listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
-                IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
-                listener.Bind(localEndPoint);
+                listener.Bind(new IPEndPoint(IPAddress.Any, port));
                 listener.Listen(100);
 
                 Listen();
                 return true;
             }
-            catch { }
+            catch
+            {
+                /*IGNORE */
+            }
 
             listener = null;
             return false;
+        }
+
+        /// <inheritdoc />
+        protected override void BeginSendDataTo(Socket arg0, byte[] send, int lenght)
+        {
+            if (arg0 == null) { return; }
+
+            try
+            {
+                arg0.BeginSend(
+                    send, 0, lenght, SocketFlags.None, iar =>
+                    {
+                        arg0.EndSend(iar);
+                        ByteArrayPool.Return(send);
+                    }, null);
+            }
+            catch
+            {
+                /* IGNORE */
+            }
         }
 
         private void Listen()
         {
             try
             {
-                _listener.BeginAccept(AcceptCallback, _listener);
+                _listener.BeginAccept(AcceptCallback, null);
             }
             catch
             {
@@ -99,10 +78,9 @@ namespace Exomia.Network.TCP
 
         private void AcceptCallback(IAsyncResult ar)
         {
-            Socket listener = (Socket)ar.AsyncState;
             try
             {
-                Socket socket = listener.EndAccept(ar);
+                Socket socket = _listener.EndAccept(ar);
 
                 InvokeClientConnected(socket);
 
@@ -144,12 +122,12 @@ namespace Exomia.Network.TCP
                     return;
                 }
 
-                state.Header.GetHeaderInfo(out state.CommandID, out state.Type, out state.DataLength);
+                state.Header.GetHeader(out state.CommandID, out state.Type, out state.DataLength);
 
                 if (state.DataLength > 0)
                 {
                     state.Socket.BeginReceive(
-                        state.Data, 0, (int)state.DataLength, SocketFlags.None, ClientReceiveDataCallback, state);
+                        state.Data, 0, state.DataLength, SocketFlags.None, ClientReceiveDataCallback, state);
                     return;
                 }
 
@@ -164,7 +142,7 @@ namespace Exomia.Network.TCP
         private void ClientReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
-            int length = 0;
+            int length;
             try
             {
                 if ((length = state.Socket.EndReceive(iar)) <= 0)
@@ -173,47 +151,45 @@ namespace Exomia.Network.TCP
                     return;
                 }
             }
-            catch { InvokeClientDisconnected(state.Socket); }
+            catch
+            {
+                InvokeClientDisconnected(state.Socket);
+                return;
+            }
 
             uint type = state.Type;
             uint commandID = state.CommandID;
-            uint dataLenght = state.DataLength;
+            int dataLenght = state.DataLength;
             Socket socket = state.Socket;
 
-            byte[] data = new byte[state.DataLength];
-            Buffer.BlockCopy(state.Data, 0, data, 0, data.Length);
+            byte[] data = ByteArrayPool.Rent(dataLenght);
+            Buffer.BlockCopy(state.Data, 0, data, 0, dataLenght);
 
             ClientReceiveHeaderAsync(state);
 
             if (length == dataLenght)
             {
-                DeserializeDataAsync(socket, commandID, type, data);
+                DeserializeDataAsync(socket, commandID, type, data, dataLenght);
+                ByteArrayPool.Return(data);
             }
         }
 
-        /// <inheritdoc />
-        protected override void BeginSendDataTo(Socket arg0, byte[] send)
-        {
-            if (arg0 == null) { return; }
+        #endregion
 
-            try
-            {
-                arg0.BeginSend(send, 0, send.Length, SocketFlags.None, SendDataCallback, arg0);
-            }
-            catch
-            {
-                /* IGNORE */
-            }
-        }
+        #region Nested
 
-        private static void SendDataCallback(IAsyncResult iar)
+        private sealed class ServerClientStateObject
         {
-            try
-            {
-                Socket sender = (Socket)iar.AsyncState;
-                sender.EndSend(iar);
-            }
-            catch { }
+            #region Variables
+
+            public uint CommandID;
+            public byte[] Data;
+            public int DataLength;
+            public byte[] Header;
+            public Socket Socket;
+            public uint Type;
+
+            #endregion
         }
 
         #endregion

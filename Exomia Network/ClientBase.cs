@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using Exomia.Network.Buffers;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
@@ -13,40 +14,23 @@ namespace Exomia.Network
     /// <inheritdoc />
     public abstract class ClientBase : IClient, IDisposable
     {
-        #region Constants
+        #region Variables
 
         private const int INITIAL_QUEUE_SIZE = 16;
 
-        #endregion
-
-        #region Variables
-
-        #region Statics
-
-        #endregion
-
-        /// <summary>
-        ///     called than the client is Disconnected
-        /// </summary>
-        public event DisconnectedHandler Disconnected;
-
-        private int _port;
-        private string _serverAddress;
+        private readonly Dictionary<uint, ClientEventEntry> _dataReceivedCallbacks;
 
         /// <summary>
         ///     Socket
         /// </summary>
         protected Socket _clientSocket;
 
-        private readonly Dictionary<uint, ClientEventEntry> _dataReceivedCallbacks;
+        private int _port;
+        private string _serverAddress;
 
         #endregion
 
         #region Properties
-
-        #region Statics
-
-        #endregion
 
         /// <summary>
         ///     Port
@@ -67,10 +51,6 @@ namespace Exomia.Network
         #endregion
 
         #region Constructors
-
-        #region Statics
-
-        #endregion
 
         /// <summary>
         ///     ClientBase constructor
@@ -93,7 +73,101 @@ namespace Exomia.Network
 
         #region Methods
 
-        #region Statics
+        /// <inheritdoc />
+        public bool Connect(string serverAddress, int port, int timeout = 10)
+        {
+            if (_clientSocket != null) { return true; }
+
+            _serverAddress = serverAddress;
+            _port = port;
+
+            return OnConnect(serverAddress, port, timeout, out _clientSocket);
+        }
+
+        /// <summary>
+        ///     called than the client is Disconnected
+        /// </summary>
+        public event DisconnectedHandler Disconnected;
+
+        /// <summary>
+        ///     called than a client wants to connect with a server
+        /// </summary>
+        /// <param name="serverAddress">serverAddress</param>
+        /// <param name="port">port</param>
+        /// <param name="timeout">timeout</param>
+        /// <param name="socket">out socket</param>
+        /// <returns></returns>
+        protected abstract bool OnConnect(string serverAddress, int port, int timeout, out Socket socket);
+
+        /// <summary>
+        ///     call to deserialize the data async
+        /// </summary>
+        /// <param name="commandid">command id</param>
+        /// <param name="type">type</param>
+        /// <param name="data">data</param>
+        /// <param name="length">data length</param>
+        protected async void DeserializeDataAsync(uint commandid, uint type, byte[] data, int length)
+        {
+            if (!_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
+            {
+                return;
+            }
+
+            object result = null;
+            switch (commandid)
+            {
+                case Constants.PING_COMMAND_ID:
+                {
+                    unsafe
+                    {
+                        fixed (byte* ptr = data)
+                        {
+                            PING_STRUCT pingStruct = *(PING_STRUCT*)ptr;
+                            result = pingStruct;
+                        }
+                    }
+                    break;
+                }
+                case Constants.UDP_CONNECT_COMMAND_ID:
+                {
+                    data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connectStruct);
+                    result = connectStruct;
+                    break;
+                }
+
+                case Constants.CLIENTINFO_COMMAND_ID:
+                {
+                    data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
+                    result = clientinfoStruct;
+                    break;
+                }
+            }
+
+            if (result == null)
+            {
+                result = await Task.Run(delegate { return DeserializeData(type, data, length); });
+                if (result == null) { return; }
+            }
+
+            buffer.RaiseAsync(this, result);
+        }
+
+        /// <summary>
+        ///     deserialize data from type and byte array
+        /// </summary>
+        /// <param name="type">type</param>
+        /// <param name="data">byte array</param>
+        /// <param name="length">data length</param>
+        /// <returns>a new created object</returns>
+        protected abstract object DeserializeData(uint type, byte[] data, int length);
+
+        /// <summary>
+        ///     OnDisconnected called if the client is disconnected
+        /// </summary>
+        protected virtual void OnDisconnected()
+        {
+            Disconnected?.Invoke(this);
+        }
 
         #endregion
 
@@ -145,100 +219,19 @@ namespace Exomia.Network
 
         #endregion
 
-        /// <inheritdoc />
-        public bool Connect(string serverAddress, int port, int timeout = 10)
-        {
-            if (_clientSocket != null) { return true; }
-
-            _serverAddress = serverAddress;
-            _port = port;
-
-            return OnConnect(serverAddress, port, timeout, out _clientSocket);
-        }
-
-        /// <summary>
-        ///     called than a client wants to connect with a server
-        /// </summary>
-        /// <param name="serverAddress">serverAddress</param>
-        /// <param name="port">port</param>
-        /// <param name="timeout">timeout</param>
-        /// <param name="socket">out socket</param>
-        /// <returns></returns>
-        protected abstract bool OnConnect(string serverAddress, int port, int timeout, out Socket socket);
-
-        /// <summary>
-        ///     call to deserialize the data async
-        /// </summary>
-        /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
-        /// <param name="data">data</param>
-        protected async void DeserializeDataAsync(uint commandid, uint type, byte[] data)
-        {
-            if (!_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
-            {
-                return;
-            }
-
-            object result = null;
-            switch (commandid)
-            {
-                case Constants.PING_COMMAND_ID:
-                {
-                    unsafe
-                    {
-                        fixed (byte* ptr = data)
-                        {
-                            PING_STRUCT ping_struct = *(PING_STRUCT*)ptr;
-                            result = ping_struct;
-                        }
-                    }
-                    break;
-                }
-                case Constants.UDP_CONNECT_COMMAND_ID:
-                {
-                    data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connect_struct);
-                    result = connect_struct;
-                    break;
-                }
-
-                case Constants.CLIENTINFO_COMMAND_ID:
-                {
-                    data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfo_struct);
-                    result = clientinfo_struct;
-                    break;
-                }
-            }
-
-            if (result == null)
-            {
-                result = await Task.Run(delegate { return DeserializeData(type, data); });
-                if (result == null) { return; }
-            }
-
-            buffer.RaiseAsync(this, result);
-        }
-
-        /// <summary>
-        ///     deserialize data from type and byte array
-        /// </summary>
-        /// <param name="type">type</param>
-        /// <param name="data">byte array</param>
-        /// <returns>a new created object</returns>
-        protected abstract object DeserializeData(uint type, byte[] data);
-
         #region Send
 
         /// <inheritdoc />
-        public void SendData(uint commandid, uint type, byte[] data)
+        public void SendData(uint commandid, uint type, byte[] data, int lenght)
         {
-            BeginSendData(commandid, type, data);
+            BeginSendData(commandid, type, data, lenght);
         }
 
         /// <inheritdoc />
         public void SendData(uint commandid, uint type, ISerializable serializable)
         {
             byte[] dataB = serializable.Serialize();
-            BeginSendData(commandid, type, dataB);
+            BeginSendData(commandid, type, dataB, dataB.Length);
         }
 
         /// <inheritdoc />
@@ -254,40 +247,45 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void SendData<T>(uint commandid, uint type, in T data) where T : struct
         {
-            data.ToBytesUnsafe(out byte[] dataB);
-            BeginSendData(commandid, type, dataB);
+            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
+            BeginSendData(commandid, type, dataB, lenght);
         }
 
         /// <inheritdoc />
         public void SendDataAsync<T>(uint commandid, uint type, in T data) where T : struct
         {
-            data.ToBytesUnsafe(out byte[] dataB);
+            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
             Task.Run(
                 delegate
                 {
-                    BeginSendData(commandid, type, dataB);
+                    BeginSendData(commandid, type, dataB, lenght);
                 });
         }
 
-        private void BeginSendData(uint commandid, uint type, byte[] data)
+        private void BeginSendData(uint commandid, uint type, byte[] data, int lenght)
         {
             if (_clientSocket == null) { return; }
 
-            byte[] send = Serialization.Serialization.Serialize(commandid, type, data);
+            byte[] send = Serialization.Serialization.Serialize(commandid, type, data, lenght);
 
             try
             {
-                _clientSocket.BeginSend(send, 0, send.Length, SocketFlags.None, SendDataCallback, _clientSocket);
+                _clientSocket.BeginSend(
+                    send, 0, Constants.HEADER_SIZE + lenght, SocketFlags.None, SendDataCallback, send);
             }
-            catch { }
+            catch
+            {
+                /* IGNORE */
+            }
         }
 
-        private static void SendDataCallback(IAsyncResult iar)
+        private void SendDataCallback(IAsyncResult iar)
         {
             try
             {
-                Socket sender = (Socket)iar.AsyncState;
-                sender.EndSend(iar);
+                _clientSocket.EndSend(iar);
+                byte[] send = (byte[])iar.AsyncState;
+                ByteArrayPool.Return(send);
             }
             catch
             {
@@ -298,26 +296,15 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void SendPing()
         {
-            PING_STRUCT ping_struct = new PING_STRUCT { TimeStamp = DateTime.Now.Ticks };
-            SendData(Constants.PING_COMMAND_ID, Constants.PING_STRUCT_TYPE_ID, ping_struct);
+            PING_STRUCT pingStruct = new PING_STRUCT { TimeStamp = DateTime.Now.Ticks };
+            SendData(Constants.PING_COMMAND_ID, Constants.PING_STRUCT_TYPE_ID, pingStruct);
         }
 
         /// <inheritdoc />
         public void SendClientInfo(long clientID, string clientName)
         {
             CLIENTINFO_STRUCT clientinfo = new CLIENTINFO_STRUCT { ClientID = clientID, ClientName = clientName };
-            SendData<CLIENTINFO_STRUCT>(
-                Constants.CLIENTINFO_COMMAND_ID, Constants.CLIENTINFO_STRUCT_TYPE_ID, clientinfo);
-        }
-
-        #endregion
-
-        /// <summary>
-        ///     OnDisconnected called if the client is disconnected
-        /// </summary>
-        protected virtual void OnDisconnected()
-        {
-            Disconnected?.Invoke(this);
+            SendData(Constants.CLIENTINFO_COMMAND_ID, Constants.CLIENTINFO_STRUCT_TYPE_ID, clientinfo);
         }
 
         #endregion

@@ -7,6 +7,8 @@ namespace Exomia.Network
     /// </summary>
     public interface IClient
     {
+        #region Methods
+
         /// <summary>
         ///     trys to connect the client to a server
         /// </summary>
@@ -22,7 +24,8 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendData(uint commandid, uint type, byte[] data);
+        /// <param name="lenght">lenght of data</param>
+        void SendData(uint commandid, uint type, byte[] data, int lenght);
 
         /// <summary>
         ///     send data to the server
@@ -69,5 +72,7 @@ namespace Exomia.Network
         /// <param name="clientID">client id</param>
         /// <param name="clientName">client name</param>
         void SendClientInfo(long clientID, string clientName);
+
+        #endregion
     }
 }

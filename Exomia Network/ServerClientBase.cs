@@ -9,37 +9,20 @@ namespace Exomia.Network
     /// <typeparam name="T">Socket|EndPoint</typeparam>
     public abstract class ServerClientBase<T> where T : class
     {
-        #region Constants
-
-        #endregion
-
         #region Variables
-
-        #region Statics
-
-        #endregion
-
-        /// <summary>
-        ///     called than the client info is changed
-        /// </summary>
-        public event ClientInfoHandler<ServerClientBase<T>, T> ClientInfoChanged;
-
-        private object _clientInfo;
 
         /// <summary>
         ///     Socket|Endpoint
         /// </summary>
         protected T _arg0;
 
+        private object _clientInfo;
+
         private DateTime _lastReceivedPacketTimeStamp = DateTime.Now;
 
         #endregion
 
         #region Properties
-
-        #region Statics
-
-        #endregion
 
         /// <summary>
         ///     ClientInfo
@@ -71,10 +54,6 @@ namespace Exomia.Network
 
         #region Constructors
 
-        #region Statics
-
-        #endregion
-
         /// <summary>
         ///     ServerClientBase constructor
         /// </summary>
@@ -96,9 +75,10 @@ namespace Exomia.Network
 
         #region Methods
 
-        #region Statics
-
-        #endregion
+        /// <summary>
+        ///     called than the client info is changed
+        /// </summary>
+        public event ClientInfoHandler<ServerClientBase<T>, T> ClientInfoChanged;
 
         internal void SetClientInfo(object info)
         {
