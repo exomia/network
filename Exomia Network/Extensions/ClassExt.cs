@@ -1,4 +1,5 @@
-﻿using Exomia.Network.Serialization;
+﻿using System.Runtime.CompilerServices;
+using Exomia.Network.Serialization;
 
 namespace Exomia.Network.Extensions.Class
 {
@@ -7,12 +8,15 @@ namespace Exomia.Network.Extensions.Class
     /// </summary>
     public static class ClassExt
     {
+        #region Methods
+
         /// <summary>
         ///     returns a new deserialized object from a byte array
         /// </summary>
         /// <typeparam name="T">ISerializable</typeparam>
         /// <param name="arr">byte array</param>
         /// <param name="obj">out object</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FromBytes<T>(this byte[] arr, out T obj)
             where T : ISerializable, new()
         {
@@ -26,6 +30,7 @@ namespace Exomia.Network.Extensions.Class
         /// <typeparam name="T">ISerializable</typeparam>
         /// <param name="arr">byte array</param>
         /// <returns>returns a new deserialized object from a byte array</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FromBytes<T>(this byte[] arr)
             where T : ISerializable, new()
         {
@@ -33,5 +38,7 @@ namespace Exomia.Network.Extensions.Class
             obj.Deserialize(arr);
             return obj;
         }
+
+        #endregion
     }
 }

@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using Exomia.Network.Buffers;
 
 namespace Exomia.Network.Serialization
 {
     internal static class Serialization
     {
+        #region Methods
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static byte[] Serialize(uint commandid, uint type, byte[] data)
+        internal static byte[] Serialize(uint commandid, uint type, byte[] data, int lenght)
         {
             // uint = 32bit
             // 
@@ -18,22 +21,20 @@ namespace Exomia.Network.Serialization
             // | 0 0 0 0 0 0 0 0 0 0   |  1  1  1  1  1  1  1  1 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | TYPE_MASK 0x3FC000
             // | 1 1 1 1 1 1 1 1 1 1   |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFC00000
 
-            uint info = (commandid << 22) | (type << 14) | (ushort)data.Length;
+            byte[] header = BitConverter.GetBytes((commandid << 22) | (type << 14) | (ushort)lenght);
+            byte[] buffer = ByteArrayPool.Rent(header.Length + lenght);
 
-            byte[] infoB = BitConverter.GetBytes(info);
-            byte[] buffer = new byte[infoB.Length + data.Length];
-
-            //INFO
-            Buffer.BlockCopy(infoB, 0, buffer, 0, infoB.Length);
+            //HEADER
+            Buffer.BlockCopy(header, 0, buffer, 0, header.Length);
 
             //DATA
-            Buffer.BlockCopy(data, 0, buffer, infoB.Length, data.Length);
+            Buffer.BlockCopy(data, 0, buffer, header.Length, lenght);
 
             return buffer;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeaderInfo(this byte[] header, out uint commandID, out uint type, out uint dataLenght)
+        internal static void GetHeader(this byte[] header, out uint commandID, out uint type, out int dataLenght)
         {
             // uint = 32bit
             // 
@@ -45,11 +46,13 @@ namespace Exomia.Network.Serialization
             // | 0 0 0 0 0 0 0 0 0 0   |  1  1  1  1  1  1  1  1 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | TYPE_MASK 0x3FC000
             // | 1 1 1 1 1 1 1 1 1 1   |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFC00000
 
-            uint info = BitConverter.ToUInt32(header, 0);
+            uint h = BitConverter.ToUInt32(header, 0);
 
-            commandID = (Constants.COMMANDID_MASK & info) >> 22;
-            type = (Constants.TYPE_MASK & info) >> 14;
-            dataLenght = Constants.DATA_LENGTH_MASK & info;
+            commandID = (Constants.COMMANDID_MASK & h) >> 22;
+            type = (Constants.TYPE_MASK & h) >> 14;
+            dataLenght = (int)(Constants.DATA_LENGTH_MASK & h);
         }
+
+        #endregion
     }
 }

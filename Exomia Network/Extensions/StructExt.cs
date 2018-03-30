@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Exomia.Network.Buffers;
 
 namespace Exomia.Network.Extensions.Struct
 {
@@ -16,17 +17,18 @@ namespace Exomia.Network.Extensions.Struct
         /// </summary>
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="data">data</param>
+        /// <param name="size">out the size of T</param>
         /// <returns>byte array</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte[] ToBytes<T>(this T data) where T : struct
+        public static byte[] ToBytes<T>(this T data, out int size) where T : struct
         {
-            int size = Marshal.SizeOf(typeof(T));
+            size = Marshal.SizeOf(typeof(T));
             IntPtr ptr = Marshal.AllocHGlobal(size);
             try
             {
                 Marshal.StructureToPtr(data, ptr, true);
 
-                byte[] arr = new byte[size];
+                byte[] arr = ByteArrayPool.Rent(size);
                 Marshal.Copy(ptr, arr, 0, size);
                 return arr;
             }
@@ -42,15 +44,16 @@ namespace Exomia.Network.Extensions.Struct
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="data">data</param>
         /// <param name="arr">out byte array</param>
+        /// <param name="size">out the size of T</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ToBytes<T>(this T data, out byte[] arr) where T : struct
+        public static void ToBytes<T>(this T data, out byte[] arr, out int size) where T : struct
         {
-            int size = Marshal.SizeOf(typeof(T));
+            size = Marshal.SizeOf(typeof(T));
             IntPtr ptr = Marshal.AllocHGlobal(size);
             try
             {
                 Marshal.StructureToPtr(data, ptr, true);
-                arr = new byte[size];
+                arr = ByteArrayPool.Rent(size);
                 Marshal.Copy(ptr, arr, 0, size);
             }
             finally
@@ -64,11 +67,13 @@ namespace Exomia.Network.Extensions.Struct
         /// </summary>
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="data">data</param>
+        /// <param name="size">out the size of T</param>
         /// <returns>byte array</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe byte[] ToBytesUnsafe<T>(this T data) where T : struct
+        public static unsafe byte[] ToBytesUnsafe<T>(this T data, out int size) where T : struct
         {
-            byte[] arr = new byte[Marshal.SizeOf(typeof(T))];
+            size = Marshal.SizeOf(typeof(T));
+            byte[] arr = ByteArrayPool.Rent(size);
             fixed (byte* ptr = arr)
             {
                 Marshal.StructureToPtr(data, new IntPtr(ptr), true);
@@ -82,10 +87,12 @@ namespace Exomia.Network.Extensions.Struct
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="data">data</param>
         /// <param name="arr">out byte array</param>
+        /// <param name="size">out the size of T</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void ToBytesUnsafe<T>(this T data, out byte[] arr) where T : struct
+        public static unsafe void ToBytesUnsafe<T>(this T data, out byte[] arr, out int size) where T : struct
         {
-            arr = new byte[Marshal.SizeOf(typeof(T))];
+            size = Marshal.SizeOf(typeof(T));
+            arr = ByteArrayPool.Rent(size);
             fixed (byte* ptr = arr)
             {
                 Marshal.StructureToPtr(data, new IntPtr(ptr), true);
@@ -97,12 +104,13 @@ namespace Exomia.Network.Extensions.Struct
         /// </summary>
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="data">data</param>
+        /// <param name="size">out the size of T</param>
         /// <returns>byte array</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte[] ToBytes2<T>(this T data) where T : struct
+        public static byte[] ToBytes2<T>(this T data, out int size) where T : struct
         {
-            int size = Marshal.SizeOf(typeof(T));
-            byte[] arr = new byte[size];
+            size = Marshal.SizeOf(typeof(T));
+            byte[] arr = ByteArrayPool.Rent(size);
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {
@@ -121,11 +129,12 @@ namespace Exomia.Network.Extensions.Struct
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="data">data</param>
         /// <param name="arr">out byte array</param>
+        /// <param name="size">out the size of T</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ToBytes2<T>(this T data, out byte[] arr) where T : struct
+        public static void ToBytes2<T>(this T data, out byte[] arr, out int size) where T : struct
         {
-            int size = Marshal.SizeOf(typeof(T));
-            arr = new byte[size];
+            size = Marshal.SizeOf(typeof(T));
+            arr = ByteArrayPool.Rent(size);
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {
@@ -150,13 +159,11 @@ namespace Exomia.Network.Extensions.Struct
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FromBytes<T>(this byte[] arr, out T obj) where T : struct
         {
-            //int len = Marshal.SizeOf(typeof(T));
-            int len = arr.Length;
-
-            IntPtr ptr = Marshal.AllocHGlobal(len);
+            int size = Marshal.SizeOf(typeof(T));
+            IntPtr ptr = Marshal.AllocHGlobal(size);
             try
             {
-                Marshal.Copy(arr, 0, ptr, len);
+                Marshal.Copy(arr, 0, ptr, size);
                 obj = Marshal.PtrToStructure<T>(ptr);
             }
             finally
@@ -174,13 +181,11 @@ namespace Exomia.Network.Extensions.Struct
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FromBytes<T>(this byte[] arr) where T : struct
         {
-            //int len = Marshal.SizeOf(typeof(T));
-            int len = arr.Length;
-
-            IntPtr ptr = Marshal.AllocHGlobal(len);
+            int size = Marshal.SizeOf(typeof(T));
+            IntPtr ptr = Marshal.AllocHGlobal(size);
             try
             {
-                Marshal.Copy(arr, 0, ptr, len);
+                Marshal.Copy(arr, 0, ptr, size);
                 return Marshal.PtrToStructure<T>(ptr);
             }
             finally

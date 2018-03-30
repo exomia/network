@@ -1,55 +1,36 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
 
 namespace Exomia.Network.TCP
 {
-    internal struct ClientStateObject
-    {
-        public byte[] Header;
-        public byte[] Data;
-        public uint CommandID;
-        public uint Type;
-        public uint DataLength;
-    }
-
     /// <inheritdoc />
     public abstract class TcpClientBase : ClientBase
     {
         #region Variables
 
-        #region Statics
-
-        #endregion
-
         private readonly int _max_data_size = Constants.PACKET_SIZE_MAX;
-
-        #endregion
-
-        #region Constants
-
-        #endregion
-
-        #region Properties
-
-        #region Statics
-
-        #endregion
+        private ClientStateObject _state;
 
         #endregion
 
         #region Constructors
 
-        #region Statics
-
-        #endregion
-
         /// <inheritdoc />
-        protected TcpClientBase() { }
+        protected TcpClientBase()
+        {
+            _state = new ClientStateObject
+            {
+                Header = new byte[Constants.HEADER_SIZE],
+                Data = new byte[_max_data_size]
+            };
+        }
 
         /// <inheritdoc />
         protected TcpClientBase(int maxDataSize)
+            : this()
         {
             if (maxDataSize <= 0)
             {
@@ -62,21 +43,16 @@ namespace Exomia.Network.TCP
 
         #region Methods
 
-        #region Statics
-
-        #endregion
-
         /// <inheritdoc />
         protected override bool OnConnect(string serverAddress, int port, int timeout, out Socket socket)
         {
+            socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true,
+                Blocking = false
+            };
             try
             {
-                socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-                {
-                    NoDelay = true,
-                    Blocking = false
-                };
-
                 IAsyncResult iar = socket.BeginConnect(Dns.GetHostAddresses(serverAddress), port, null, null);
                 bool result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
                 socket.EndConnect(iar);
@@ -86,22 +62,20 @@ namespace Exomia.Network.TCP
                     return true;
                 }
             }
-            catch { }
+            catch
+            {
+                /* IGNORE */
+            }
             socket = null;
             return false;
         }
 
         private void ReceiveHeaderAsync()
         {
-            ClientStateObject state = new ClientStateObject
-            {
-                Header = new byte[Constants.HEADER_SIZE],
-                Data = new byte[_max_data_size]
-            };
             try
             {
                 _clientSocket.BeginReceive(
-                    state.Header, 0, Constants.HEADER_SIZE, SocketFlags.None, ReceiveHeaderCallback, state);
+                    _state.Header, 0, Constants.HEADER_SIZE, SocketFlags.None, ReceiveHeaderCallback, null);
             }
             catch { OnDisconnected(); }
         }
@@ -122,13 +96,12 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            ClientStateObject state = (ClientStateObject)iar.AsyncState;
-            state.Header.GetHeaderInfo(out state.CommandID, out state.Type, out state.DataLength);
+            _state.Header.GetHeader(out _state.CommandID, out _state.Type, out _state.DataLength);
 
-            if (state.DataLength > 0)
+            if (_state.DataLength > 0)
             {
                 _clientSocket.BeginReceive(
-                    state.Data, 0, (int)state.DataLength, SocketFlags.None, ClientReceiveDataCallback, state);
+                    _state.Data, 0, _state.DataLength, SocketFlags.None, ClientReceiveDataCallback, null);
                 return;
             }
 
@@ -137,7 +110,7 @@ namespace Exomia.Network.TCP
 
         private void ClientReceiveDataCallback(IAsyncResult iar)
         {
-            int length = 0;
+            int length;
             try
             {
                 if ((length = _clientSocket.EndReceive(iar)) <= 0)
@@ -151,21 +124,33 @@ namespace Exomia.Network.TCP
                 OnDisconnected();
                 return;
             }
+            uint type = _state.Type;
+            uint commandID = _state.CommandID;
+            int dataLenght = _state.DataLength;
 
-            ClientStateObject state = (ClientStateObject)iar.AsyncState;
-            uint type = state.Type;
-            uint commandID = state.CommandID;
-            uint dataLenght = state.DataLength;
-
-            byte[] data = new byte[state.DataLength];
-            Buffer.BlockCopy(state.Data, 0, data, 0, data.Length);
+            byte[] data = ByteArrayPool.Rent(dataLenght);
+            Buffer.BlockCopy(_state.Data, 0, data, 0, dataLenght);
 
             ReceiveHeaderAsync();
 
             if (length == dataLenght)
             {
-                DeserializeDataAsync(commandID, type, data);
+                DeserializeDataAsync(commandID, type, data, dataLenght);
+                ByteArrayPool.Return(data);
             }
+        }
+
+        #endregion
+
+        #region Nested
+
+        private struct ClientStateObject
+        {
+            public byte[] Header;
+            public byte[] Data;
+            public uint CommandID;
+            public uint Type;
+            public int DataLength;
         }
 
         #endregion

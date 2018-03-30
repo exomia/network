@@ -7,7 +7,7 @@ namespace Exomia.Network.Lib
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        private event ClientDataReceivedHandler<T, TServerClient> _dataReceived;
+        #region Methods
 
         public void Add(ClientDataReceivedHandler<T, TServerClient> callback)
         {
@@ -32,6 +32,8 @@ namespace Exomia.Network.Lib
             }
         }
 
+        private event ClientDataReceivedHandler<T, TServerClient> _dataReceived;
+
         private void EndRaiseEventAsync(IAsyncResult iar)
         {
             ClientDataReceivedHandler<T, TServerClient> caller =
@@ -42,11 +44,13 @@ namespace Exomia.Network.Lib
                 Remove(caller);
             }
         }
+
+        #endregion
     }
 
     internal sealed class ClientEventEntry
     {
-        private event DataReceivedHandler _dataReceived;
+        #region Methods
 
         public void Add(DataReceivedHandler callback)
         {
@@ -70,6 +74,8 @@ namespace Exomia.Network.Lib
             }
         }
 
+        private event DataReceivedHandler _dataReceived;
+
         private void EndRaiseEventAsync(IAsyncResult iar)
         {
             DataReceivedHandler caller = (DataReceivedHandler)((AsyncResult)iar).AsyncDelegate;
@@ -78,5 +84,7 @@ namespace Exomia.Network.Lib
                 Remove(caller);
             }
         }
+
+        #endregion
     }
 }

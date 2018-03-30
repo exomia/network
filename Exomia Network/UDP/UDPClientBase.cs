@@ -3,27 +3,31 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
 
 namespace Exomia.Network.UDP
 {
-    internal struct ClientStateObject
-    {
-        public byte[] Buffer;
-    }
-
     /// <inheritdoc />
     public abstract class UdpClientBase : ClientBase
     {
-        #region Constructors
+        #region Variables
 
-        #region Statics
+        private readonly byte[] _connectChecksum = new byte[16];
+
+        private readonly ManualResetEvent _manuelResetEvent;
+
+        private readonly ClientStateObject _state;
 
         #endregion
+
+        #region Constructors
 
         /// <inheritdoc />
         protected UdpClientBase()
         {
+            _state = new ClientStateObject { Buffer = new byte[Constants.PACKET_SIZE_MAX] };
+
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
 
@@ -43,52 +47,25 @@ namespace Exomia.Network.UDP
 
         #endregion
 
-        #region Constants
-
-        #endregion
-
-        #region Variables
-
-        #region Statics
-
-        #endregion
-
-        private readonly byte[] _connectChecksum = new byte[16];
-
-        private readonly ManualResetEvent _manuelResetEvent;
-
-        #endregion
-
-        #region Properties
-
-        #region Statics
-
-        #endregion
-
-        #endregion
-
         #region Methods
 
-        #region Statics
-
-        #endregion
-
-        /// <summary>
-        ///     <see cref="ClientBase.OnConnect(string, int, int, out Socket)" />
-        /// </summary>
+        /// <inheritdoc />
         protected override bool OnConnect(string serverAddress, int port, int timeout, out Socket socket)
         {
             _manuelResetEvent.Reset();
+            socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             try
             {
-                socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                 socket.Connect(Dns.GetHostAddresses(serverAddress), port);
                 ClientReceiveDataAsync();
                 SendConnect();
 
                 return _manuelResetEvent.WaitOne(timeout * 1000);
             }
-            catch { }
+            catch
+            {
+                /* IGNORE */
+            }
 
             socket = null;
             return false;
@@ -96,19 +73,17 @@ namespace Exomia.Network.UDP
 
         private void ClientReceiveDataAsync()
         {
-            ClientStateObject state = new ClientStateObject
-                { Buffer = new byte[Constants.PACKET_SIZE_MAX] };
             try
             {
                 _clientSocket.BeginReceive(
-                    state.Buffer, 0, Constants.PACKET_SIZE_MAX, SocketFlags.None, ClientReceiveDataCallback, state);
+                    _state.Buffer, 0, Constants.PACKET_SIZE_MAX, SocketFlags.None, ClientReceiveDataCallback, null);
             }
             catch { OnDisconnected(); }
         }
 
         private void ClientReceiveDataCallback(IAsyncResult iar)
         {
-            int length = 0;
+            int length;
             try
             {
                 if ((length = _clientSocket.EndReceive(iar)) <= 0)
@@ -123,17 +98,17 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            ClientReceiveDataAsync();
+            _state.Buffer.GetHeader(out uint commandID, out uint type, out int dataLength);
 
-            ClientStateObject state = (ClientStateObject)iar.AsyncState;
-            state.Buffer.GetHeaderInfo(out uint command_id, out uint type, out uint data_length);
-
-            if (data_length == length - Constants.HEADER_SIZE)
+            if (dataLength == length - Constants.HEADER_SIZE)
             {
-                byte[] data = new byte[data_length];
-                Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, data.Length);
-                DeserializeDataAsync(command_id, type, data);
+                byte[] data = ByteArrayPool.Rent(dataLength);
+                Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                DeserializeDataAsync(commandID, type, data, dataLength);
+                ByteArrayPool.Return(data);
             }
+
+            ClientReceiveDataAsync();
         }
 
         private void SendConnect()
@@ -141,6 +116,15 @@ namespace Exomia.Network.UDP
             UDP_CONNECT_STRUCT connect = new UDP_CONNECT_STRUCT { Checksum = _connectChecksum };
             base.SendData<UDP_CONNECT_STRUCT>(
                 Constants.UDP_CONNECT_COMMAND_ID, Constants.UDP_CONNECT_STRUCT_TYPE_ID, connect);
+        }
+
+        #endregion
+
+        #region Nested
+
+        private struct ClientStateObject
+        {
+            public byte[] Buffer;
         }
 
         #endregion

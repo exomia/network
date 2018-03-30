@@ -9,6 +9,8 @@ namespace Exomia.Network
     internal interface IServer<in T>
         where T : class
     {
+        #region Methods
+
         /// <summary>
         ///     runs the server and starts the listener
         /// </summary>
@@ -23,7 +25,8 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendDataTo(T arg0, uint commandid, uint type, byte[] data);
+        /// <param name="lenght">data lenght</param>
+        void SendDataTo(T arg0, uint commandid, uint type, byte[] data, int lenght);
 
         /// <summary>
         ///     send data to the client
@@ -69,7 +72,8 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendToAll(uint commandid, uint type, byte[] data);
+        /// <param name="lenght">data lenght</param>
+        void SendToAll(uint commandid, uint type, byte[] data, int lenght);
 
         /// <summary>
         ///     send data async to all clients
@@ -77,7 +81,8 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendToAllAsync(uint commandid, uint type, byte[] data);
+        /// <param name="lenght">data lenght</param>
+        void SendToAllAsync(uint commandid, uint type, byte[] data, int lenght);
 
         /// <summary>
         ///     send data to all clients
@@ -110,5 +115,7 @@ namespace Exomia.Network
         /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
         void SendToAllAsync(uint commandid, uint type, ISerializable serializable);
+
+        #endregion
     }
 }

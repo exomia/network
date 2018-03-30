@@ -5,8 +5,10 @@
     /// </summary>
     public static class Constants
     {
+        #region Variables
+
         internal const int HEADER_SIZE = 4;
-        internal const int PACKET_SIZE_MAX = 16383;
+        internal const int PACKET_SIZE_MAX = 16000;
 
         internal const double UDP_IDLE_TIME = 20000.0;
 
@@ -32,5 +34,7 @@
         ///     PING_COMMAND_ID
         /// </summary>
         public const uint PING_COMMAND_ID = 1021;
+
+        #endregion
     }
 }

@@ -5,6 +5,8 @@
     /// </summary>
     public interface ISerializable
     {
+        #region Methods
+
         /// <summary>
         ///     serialize the object to a byte array
         /// </summary>
@@ -16,5 +18,7 @@
         /// </summary>
         /// <param name="data"></param>
         void Deserialize(byte[] data);
+
+        #endregion
     }
 }
