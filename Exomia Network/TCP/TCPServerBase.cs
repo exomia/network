@@ -211,9 +211,9 @@ namespace Exomia.Network.TCP
             public byte[] Data;
             public int DataLength;
             public byte[] Header;
+            public uint ResponseID;
             public Socket Socket;
             public uint Type;
-            public uint ResponseID;
 
             #endregion
         }

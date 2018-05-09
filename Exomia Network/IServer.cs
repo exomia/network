@@ -80,7 +80,7 @@ namespace Exomia.Network
         void SendToAsync(T arg0, uint commandid, uint type, ISerializable serializable);
 
         /// <summary>
-        /// send data as a response to the client
+        ///     send data as a response to the client
         /// </summary>
         /// <param name="arg0"></param>
         /// <param name="serializable"></param>

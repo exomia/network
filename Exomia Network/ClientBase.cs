@@ -27,7 +27,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network.Buffers;
@@ -44,6 +43,7 @@ namespace Exomia.Network
 
         private const int INITIAL_QUEUE_SIZE = 16;
         private const int INITIAL_TASKCOMPLETION_QUEUE_SIZE = 128;
+
         /// <summary>
         ///     called than the client is Disconnected
         /// </summary>
@@ -59,9 +59,9 @@ namespace Exomia.Network
         protected Socket _clientSocket;
 
         private int _port;
-        private string _serverAddress;
 
         private int _responseID;
+        private string _serverAddress;
 
         #endregion
 
@@ -94,7 +94,8 @@ namespace Exomia.Network
         {
             _clientSocket = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
-            _taskCompletionSources = new Dictionary<uint, TaskCompletionSource<byte[]>>(INITIAL_TASKCOMPLETION_QUEUE_SIZE);
+            _taskCompletionSources =
+                new Dictionary<uint, TaskCompletionSource<byte[]>>(INITIAL_TASKCOMPLETION_QUEUE_SIZE);
             _responseID = 1;
         }
 
@@ -192,8 +193,6 @@ namespace Exomia.Network
             if (result == null) { return; }
 
             buffer.RaiseAsync(this, result);
-
-
         }
 
         /// <summary>

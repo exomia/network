@@ -138,7 +138,7 @@ namespace Exomia.Network.UDP
         private void SendConnect()
         {
             Send(
-                Constants.UDP_CONNECT_COMMAND_ID, Constants.UDP_CONNECT_STRUCT_TYPE_ID, 
+                Constants.UDP_CONNECT_COMMAND_ID, Constants.UDP_CONNECT_STRUCT_TYPE_ID,
                 new UDP_CONNECT_STRUCT { Checksum = _connectChecksum });
         }
 

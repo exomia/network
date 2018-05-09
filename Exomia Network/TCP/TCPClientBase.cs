@@ -120,7 +120,8 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            _state.Header.GetHeader(out _state.CommandID, out _state.Type, out _state.DataLength, out _state.ResponseID);
+            _state.Header.GetHeader(
+                out _state.CommandID, out _state.Type, out _state.DataLength, out _state.ResponseID);
 
             if (_state.DataLength > 0)
             {

@@ -153,7 +153,8 @@ namespace Exomia.Network
         /// <param name="data">data</param>
         /// <param name="length">data length</param>
         /// <param name="responseid">responseid</param>
-        protected async void DeserializeDataAsync(T arg0, uint commandid, uint type, byte[] data, int length, uint responseid)
+        protected async void DeserializeDataAsync(T arg0, uint commandid, uint type, byte[] data, int length,
+            uint responseid)
         {
             switch (commandid)
             {
@@ -194,7 +195,8 @@ namespace Exomia.Network
                     return;
                 }
                 default:
-                    if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
+                    if (_dataReceivedCallbacks.TryGetValue(
+                        commandid, out ServerClientEventEntry<T, TServerClient> buffer))
                     {
                         object result = await Task.Run(delegate { return DeserializeData(type, data, length); });
                         if (result == null) { return; }
@@ -202,7 +204,7 @@ namespace Exomia.Network
                         buffer.RaiseAsync(this, arg0, result, responseid);
                     }
                     break;
-            }    
+            }
         }
 
         /// <summary>
