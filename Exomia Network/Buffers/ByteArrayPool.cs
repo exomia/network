@@ -37,7 +37,7 @@ namespace Exomia.Network.Buffers
 
         private static SpinLock s_lock;
         private static readonly byte[][][] s_buffers;
-        private static readonly int[] s_index;
+        private static readonly uint[] s_index;
         private static readonly int[] s_bufferLength;
 
         #endregion
@@ -49,7 +49,7 @@ namespace Exomia.Network.Buffers
             s_lock = new SpinLock(Debugger.IsAttached);
 
             s_bufferLength = new[] { 128, 256, 512, 1024, 4096, 8192, 16384 };
-            s_index = new int[s_bufferLength.Length];
+            s_index = new uint[s_bufferLength.Length];
             s_buffers = new byte[s_bufferLength.Length][][];
         }
 
@@ -59,41 +59,38 @@ namespace Exomia.Network.Buffers
 
         internal static byte[] Rent(int size)
         {
-            int index = SelectBucketIndex(size);
+            int bucketIndex = SelectBucketIndex(size);
 
             byte[] buffer = null;
-            bool lockTaken = false, allocateBuffer = false;
+            bool lockTaken = false;
             try
             {
                 s_lock.Enter(ref lockTaken);
 
-                if (s_buffers[index] == null)
+                if (s_buffers[bucketIndex] == null)
                 {
-                    s_buffers[index] = new byte[(s_bufferLength.Length - index) * BUFFER_LENGTH_FACTOR][];
+                    s_buffers[bucketIndex] = new byte[(s_bufferLength.Length - bucketIndex) * BUFFER_LENGTH_FACTOR][];
                 }
 
-                if (s_index[index] < s_buffers[index].Length)
+                if (s_index[bucketIndex] < s_buffers[bucketIndex].Length)
                 {
-                    buffer = s_buffers[index][s_index[index]];
-                    s_buffers[s_index[index]++] = null;
-                    allocateBuffer = buffer == null;
+                    uint index = s_index[bucketIndex]++;
+                    buffer = s_buffers[bucketIndex][index];
+                    s_buffers[bucketIndex][index] = null;
                 }
             }
             finally
             {
-                if (lockTaken)
-                {
-                    s_lock.Exit(false);
-                }
+                if (lockTaken) { s_lock.Exit(false); }
             }
 
-            return !allocateBuffer ? buffer : new byte[s_bufferLength[index]];
+            return buffer ?? new byte[s_bufferLength[bucketIndex]];
         }
 
         internal static void Return(byte[] array)
         {
-            int index = SelectBucketIndex(array.Length);
-            if (array.Length != s_bufferLength[index])
+            int bucketIndex = SelectBucketIndex(array.Length);
+            if (array.Length != s_bufferLength[bucketIndex])
             {
                 throw new ArgumentException(nameof(array));
             }
@@ -103,17 +100,14 @@ namespace Exomia.Network.Buffers
             {
                 s_lock.Enter(ref lockTaken);
 
-                if (s_index[index] != 0)
+                if (s_index[bucketIndex] != 0)
                 {
-                    s_buffers[index][--s_index[index]] = array;
+                    s_buffers[bucketIndex][--s_index[bucketIndex]] = array;
                 }
             }
             finally
             {
-                if (lockTaken)
-                {
-                    s_lock.Exit(false);
-                }
+                if (lockTaken) { s_lock.Exit(false); }
             }
         }
 
