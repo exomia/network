@@ -43,14 +43,23 @@ namespace Exomia.Network
         bool Run(int port);
 
         /// <summary>
-        ///     send data to the server
+        ///     send data to the client
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="data">data</param>
         /// <param name="lenght">data lenght</param>
-        void SendDataTo(T arg0, uint commandid, uint type, byte[] data, int lenght);
+        void SendTo(T arg0, uint commandid, uint type, byte[] data, int lenght);
+
+        /// <summary>
+        ///     send data as a response to the client
+        /// </summary>
+        /// <param name="arg0"></param>
+        /// <param name="data"></param>
+        /// <param name="lenght"></param>
+        /// <param name="responseid"></param>
+        void SendResponseTo(T arg0, byte[] data, int lenght, uint responseid);
 
         /// <summary>
         ///     send data to the client
@@ -59,7 +68,7 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
-        void SendDataTo(T arg0, uint commandid, uint type, ISerializable serializable);
+        void SendTo(T arg0, uint commandid, uint type, ISerializable serializable);
 
         /// <summary>
         ///     send data async to the client
@@ -68,7 +77,15 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
-        void SendDataToAsync(T arg0, uint commandid, uint type, ISerializable serializable);
+        void SendToAsync(T arg0, uint commandid, uint type, ISerializable serializable);
+
+        /// <summary>
+        /// send data as a response to the client
+        /// </summary>
+        /// <param name="arg0"></param>
+        /// <param name="serializable"></param>
+        /// <param name="responseid"></param>
+        void SendResponseTo(T arg0, ISerializable serializable, uint responseid);
 
         /// <summary>
         ///     send data to the client
@@ -78,7 +95,7 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendDataTo<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct;
+        void SendTo<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct;
 
         /// <summary>
         ///     send data async to the client
@@ -88,7 +105,15 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendDataToAsync<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct;
+        void SendToAsync<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct;
+
+        /// <summary>
+        ///     send data as a response to the client
+        /// </summary>
+        /// <param name="arg0"></param>
+        /// <param name="data"></param>
+        /// <param name="responseid"></param>
+        void SendResponseTo<T1>(T arg0, in T1 data, uint responseid) where T1 : struct;
 
         /// <summary>
         ///     send data to all clients

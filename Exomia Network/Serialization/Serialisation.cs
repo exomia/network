@@ -28,12 +28,12 @@ using Exomia.Network.Buffers;
 
 namespace Exomia.Network.Serialization
 {
-    internal static class Serialization
+    internal static unsafe class Serialization
     {
         #region Methods
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static byte[] Serialize(uint commandid, uint type, byte[] data, int lenght)
+        internal static byte[] Serialize(uint commandID, uint type, byte[] data, int lenght, uint responseID)
         {
             // uint = 32bit
             // 
@@ -45,20 +45,25 @@ namespace Exomia.Network.Serialization
             // | 0 0 0 0 0 0 0 0 0 0   |  1  1  1  1  1  1  1  1 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | TYPE_MASK 0x3FC000
             // | 1 1 1 1 1 1 1 1 1 1   |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFC00000
 
-            byte[] header = BitConverter.GetBytes((commandid << 22) | (type << 14) | (ushort)lenght);
-            byte[] buffer = ByteArrayPool.Rent(header.Length + lenght);
+            byte[] buffer = ByteArrayPool.Rent(Constants.HEADER_SIZE + lenght);
 
-            //HEADER
-            Buffer.BlockCopy(header, 0, buffer, 0, header.Length);
+            uint header = (commandID << 22) | (type << 14) | (ushort)lenght;
+            fixed (byte* ptr = buffer)
+            {
+                uint* uptr = (uint*)ptr;
+                *(uptr + 0) = header;
+                *(uptr + 1) = responseID;
+            }
 
             //DATA
-            Buffer.BlockCopy(data, 0, buffer, header.Length, lenght);
+            Buffer.BlockCopy(data, 0, buffer, Constants.HEADER_SIZE, lenght);
 
             return buffer;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeader(this byte[] header, out uint commandID, out uint type, out int dataLenght)
+        internal static void GetHeader(this byte[] header, out uint commandID, out uint type, out int dataLenght,
+            out uint responseID)
         {
             // uint = 32bit
             // 
@@ -70,11 +75,17 @@ namespace Exomia.Network.Serialization
             // | 0 0 0 0 0 0 0 0 0 0   |  1  1  1  1  1  1  1  1 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | TYPE_MASK 0x3FC000
             // | 1 1 1 1 1 1 1 1 1 1   |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFC00000
 
-            uint h = BitConverter.ToUInt32(header, 0);
+            fixed (byte* ptr = header)
+            {
+                uint* uptr = (uint*)ptr;
+                uint h = *(uptr + 0);
 
-            commandID = (Constants.COMMANDID_MASK & h) >> 22;
-            type = (Constants.TYPE_MASK & h) >> 14;
-            dataLenght = (int)(Constants.DATA_LENGTH_MASK & h);
+                commandID = (Constants.COMMANDID_MASK & h) >> 22;
+                type = (Constants.TYPE_MASK & h) >> 14;
+                dataLenght = (int)(Constants.DATA_LENGTH_MASK & h);
+
+                responseID = *(uptr + 1);
+            }
         }
 
         #endregion

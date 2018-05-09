@@ -32,9 +32,10 @@ namespace Exomia.Network
     /// <param name="server">IServer</param>
     /// <param name="arg0">Socket|EndPoint</param>
     /// <param name="data">object</param>
+    /// <param name="responseid">responseid</param>
     /// <returns><b>true</b> if you want to handle more data; <b>false</b> otherwise</returns>
     public delegate bool ClientDataReceivedHandler<T, TServerClient>(ServerBase<T, TServerClient> server, T arg0,
-        object data)
+        object data, uint responseid)
         where T : class
         where TServerClient : ServerClientBase<T>;
 
@@ -57,7 +58,7 @@ namespace Exomia.Network
     /// </summary>
     /// <typeparam name="T">Socket|EndPoint</typeparam>
     /// <param name="arg0"></param>
-    public delegate void ClientActionHandler<T>(T arg0) where T : class;
+    public delegate void ClientActionHandler<in T>(T arg0) where T : class;
 
     /// <summary>
     ///     ClientInfoHandler callback
@@ -65,7 +66,7 @@ namespace Exomia.Network
     /// <param name="client">ServerClient</param>
     /// <param name="oldValue">oldValue</param>
     /// <param name="newValue">newValue</param>
-    public delegate void ClientInfoHandler<T, TArg0>(T client, object oldValue, object newValue)
+    public delegate void ClientInfoHandler<in T, TArg0>(T client, object oldValue, object newValue)
         where T : ServerClientBase<TArg0>
         where TArg0 : class;
 }

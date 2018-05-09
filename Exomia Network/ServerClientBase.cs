@@ -36,6 +36,11 @@ namespace Exomia.Network
         #region Variables
 
         /// <summary>
+        ///     called than the client info is changed
+        /// </summary>
+        public event ClientInfoHandler<ServerClientBase<T>, T> ClientInfoChanged;
+
+        /// <summary>
         ///     Socket|Endpoint
         /// </summary>
         protected T _arg0;
@@ -98,11 +103,6 @@ namespace Exomia.Network
         #endregion
 
         #region Methods
-
-        /// <summary>
-        ///     called than the client info is changed
-        /// </summary>
-        public event ClientInfoHandler<ServerClientBase<T>, T> ClientInfoChanged;
 
         internal void SetClientInfo(object info)
         {

@@ -45,6 +45,16 @@ namespace Exomia.Network
         private const int INITIAL_CLIENT_QUEUE_SIZE = 128;
 
         /// <summary>
+        ///     called than a client is connected
+        /// </summary>
+        public event ClientActionHandler<T> ClientConnected;
+
+        /// <summary>
+        ///     called than a client is disconnected
+        /// </summary>
+        public event ClientActionHandler<T> ClientDisconnected;
+
+        /// <summary>
         ///     Dictionary{EndPoint, TServerClient}
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
@@ -127,16 +137,6 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     called than a client is connected
-        /// </summary>
-        public event ClientActionHandler<T> ClientConnected;
-
-        /// <summary>
-        ///     called than a client is disconnected
-        /// </summary>
-        public event ClientActionHandler<T> ClientDisconnected;
-
-        /// <summary>
         ///     called than a server wants to run
         /// </summary>
         /// <param name="port">port</param>
@@ -152,15 +152,22 @@ namespace Exomia.Network
         /// <param name="type">type</param>
         /// <param name="data">data</param>
         /// <param name="length">data length</param>
-        protected async void DeserializeDataAsync(T arg0, uint commandid, uint type, byte[] data, int length)
+        /// <param name="responseid">responseid</param>
+        protected async void DeserializeDataAsync(T arg0, uint commandid, uint type, byte[] data, int length, uint responseid)
         {
             switch (commandid)
             {
                 case Constants.PING_COMMAND_ID:
                 {
-                    SendDataTo(
-                        arg0, Constants.PING_COMMAND_ID, Constants.PING_STRUCT_TYPE_ID, data,
-                        Constants.HEADER_SIZE + length);
+                    if (responseid == 0)
+                    {
+                        SendTo(
+                            arg0, Constants.PING_COMMAND_ID, Constants.PING_STRUCT_TYPE_ID, data, length);
+                    }
+                    else
+                    {
+                        SendResponseTo(arg0, data, length, responseid);
+                    }
                     return;
                 }
                 case Constants.CLIENTINFO_COMMAND_ID:
@@ -175,20 +182,27 @@ namespace Exomia.Network
                 case Constants.UDP_CONNECT_COMMAND_ID:
                 {
                     InvokeClientConnected(arg0);
-                    SendDataTo(
-                        arg0, Constants.UDP_CONNECT_COMMAND_ID, Constants.UDP_CONNECT_STRUCT_TYPE_ID, data,
-                        Constants.HEADER_SIZE + length);
+                    if (responseid == 0)
+                    {
+                        SendTo(
+                            arg0, Constants.UDP_CONNECT_COMMAND_ID, Constants.UDP_CONNECT_STRUCT_TYPE_ID, data, length);
+                    }
+                    else
+                    {
+                        SendResponseTo(arg0, data, length, responseid);
+                    }
                     return;
                 }
-            }
+                default:
+                    if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
+                    {
+                        object result = await Task.Run(delegate { return DeserializeData(type, data, length); });
+                        if (result == null) { return; }
 
-            if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
-            {
-                object result = await Task.Run(delegate { return DeserializeData(type, data, length); });
-                if (result == null) { return; }
-
-                buffer.RaiseAsync(this, arg0, result);
-            }
+                        buffer.RaiseAsync(this, arg0, result, responseid);
+                    }
+                    break;
+            }    
         }
 
         /// <summary>
@@ -234,10 +248,10 @@ namespace Exomia.Network
         /// <param name="arg0">Socket|EndPoint</param>
         protected void InvokeClientDisconnected(T arg0)
         {
+            _clients.Remove(arg0);
+
             OnClientDisconnected(arg0);
             ClientDisconnected?.Invoke(arg0);
-
-            _clients.Remove(arg0);
         }
 
         /// <summary>
@@ -254,19 +268,16 @@ namespace Exomia.Network
         ///     remove a command
         /// </summary>
         /// <param name="commandid">command id</param>
-        public void RemoveCommand(uint commandid)
+        public bool RemoveCommand(uint commandid)
         {
-            if (_dataReceivedCallbacks.ContainsKey(commandid))
-            {
-                _dataReceivedCallbacks.Remove(commandid);
-            }
+            return _dataReceivedCallbacks.Remove(commandid);
         }
 
         /// <summary>
         ///     add a data received callback
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="callback">ClientDataReceivedHandler{Socket}</param>
+        /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void AddDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
             if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
@@ -285,7 +296,7 @@ namespace Exomia.Network
         ///     remove a data received callback
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="callback">ClientDataReceivedHandler{Socket}</param>
+        /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void RemoveDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
             if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
@@ -299,37 +310,50 @@ namespace Exomia.Network
         #region Send
 
         /// <inheritdoc />
-        public void SendDataTo(T arg0, uint commandid, uint type, byte[] data, int lenght)
+        public void SendTo(T arg0, uint commandid, uint type, byte[] data, int lenght)
         {
             BeginSendDataTo(arg0, commandid, type, data, lenght);
         }
 
         /// <inheritdoc />
-        public void SendDataTo(T arg0, uint commandid, uint type, ISerializable serializable)
+        public void SendResponseTo(T arg0, byte[] data, int lenght, uint responseid)
+        {
+            BeginSendDataTo(arg0, 0, 0, data, lenght, responseid);
+        }
+
+        /// <inheritdoc />
+        public void SendTo(T arg0, uint commandid, uint type, ISerializable serializable)
         {
             byte[] dataB = serializable.Serialize();
             BeginSendDataTo(arg0, commandid, type, dataB, dataB.Length);
         }
 
         /// <inheritdoc />
-        public void SendDataToAsync(T arg0, uint commandid, uint type, ISerializable serializable)
+        public void SendToAsync(T arg0, uint commandid, uint type, ISerializable serializable)
         {
             Task.Run(
                 delegate
                 {
-                    SendDataTo(arg0, commandid, type, serializable);
+                    SendTo(arg0, commandid, type, serializable);
                 });
         }
 
         /// <inheritdoc />
-        public void SendDataTo<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct
+        public void SendResponseTo(T arg0, ISerializable serializable, uint responseid)
+        {
+            byte[] dataB = serializable.Serialize();
+            BeginSendDataTo(arg0, 0, 0, dataB, dataB.Length, responseid);
+        }
+
+        /// <inheritdoc />
+        public void SendTo<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct
         {
             byte[] dataB = data.ToBytesUnsafe(out int length);
             BeginSendDataTo(arg0, commandid, type, dataB, length);
         }
 
         /// <inheritdoc />
-        public void SendDataToAsync<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct
+        public void SendToAsync<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int length);
             Task.Run(
@@ -339,10 +363,17 @@ namespace Exomia.Network
                 });
         }
 
-        private void BeginSendDataTo(T arg0, uint commandid, uint type, byte[] data, int length)
+        /// <inheritdoc />
+        public void SendResponseTo<T1>(T arg0, in T1 data, uint responseid) where T1 : struct
+        {
+            byte[] dataB = data.ToBytesUnsafe(out int length);
+            BeginSendDataTo(arg0, 0, 0, dataB, length, responseid);
+        }
+
+        private void BeginSendDataTo(T arg0, uint commandid, uint type, byte[] data, int length, uint responseid = 0)
         {
             if (_listener == null) { return; }
-            byte[] send = Serialization.Serialization.Serialize(commandid, type, data, length);
+            byte[] send = Serialization.Serialization.Serialize(commandid, type, data, length, responseid);
             BeginSendDataTo(arg0, send, Constants.HEADER_SIZE + length);
         }
 
@@ -367,7 +398,7 @@ namespace Exomia.Network
             {
                 foreach (T endPoint in buffer.Keys)
                 {
-                    SendDataTo(endPoint, commandid, type, data, length);
+                    SendTo(endPoint, commandid, type, data, length);
                 }
             }
         }

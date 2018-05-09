@@ -31,6 +31,12 @@ namespace Exomia.Network.Lib
         where T : class
         where TServerClient : ServerClientBase<T>
     {
+        #region Variables
+
+        private event ClientDataReceivedHandler<T, TServerClient> _dataReceived;
+
+        #endregion
+
         #region Methods
 
         public void Add(ClientDataReceivedHandler<T, TServerClient> callback)
@@ -43,7 +49,7 @@ namespace Exomia.Network.Lib
             _dataReceived -= callback;
         }
 
-        public void RaiseAsync(ServerBase<T, TServerClient> server, T arg0, object data)
+        public void RaiseAsync(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid)
         {
             if (_dataReceived != null)
             {
@@ -51,12 +57,10 @@ namespace Exomia.Network.Lib
                 for (int i = 0; i < delegates.Length; i++)
                 {
                     ((ClientDataReceivedHandler<T, TServerClient>)delegates[i]).BeginInvoke(
-                        server, arg0, data, EndRaiseEventAsync, null);
+                        server, arg0, data, responseid, EndRaiseEventAsync, null);
                 }
             }
         }
-
-        private event ClientDataReceivedHandler<T, TServerClient> _dataReceived;
 
         private void EndRaiseEventAsync(IAsyncResult iar)
         {
@@ -74,6 +78,12 @@ namespace Exomia.Network.Lib
 
     internal sealed class ClientEventEntry
     {
+        #region Variables
+
+        private event DataReceivedHandler _dataReceived;
+
+        #endregion
+
         #region Methods
 
         public void Add(DataReceivedHandler callback)
@@ -97,8 +107,6 @@ namespace Exomia.Network.Lib
                 }
             }
         }
-
-        private event DataReceivedHandler _dataReceived;
 
         private void EndRaiseEventAsync(IAsyncResult iar)
         {

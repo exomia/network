@@ -120,7 +120,7 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            _state.Header.GetHeader(out _state.CommandID, out _state.Type, out _state.DataLength);
+            _state.Header.GetHeader(out _state.CommandID, out _state.Type, out _state.DataLength, out _state.ResponseID);
 
             if (_state.DataLength > 0)
             {
@@ -151,6 +151,7 @@ namespace Exomia.Network.TCP
             uint type = _state.Type;
             uint commandID = _state.CommandID;
             int dataLenght = _state.DataLength;
+            uint responseID = _state.ResponseID;
 
             byte[] data = ByteArrayPool.Rent(dataLenght);
             Buffer.BlockCopy(_state.Data, 0, data, 0, dataLenght);
@@ -159,7 +160,7 @@ namespace Exomia.Network.TCP
 
             if (length == dataLenght)
             {
-                DeserializeDataAsync(commandID, type, data, dataLenght);
+                DeserializeDataAsync(commandID, type, data, dataLenght, responseID);
                 ByteArrayPool.Return(data);
             }
         }
@@ -175,6 +176,7 @@ namespace Exomia.Network.TCP
             public uint CommandID;
             public uint Type;
             public int DataLength;
+            public uint ResponseID;
         }
 
         #endregion
