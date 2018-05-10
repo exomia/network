@@ -121,8 +121,7 @@ namespace Exomia.Network.TCP
             }
 
             _state.Header.GetHeader(
-                out _state.CommandID, out _state.Type, out _state.DataLength, out _state.ResponseID);
-
+                out _state.CommandID, out _state.DataLength, out _state.ResponseID);
             if (_state.DataLength > 0)
             {
                 _clientSocket.BeginReceive(
@@ -149,7 +148,7 @@ namespace Exomia.Network.TCP
                 OnDisconnected();
                 return;
             }
-            uint type = _state.Type;
+
             uint commandID = _state.CommandID;
             int dataLenght = _state.DataLength;
             uint responseID = _state.ResponseID;
@@ -161,7 +160,7 @@ namespace Exomia.Network.TCP
 
             if (length == dataLenght)
             {
-                DeserializeDataAsync(commandID, type, data, dataLenght, responseID);
+                DeserializeDataAsync(commandID, data, dataLenght, responseID);
                 ByteArrayPool.Return(data);
             }
         }
@@ -175,7 +174,6 @@ namespace Exomia.Network.TCP
             public byte[] Header;
             public byte[] Data;
             public uint CommandID;
-            public uint Type;
             public int DataLength;
             public uint ResponseID;
         }

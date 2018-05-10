@@ -122,13 +122,13 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            _state.Buffer.GetHeader(out uint commandID, out uint type, out int dataLength, out uint responseID);
+            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint responseID);
 
             if (dataLength == length - Constants.HEADER_SIZE)
             {
                 byte[] data = ByteArrayPool.Rent(dataLength);
                 Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
-                DeserializeDataAsync(commandID, type, data, dataLength, responseID);
+                DeserializeDataAsync(commandID, data, dataLength, responseID);
                 ByteArrayPool.Return(data);
             }
 
@@ -137,9 +137,7 @@ namespace Exomia.Network.UDP
 
         private void SendConnect()
         {
-            Send(
-                Constants.UDP_CONNECT_COMMAND_ID, Constants.UDP_CONNECT_STRUCT_TYPE_ID,
-                new UDP_CONNECT_STRUCT { Checksum = _connectChecksum });
+            Send(Constants.UDP_CONNECT_COMMAND_ID, new UDP_CONNECT_STRUCT { Checksum = _connectChecksum });
         }
 
         #endregion

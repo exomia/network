@@ -143,13 +143,13 @@ namespace Exomia.Network.UDP
 
             Listen();
 
-            state.Buffer.GetHeader(out uint commandID, out uint type, out int dataLength, out uint responseID);
+            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint responseID);
 
             if (dataLength == length - Constants.HEADER_SIZE)
             {
                 byte[] data = ByteArrayPool.Rent(dataLength);
                 Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
-                DeserializeDataAsync(state.EndPoint, commandID, type, data, dataLength, responseID);
+                DeserializeDataAsync(state.EndPoint, commandID, data, dataLength, responseID);
                 ByteArrayPool.Return(data);
             }
 

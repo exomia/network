@@ -47,53 +47,72 @@ namespace Exomia.Network
         ///     send data to the server
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
         /// <param name="lenght">lenght of data</param>
-        void Send(uint commandid, uint type, byte[] data, int lenght);
+        void Send(uint commandid, byte[] data, int lenght);
 
         /// <summary>
         ///     send data to the server
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
-        void Send(uint commandid, uint type, ISerializable serializable);
+        void Send(uint commandid, ISerializable serializable);
 
         /// <summary>
         ///     send data async to the server
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
-        void SendAsync(uint commandid, uint type, ISerializable serializable);
+        void SendAsync(uint commandid, ISerializable serializable);
 
         /// <summary>
         ///     send data to the server
         /// </summary>
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
-        /// <param name="data">data</param>
-        void Send<T>(uint commandid, uint type, in T data) where T : struct;
+        /// <param name="data">struct data</param>
+        void Send<T>(uint commandid, in T data) where T : struct;
 
         /// <summary>
         ///     send data async to the server
         /// </summary>
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
-        /// <param name="data">data</param>
-        void SendAsync<T>(uint commandid, uint type, in T data) where T : struct;
+        /// <param name="data">struct data</param>
+        void SendAsync<T>(uint commandid, in T data) where T : struct;
 
         /// <summary>
         ///     send data to the server
         /// </summary>
+        /// <typeparam name="TResult">struct type</typeparam>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
         /// <param name="lenght">lenght of data</param>
-        Task<T> SendR<T>(uint commandid, uint type, byte[] data, int lenght) where T : struct;
+        /// <returns></returns>
+        Task<TResult> SendR<TResult>(uint commandid, byte[] data, int lenght)
+            where TResult : struct;
+
+        /// <summary>
+        ///     send data to the server
+        /// </summary>
+        /// <typeparam name="TResult">struct type</typeparam>
+        /// <param name="commandid">command id</param>
+        /// <param name="serializable">ISerializable</param>
+        /// <returns></returns>
+        Task<TResult> SendR<TResult>(uint commandid, ISerializable serializable)
+            where TResult : struct;
+
+        /// <summary>
+        ///     send data to the server
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <typeparam name="TResult">struct type</typeparam>
+        /// <param name="commandid">command id</param>
+        /// <param name="data">struct data</param>
+        /// <returns></returns>
+        Task<TResult> SendR<T, TResult>(uint commandid, T data)
+            where T : struct
+            where TResult : struct;
 
         /// <summary>
         ///     send a ping command to the server

@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,9 +59,11 @@ namespace Exomia.Network
         /// </summary>
         protected Socket _clientSocket;
 
+        private SpinLock _lock;
+
         private int _port;
 
-        private int _responseID;
+        private uint _responseID;
         private string _serverAddress;
 
         #endregion
@@ -96,6 +99,8 @@ namespace Exomia.Network
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
             _taskCompletionSources =
                 new Dictionary<uint, TaskCompletionSource<byte[]>>(INITIAL_TASKCOMPLETION_QUEUE_SIZE);
+
+            _lock = new SpinLock(Debugger.IsAttached);
             _responseID = 1;
         }
 
@@ -136,18 +141,28 @@ namespace Exomia.Network
         ///     call to deserialize the data async
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
         /// <param name="length">data length</param>
         /// <param name="responseid">response id</param>
-        protected async void DeserializeDataAsync(uint commandid, uint type, byte[] data, int length, uint responseid)
+        protected async void DeserializeDataAsync(uint commandid, byte[] data, int length, uint responseid)
         {
             if (responseid != 0)
             {
-                if (_taskCompletionSources.TryGetValue(responseid, out TaskCompletionSource<byte[]> cs))
+                TaskCompletionSource<byte[]> cs;
+                bool lockTaken = false;
+                try
                 {
-                    cs.SetResult(data);
+                    _lock.Enter(ref lockTaken);
+                    if (_taskCompletionSources.TryGetValue(responseid, out cs))
+                    {
+                        _taskCompletionSources.Remove(responseid);
+                    }
                 }
+                finally
+                {
+                    if (lockTaken) { _lock.Exit(false); }
+                }
+                cs?.TrySetResult(data);
                 return;
             }
 
@@ -185,7 +200,7 @@ namespace Exomia.Network
                 }
                 default:
                 {
-                    result = await Task.Run(delegate { return DeserializeData(type, data, length); });
+                    result = await Task.Run(delegate { return DeserializeData(commandid, data, length); });
                     break;
                 }
             }
@@ -198,11 +213,11 @@ namespace Exomia.Network
         /// <summary>
         ///     deserialize data from type and byte array
         /// </summary>
-        /// <param name="type">type</param>
+        /// <param name="commandid">commandid</param>
         /// <param name="data">byte array</param>
         /// <param name="length">data length</param>
         /// <returns>a new created object</returns>
-        protected abstract object DeserializeData(uint type, byte[] data, int length);
+        protected abstract object DeserializeData(uint commandid, byte[] data, int length);
 
         /// <summary>
         ///     OnDisconnected called if the client is disconnected
@@ -265,66 +280,111 @@ namespace Exomia.Network
         #region Send
 
         /// <inheritdoc />
-        public void Send(uint commandid, uint type, byte[] data, int lenght)
+        public void Send(uint commandid, byte[] data, int lenght)
         {
-            BeginSendData(commandid, type, data, lenght);
+            BeginSendData(commandid, data, lenght);
         }
 
         /// <inheritdoc />
-        public async Task<TResult> SendR<TResult>(uint commandid, uint type, byte[] data, int lenght)
+        public async Task<TResult> SendR<TResult>(uint commandid, byte[] data, int lenght)
             where TResult : struct
         {
-            TaskCompletionSource<byte[]> source = new TaskCompletionSource<byte[]>();
+            TaskCompletionSource<byte[]> tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.None);
+            using (CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
+            {
+                uint responseID = _responseID++;
+                if (responseID == 0) { responseID++; }
 
-            //TODO maybe use kernel32 instead of Interlocked.Add (x86 & x64 support required)
-            uint responseID = (uint)Interlocked.Add(ref _responseID, 1);
-            if (responseID == 0) { responseID = (uint)Interlocked.Add(ref _responseID, 1); }
+                cts.Token.Register(
+                    delegate
+                    {
+                        bool lockTaken1 = false;
+                        try
+                        {
+                            _lock.Enter(ref lockTaken1);
+                            _taskCompletionSources.Remove(_responseID);
+                        }
+                        finally
+                        {
+                            if (lockTaken1) { _lock.Exit(false); }
+                        }
+                        tcs.TrySetCanceled();
+                    }, false);
 
-            _taskCompletionSources.Add(responseID, source);
-            BeginSendData(commandid, type, data, lenght, responseID);
-            return (await source.Task).FromBytesUnsafe<TResult>();
+                bool lockTaken = false;
+                try
+                {
+                    _lock.Enter(ref lockTaken);
+                    _taskCompletionSources.Add(responseID, tcs);
+                }
+                finally
+                {
+                    if (lockTaken) { _lock.Exit(false); }
+                }
+
+                BeginSendData(commandid, data, lenght, responseID);
+
+                return (await tcs.Task).FromBytesUnsafe<TResult>();
+            }
         }
 
         /// <inheritdoc />
-        public void Send(uint commandid, uint type, ISerializable serializable)
+        public void Send(uint commandid, ISerializable serializable)
         {
             byte[] dataB = serializable.Serialize();
-            BeginSendData(commandid, type, dataB, dataB.Length);
+            BeginSendData(commandid, dataB, dataB.Length);
         }
 
         /// <inheritdoc />
-        public void SendAsync(uint commandid, uint type, ISerializable serializable)
+        public void SendAsync(uint commandid, ISerializable serializable)
         {
             Task.Run(
                 delegate
                 {
-                    Send(commandid, type, serializable);
+                    Send(commandid, serializable);
                 });
         }
 
         /// <inheritdoc />
-        public void Send<T>(uint commandid, uint type, in T data) where T : struct
+        public Task<TResult> SendR<TResult>(uint commandid, ISerializable serializable)
+            where TResult : struct
         {
-            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            BeginSendData(commandid, type, dataB, lenght);
+            byte[] dataB = serializable.Serialize();
+            return SendR<TResult>(commandid, dataB, dataB.Length);
         }
 
         /// <inheritdoc />
-        public void SendAsync<T>(uint commandid, uint type, in T data) where T : struct
+        public void Send<T>(uint commandid, in T data) where T : struct
+        {
+            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
+            BeginSendData(commandid, dataB, lenght);
+        }
+
+        /// <inheritdoc />
+        public void SendAsync<T>(uint commandid, in T data) where T : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int lenght);
             Task.Run(
                 delegate
                 {
-                    BeginSendData(commandid, type, dataB, lenght);
+                    BeginSendData(commandid, dataB, lenght);
                 });
         }
 
-        private void BeginSendData(uint commandid, uint type, byte[] data, int lenght, uint responseID = 0)
+        /// <inheritdoc />
+        public Task<TResult> SendR<T, TResult>(uint commandid, T data)
+            where T : struct
+            where TResult : struct
+        {
+            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
+            return SendR<TResult>(commandid, dataB, lenght);
+        }
+
+        private void BeginSendData(uint commandid, byte[] data, int lenght, uint responseID = 0)
         {
             if (_clientSocket == null) { return; }
 
-            byte[] send = Serialization.Serialization.Serialize(commandid, type, data, lenght, responseID);
+            byte[] send = Serialization.Serialization.Serialize(commandid, data, lenght, responseID);
 
             try
             {
@@ -354,16 +414,14 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void SendPing()
         {
-            Send(
-                Constants.PING_COMMAND_ID, Constants.PING_STRUCT_TYPE_ID,
-                new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
+            Send(Constants.PING_COMMAND_ID, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
         }
 
         /// <inheritdoc />
         public void SendClientInfo(long clientID, string clientName)
         {
             Send(
-                Constants.CLIENTINFO_COMMAND_ID, Constants.CLIENTINFO_STRUCT_TYPE_ID,
+                Constants.CLIENTINFO_COMMAND_ID,
                 new CLIENTINFO_STRUCT { ClientID = clientID, ClientName = clientName });
         }
 
