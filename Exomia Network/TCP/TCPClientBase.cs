@@ -160,7 +160,7 @@ namespace Exomia.Network.TCP
 
             if (length == dataLenght)
             {
-                DeserializeDataAsync(commandID, data, dataLenght, responseID);
+                DeserializeDataAsync(commandID, data, 0, dataLenght, responseID);
                 ByteArrayPool.Return(data);
             }
         }

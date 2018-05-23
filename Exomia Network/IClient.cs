@@ -122,6 +122,11 @@ namespace Exomia.Network
         void SendPing();
 
         /// <summary>
+        ///     send a ping command to the server
+        /// </summary>
+        Task<PING_STRUCT> SendRPing();
+
+        /// <summary>
         ///     send a client info command to the server
         /// </summary>
         /// <param name="clientID">client id</param>

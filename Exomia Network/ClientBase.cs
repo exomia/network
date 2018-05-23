@@ -142,9 +142,10 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
+        /// <param name="offset">offset</param>
         /// <param name="length">data length</param>
         /// <param name="responseid">response id</param>
-        protected async void DeserializeDataAsync(uint commandid, byte[] data, int length, uint responseid)
+        protected async void DeserializeDataAsync(uint commandid, byte[] data, int offset, int length, uint responseid)
         {
             if (responseid != 0)
             {
@@ -200,7 +201,7 @@ namespace Exomia.Network
                 }
                 default:
                 {
-                    result = await Task.Run(delegate { return DeserializeData(commandid, data, length); });
+                    result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
                     break;
                 }
             }
@@ -215,9 +216,10 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandid">commandid</param>
         /// <param name="data">byte array</param>
+        /// <param name="offset">offset</param>
         /// <param name="length">data length</param>
         /// <returns>a new created object</returns>
-        protected abstract object DeserializeData(uint commandid, byte[] data, int length);
+        protected abstract object DeserializeData(uint commandid, byte[] data, int offset, int length);
 
         /// <summary>
         ///     OnDisconnected called if the client is disconnected
@@ -415,6 +417,12 @@ namespace Exomia.Network
         public void SendPing()
         {
             Send(Constants.PING_COMMAND_ID, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
+        }
+
+        /// <inheritdoc />
+        public Task<PING_STRUCT> SendRPing()
+        {
+            return SendR<PING_STRUCT, PING_STRUCT>(Constants.PING_COMMAND_ID, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
         }
 
         /// <inheritdoc />

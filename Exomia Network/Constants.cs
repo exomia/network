@@ -37,24 +37,31 @@ namespace Exomia.Network
         internal const double UDP_IDLE_TIME = 20000.0;
 
         internal const uint COMMANDID_MASK = 0xFFFF0000;
-        internal const uint UNUSED2BIT_MASK = 0x8000;
-        internal const uint UNUSED1BIT_MASK = 0x4000;
+        // ReSharper disable once UnusedMember.Global
+        internal const uint UNUSED2_BIT_MASK = 0x8000;
+        // ReSharper disable once UnusedMember.Global
+        internal const uint UNUSED1_BIT_MASK = 0x4000;
         internal const uint DATA_LENGTH_MASK = 0x3FFF;
+
+        /// <summary>
+        ///     RESPONSE_COMMAND_ID
+        /// </summary>
+        public const uint RESPONSE_COMMAND_ID = 65535;
 
         /// <summary>
         ///     CLIENTINFO_COMMAND_ID
         /// </summary>
-        public const uint CLIENTINFO_COMMAND_ID = 65535;
+        public const uint CLIENTINFO_COMMAND_ID = 65534;
 
         /// <summary>
         ///     UDP_CONNEC_COMMAND_ID
         /// </summary>
-        public const uint UDP_CONNECT_COMMAND_ID = 65534;
+        public const uint UDP_CONNECT_COMMAND_ID = 65533;
 
         /// <summary>
         ///     PING_COMMAND_ID
         /// </summary>
-        public const uint PING_COMMAND_ID = 65533;
+        public const uint PING_COMMAND_ID = 65532;
 
         #endregion
     }

@@ -128,7 +128,7 @@ namespace Exomia.Network.UDP
             {
                 byte[] data = ByteArrayPool.Rent(dataLength);
                 Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
-                DeserializeDataAsync(commandID, data, dataLength, responseID);
+                DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
                 ByteArrayPool.Return(data);
             }
 

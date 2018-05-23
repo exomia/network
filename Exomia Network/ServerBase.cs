@@ -182,7 +182,7 @@ namespace Exomia.Network
                     if (_dataReceivedCallbacks.TryGetValue(
                         commandid, out ServerClientEventEntry<T, TServerClient> buffer))
                     {
-                        object result = await Task.Run(delegate { return DeserializeData(commandid, data, length); });
+                        object result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
                         if (result == null) { return; }
 
                         buffer.RaiseAsync(this, arg0, result, responseid);
@@ -196,9 +196,10 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandid">commandid</param>
         /// <param name="data">byte array</param>
+        /// <param name="offset">offset</param>
         /// <param name="length">data length</param>
         /// <returns>a new created object</returns>
-        protected abstract object DeserializeData(uint commandid, byte[] data, int length);
+        protected abstract object DeserializeData(uint commandid, byte[] data, int offset, int length);
 
         /// <summary>
         ///     needs to be called than a new client is connected
