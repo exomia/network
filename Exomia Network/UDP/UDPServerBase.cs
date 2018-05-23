@@ -134,7 +134,7 @@ namespace Exomia.Network.UDP
 
             Listen();
 
-            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response);
+            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out _);
             if (dataLength == length - Constants.HEADER_SIZE)
             {
                 byte[] data;

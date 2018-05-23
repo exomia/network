@@ -121,7 +121,7 @@ namespace Exomia.Network.TCP
             }
 
             _state.Header.GetHeader(
-                out _state.CommandID, out _state.DataLength, out _state.Response);
+                out _state.CommandID, out _state.DataLength, out _state.Response, out _);
             if (_state.DataLength > 0)
             {
                 _clientSocket.BeginReceive(

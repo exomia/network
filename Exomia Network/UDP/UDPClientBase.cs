@@ -122,7 +122,7 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response);
+            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out _);
 
             if (dataLength == length - Constants.HEADER_SIZE)
             {

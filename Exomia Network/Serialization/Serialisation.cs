@@ -30,6 +30,20 @@ namespace Exomia.Network.Serialization
 {
     internal static unsafe class Serialization
     {
+        #region Variables
+
+        private const uint COMMANDID_MASK = 0xFFFF0000;
+        private const uint RESPONSE_BIT_MASK = 0x8000;
+        private const uint UNUSED1_BIT_MASK = 0x4000;
+        private const uint DATA_LENGTH_MASK = 0x3FFF;
+
+        // compressed bit!? maybe compress large data!?
+        // ReSharper disable once UnusedMember.Local
+        private const uint UNUSED1_1BIT = 1u << 14;
+        private const uint RESPONSE_1BIT = 1u << 15;
+
+        #endregion
+
         #region Methods
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -38,14 +52,14 @@ namespace Exomia.Network.Serialization
         {
             // 32bit
             // 
-            // | COMMANDID 0-15 (16)bit                         | RESPONSE BIT | UNUSED2 BIT  | DATALENGTH 18-31 (14)bit                  |
-            // | 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 | 16           | 17           | 18 19 20 21 22 23 24 25 26 27 28 29 30 31 |
-            // | VR: 0-65535                                    | VR: 0/1      | VR: 0/1      | VR: 0-16382                               | VR = VALUE RANGE
+            // | COMMANDID 0-15 (16)bit                          | RESPONSE BIT | UNUSED1 BIT  | DATALENGTH 18-31 (14)bit                  |
+            // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 | 15           | 14           | 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
+            // | VR: 0-65535                                     | VR: 0/1      | VR: 0/1      | VR: 0-16382                               | VR = VALUE RANGE
             // 
-            // | 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  0           |  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0x3FFF
-            // | 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  1           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | UNUSED1_BIT_MASK 0x4000
-            // | 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  1           |  0           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | RESPONSE_BIT_MASK 0x8000
-            // | 1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |  0           |  0           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  0           |  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0x3FFF
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  1           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | UNUSED1_BIT_MASK 0x4000
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  1           |  0           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | RESPONSE_BIT_MASK 0x8000
+            // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |  0           |  0           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
             if (responseID != 0)
             {
                 size = Constants.HEADER_SIZE + Constants.RESPONSE_SIZE + lenght;
@@ -53,10 +67,9 @@ namespace Exomia.Network.Serialization
                 fixed (byte* ptr = send)
                 {
                     *(uint*)ptr =
-                        ((uint)(lenght + Constants.RESPONSE_SIZE) & Constants.DATA_LENGTH_MASK) |
-                        (0u << 14) |
-                        (1u << 15) |
-                        (commandID << 16);
+                        ((uint)(lenght + Constants.RESPONSE_SIZE) & DATA_LENGTH_MASK) |
+                        RESPONSE_1BIT |
+                        ((commandID << 16) & COMMANDID_MASK);
                     *(uint*)(ptr + 4) = responseID;
                 }
 
@@ -70,10 +83,8 @@ namespace Exomia.Network.Serialization
                 fixed (byte* ptr = send)
                 {
                     *(uint*)ptr =
-                        ((uint)lenght & Constants.DATA_LENGTH_MASK) |
-                        (0u << 14) |
-                        (0u << 15) |
-                        (commandID << 16);
+                        ((uint)lenght & DATA_LENGTH_MASK) |
+                        ((commandID << 16) & COMMANDID_MASK);
                 }
 
                 //DATA
@@ -82,28 +93,27 @@ namespace Exomia.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeader(this byte[] header, out uint commandID, out int dataLenght, out uint response)
+        internal static void GetHeader(this byte[] header, out uint commandID, out int dataLenght, out uint response,
+            out uint unused1)
         {
-            // uint = 32bit
+            // 32bit
             // 
-            // | COMMANDID 0-15 (16)bit                         | RESPONSE BIT | UNUSED BIT   | DATALENGTH 18-31 (14)bit                  |
-            // | 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 | 16           | 17           | 18 19 20 21 22 23 24 25 26 27 28 29 30 31 |
-            // | VR: 0-65535                                    | VR: 0/1      | VR: 0/1      | VR: 0-16382                               | VR = VALUE RANGE
+            // | COMMANDID 0-15 (16)bit                          | RESPONSE BIT | UNUSED1 BIT  | DATALENGTH 18-31 (14)bit                  |
+            // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 | 15           | 14           | 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
+            // | VR: 0-65535                                     | VR: 0/1      | VR: 0/1      | VR: 0-16382                               | VR = VALUE RANGE
             // 
-            // | 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  0           |  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0x3FFF
-            // | 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  1           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | UNUSED1_BIT_MASK 0x4000
-            // | 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  1           |  0           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | RESPONSE_BIT_MASK 0x8000
-            // | 1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |  0           |  0           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  0           |  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0x3FFF
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  1           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | UNUSED1_BIT_MASK 0x4000
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  1           |  0           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | RESPONSE_BIT_MASK 0x8000
+            // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |  0           |  0           |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
 
             fixed (byte* ptr = header)
             {
                 uint h = *(uint*)ptr;
-                commandID = (h & Constants.COMMANDID_MASK) >> 16;
-
-                response = (h & Constants.RESPONSE_BIT_MASK) >> 15;
-
-                //uint unused1 = (h & Constants.UNUSED1BIT_MASK ) >> 14;
-                dataLenght = (int)(h & Constants.DATA_LENGTH_MASK);
+                commandID = (h & COMMANDID_MASK) >> 16;
+                response = (h & RESPONSE_BIT_MASK) >> 15;
+                unused1 = (h & UNUSED1_BIT_MASK) >> 14;
+                dataLenght = (int)(h & DATA_LENGTH_MASK);
             }
         }
 

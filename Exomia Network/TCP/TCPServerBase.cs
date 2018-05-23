@@ -143,7 +143,7 @@ namespace Exomia.Network.TCP
                     return;
                 }
 
-                state.Header.GetHeader(out state.CommandID, out state.DataLength, out state.Response);
+                state.Header.GetHeader(out state.CommandID, out state.DataLength, out state.Response, out _);
 
                 if (state.DataLength > 0)
                 {
