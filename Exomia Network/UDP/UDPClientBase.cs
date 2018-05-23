@@ -122,12 +122,26 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint responseID);
+            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response);
 
             if (dataLength == length - Constants.HEADER_SIZE)
             {
-                byte[] data = ByteArrayPool.Rent(dataLength);
-                Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                byte[] data;
+                uint responseID = 0;
+                if (response != 0)
+                {
+                    responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
+
+                    dataLength -= Constants.RESPONSE_SIZE;
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(
+                        _state.Buffer, Constants.HEADER_SIZE + Constants.RESPONSE_SIZE, data, 0, dataLength);
+                }
+                else
+                {
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                }
                 DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
                 ByteArrayPool.Return(data);
             }

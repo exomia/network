@@ -31,15 +31,16 @@ namespace Exomia.Network
     {
         #region Variables
 
-        internal const int HEADER_SIZE = 8;
+        internal const int HEADER_SIZE = 4;
+        internal const int RESPONSE_SIZE = 4;
+
         internal const int PACKET_SIZE_MAX = 16000;
 
         internal const double UDP_IDLE_TIME = 20000.0;
 
         internal const uint COMMANDID_MASK = 0xFFFF0000;
 
-        // ReSharper disable once UnusedMember.Global
-        internal const uint UNUSED2_BIT_MASK = 0x8000;
+        internal const uint RESPONSE_BIT_MASK = 0x8000;
 
         // ReSharper disable once UnusedMember.Global
         internal const uint UNUSED1_BIT_MASK = 0x4000;

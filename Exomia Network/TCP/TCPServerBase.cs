@@ -51,35 +51,32 @@ namespace Exomia.Network.TCP
         protected override bool OnRun(int port, out Socket listener)
         {
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            try
-            {
-                listener.Bind(new IPEndPoint(IPAddress.Any, port));
-                listener.Listen(100);
+            listener.Bind(new IPEndPoint(IPAddress.Any, port));
+            listener.Listen(100);
 
-                Listen();
-                return true;
-            }
-            catch
-            {
-                /*IGNORE */
-            }
-
-            listener = null;
-            return false;
+            Listen();
+            return true;
         }
 
         /// <inheritdoc />
-        protected override void BeginSendDataTo(Socket arg0, byte[] send, int lenght)
+        protected override void BeginSendDataTo(Socket arg0, byte[] send, int offset, int lenght)
         {
             if (arg0 == null) { return; }
 
             try
             {
                 arg0.BeginSend(
-                    send, 0, lenght, SocketFlags.None, iar =>
+                    send, offset, lenght, SocketFlags.None, iar =>
                     {
-                        arg0.EndSend(iar);
-                        ByteArrayPool.Return(send);
+                        try
+                        {
+                            arg0.EndSend(iar);
+                            ByteArrayPool.Return(send);
+                        }
+                        catch
+                        {
+                            /* IGNORE */
+                        }
                     }, null);
             }
             catch
@@ -146,7 +143,7 @@ namespace Exomia.Network.TCP
                     return;
                 }
 
-                state.Header.GetHeader(out state.CommandID, out state.DataLength, out state.ResponseID);
+                state.Header.GetHeader(out state.CommandID, out state.DataLength, out state.Response);
 
                 if (state.DataLength > 0)
                 {
@@ -182,20 +179,31 @@ namespace Exomia.Network.TCP
             }
 
             uint commandID = state.CommandID;
-            int dataLenght = state.DataLength;
-            uint responseID = state.ResponseID;
+            int dataLength = state.DataLength;
+            uint response = state.Response;
             Socket socket = state.Socket;
-
-            byte[] data = ByteArrayPool.Rent(dataLenght);
-            Buffer.BlockCopy(state.Data, 0, data, 0, dataLenght);
-
-            ClientReceiveHeaderAsync(state);
-
-            if (length == dataLenght)
+            if (length == dataLength)
             {
-                DeserializeDataAsync(socket, commandID, data, 0, dataLenght, responseID);
+                uint responseID = 0;
+                byte[] data;
+                if (response != 0)
+                {
+                    responseID = BitConverter.ToUInt32(state.Data, 0);
+                    dataLength -= Constants.RESPONSE_SIZE;
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(state.Data, Constants.RESPONSE_SIZE, data, 0, dataLength);
+                }
+                else
+                {
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(state.Data, 0, data, 0, dataLength);
+                }
+
+                DeserializeDataAsync(socket, commandID, data, 0, dataLength, responseID);
                 ByteArrayPool.Return(data);
             }
+
+            ClientReceiveHeaderAsync(state);
         }
 
         #endregion
@@ -210,7 +218,7 @@ namespace Exomia.Network.TCP
             public byte[] Data;
             public int DataLength;
             public byte[] Header;
-            public uint ResponseID;
+            public uint Response;
             public Socket Socket;
 
             #endregion

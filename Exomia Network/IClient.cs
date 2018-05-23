@@ -22,6 +22,7 @@
 
 #endregion
 
+using System;
 using System.Threading.Tasks;
 using Exomia.Network.Serialization;
 
@@ -99,9 +100,33 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult">struct type</typeparam>
         /// <param name="commandid">command id</param>
+        /// <param name="data">data</param>
+        /// <param name="offset">offset</param>
+        /// <param name="lenght">lenght of data</param>
+        /// <param name="timeout">timeout</param>
+        /// <returns></returns>
+        Task<TResult> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght, TimeSpan timeout)
+            where TResult : struct;
+
+        /// <summary>
+        ///     send data to the server
+        /// </summary>
+        /// <typeparam name="TResult">struct type</typeparam>
+        /// <param name="commandid">command id</param>
         /// <param name="serializable">ISerializable</param>
         /// <returns></returns>
         Task<TResult> SendR<TResult>(uint commandid, ISerializable serializable)
+            where TResult : struct;
+
+        /// <summary>
+        ///     send data to the server
+        /// </summary>
+        /// <typeparam name="TResult">struct type</typeparam>
+        /// <param name="commandid">command id</param>
+        /// <param name="serializable">ISerializable</param>
+        /// <param name="timeout">timeout</param>
+        /// <returns></returns>
+        Task<TResult> SendR<TResult>(uint commandid, ISerializable serializable, TimeSpan timeout)
             where TResult : struct;
 
         /// <summary>
@@ -113,6 +138,19 @@ namespace Exomia.Network
         /// <param name="data">struct data</param>
         /// <returns></returns>
         Task<TResult> SendR<T, TResult>(uint commandid, in T data)
+            where T : struct
+            where TResult : struct;
+
+        /// <summary>
+        ///     send data to the server
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <typeparam name="TResult">struct type</typeparam>
+        /// <param name="commandid">command id</param>
+        /// <param name="data">struct data</param>
+        /// <param name="timeout">timeout</param>
+        /// <returns></returns>
+        Task<TResult> SendR<T, TResult>(uint commandid, in T data, TimeSpan timeout)
             where T : struct
             where TResult : struct;
 

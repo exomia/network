@@ -121,7 +121,7 @@ namespace Exomia.Network.TCP
             }
 
             _state.Header.GetHeader(
-                out _state.CommandID, out _state.DataLength, out _state.ResponseID);
+                out _state.CommandID, out _state.DataLength, out _state.Response);
             if (_state.DataLength > 0)
             {
                 _clientSocket.BeginReceive(
@@ -150,19 +150,31 @@ namespace Exomia.Network.TCP
             }
 
             uint commandID = _state.CommandID;
-            int dataLenght = _state.DataLength;
-            uint responseID = _state.ResponseID;
-
-            byte[] data = ByteArrayPool.Rent(dataLenght);
-            Buffer.BlockCopy(_state.Data, 0, data, 0, dataLenght);
-
-            ReceiveHeaderAsync();
-
-            if (length == dataLenght)
+            int dataLength = _state.DataLength;
+            uint response = _state.Response;
+            if (length == dataLength)
             {
-                DeserializeDataAsync(commandID, data, 0, dataLenght, responseID);
+                uint responseID = 0;
+                byte[] data;
+                if (response != 0)
+                {
+                    responseID = BitConverter.ToUInt32(_state.Data, 0);
+
+                    dataLength -= Constants.RESPONSE_SIZE;
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(_state.Data, Constants.RESPONSE_SIZE, data, 0, dataLength);
+                }
+                else
+                {
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(_state.Data, 0, data, 0, dataLength);
+                }
+
+                DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
                 ByteArrayPool.Return(data);
             }
+
+            ReceiveHeaderAsync();
         }
 
         #endregion
@@ -175,7 +187,7 @@ namespace Exomia.Network.TCP
             public byte[] Data;
             public uint CommandID;
             public int DataLength;
-            public uint ResponseID;
+            public uint Response;
         }
 
         #endregion

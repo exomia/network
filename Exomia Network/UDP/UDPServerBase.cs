@@ -79,27 +79,18 @@ namespace Exomia.Network.UDP
         protected override bool OnRun(int port, out Socket listener)
         {
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            listener.Bind(new IPEndPoint(IPAddress.Any, port));
 
-            try
-            {
-                listener.Bind(new IPEndPoint(IPAddress.Any, port));
-
-                Listen();
-                return true;
-            }
-            catch
-            {
-                listener = null;
-                return false;
-            }
+            Listen();
+            return true;
         }
 
         /// <inheritdoc />
-        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int lenght)
+        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int offset, int lenght)
         {
             try
             {
-                _listener.BeginSendTo(send, 0, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
+                _listener.BeginSendTo(send, offset, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
             }
             catch
             {
@@ -143,12 +134,25 @@ namespace Exomia.Network.UDP
 
             Listen();
 
-            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint responseID);
-
+            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response);
             if (dataLength == length - Constants.HEADER_SIZE)
             {
-                byte[] data = ByteArrayPool.Rent(dataLength);
-                Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                byte[] data;
+                uint responseID = 0;
+                if (response != 0)
+                {
+                    responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
+                    dataLength -= Constants.RESPONSE_SIZE;
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(
+                        state.Buffer, Constants.HEADER_SIZE + Constants.RESPONSE_SIZE, data, 0, dataLength);
+                }
+                else
+                {
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                }
+
                 DeserializeDataAsync(state.EndPoint, commandID, data, 0, dataLength, responseID);
                 ByteArrayPool.Return(data);
             }

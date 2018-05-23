@@ -341,8 +341,9 @@ namespace Exomia.Network
         private void BeginSendDataTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid = 0)
         {
             if (_listener == null) { return; }
-            byte[] send = Serialization.Serialization.Serialize(commandid, data, offset, length, responseid);
-            BeginSendDataTo(arg0, send, Constants.HEADER_SIZE + length);
+            Serialization.Serialization.Serialize(
+                commandid, data, offset, length, responseid, out byte[] send, out int size);
+            BeginSendDataTo(arg0, send, 0, size);
         }
 
         /// <summary>
@@ -350,8 +351,9 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="send">data to send</param>
+        /// <param name="offset">offset</param>
         /// <param name="length">data length</param>
-        protected abstract void BeginSendDataTo(T arg0, byte[] send, int length);
+        protected abstract void BeginSendDataTo(T arg0, byte[] send, int offset, int length);
 
         /// <inheritdoc />
         public void SendToAll(uint commandid, byte[] data, int offset, int length)

@@ -45,6 +45,8 @@ namespace Exomia.Network
         private const int INITIAL_QUEUE_SIZE = 16;
         private const int INITIAL_TASKCOMPLETION_QUEUE_SIZE = 128;
 
+        private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(60);
+
         /// <summary>
         ///     called than the client is Disconnected
         /// </summary>
@@ -288,11 +290,18 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public async Task<TResult> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght)
+        public Task<TResult> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght)
+            where TResult : struct
+        {
+            return SendR<TResult>(commandid, data, offset, lenght, s_defaultTimeout);
+        }
+
+        /// <inheritdoc />
+        public async Task<TResult> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght, TimeSpan timeout)
             where TResult : struct
         {
             TaskCompletionSource<byte[]> tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.None);
-            using (CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
+            using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
             {
                 uint responseID = _responseID++;
                 if (responseID == 0) { responseID++; }
@@ -348,6 +357,14 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
+        public Task<TResult> SendR<TResult>(uint commandid, ISerializable serializable, TimeSpan timeout)
+            where TResult : struct
+        {
+            byte[] dataB = serializable.Serialize();
+            return SendR<TResult>(commandid, dataB, 0, dataB.Length, timeout);
+        }
+
+        /// <inheritdoc />
         public Task<TResult> SendR<TResult>(uint commandid, ISerializable serializable)
             where TResult : struct
         {
@@ -382,16 +399,26 @@ namespace Exomia.Network
             return SendR<TResult>(commandid, dataB, 0, lenght);
         }
 
+        /// <inheritdoc />
+        public Task<TResult> SendR<T, TResult>(uint commandid, in T data, TimeSpan timeout)
+            where T : struct
+            where TResult : struct
+        {
+            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
+            return SendR<TResult>(commandid, dataB, 0, lenght, timeout);
+        }
+
         private void BeginSendData(uint commandid, byte[] data, int offset, int lenght, uint responseID = 0)
         {
             if (_clientSocket == null) { return; }
 
-            byte[] send = Serialization.Serialization.Serialize(commandid, data, offset, lenght, responseID);
+            Serialization.Serialization.Serialize(
+                commandid, data, offset, lenght, responseID, out byte[] send, out int size);
 
             try
             {
                 _clientSocket.BeginSend(
-                    send, 0, Constants.HEADER_SIZE + lenght, SocketFlags.None, SendDataCallback, send);
+                    send, 0, size, SocketFlags.None, SendDataCallback, send);
             }
             catch
             {
