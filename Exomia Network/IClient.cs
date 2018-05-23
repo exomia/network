@@ -112,7 +112,7 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">struct data</param>
         /// <returns></returns>
-        Task<TResult> SendR<T, TResult>(uint commandid, T data)
+        Task<TResult> SendR<T, TResult>(uint commandid, in T data)
             where T : struct
             where TResult : struct;
 

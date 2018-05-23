@@ -359,7 +359,7 @@ namespace Exomia.Network
         public void Send<T>(uint commandid, in T data) where T : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            BeginSendData(commandid, dataB, 0,  lenght);
+            BeginSendData(commandid, dataB, 0, lenght);
         }
 
         /// <inheritdoc />
@@ -374,7 +374,7 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public Task<TResult> SendR<T, TResult>(uint commandid, T data)
+        public Task<TResult> SendR<T, TResult>(uint commandid, in T data)
             where T : struct
             where TResult : struct
         {
@@ -422,7 +422,8 @@ namespace Exomia.Network
         /// <inheritdoc />
         public Task<PING_STRUCT> SendRPing()
         {
-            return SendR<PING_STRUCT, PING_STRUCT>(Constants.PING_COMMAND_ID, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
+            return SendR<PING_STRUCT, PING_STRUCT>(
+                Constants.PING_COMMAND_ID, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
         }
 
         /// <inheritdoc />

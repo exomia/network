@@ -182,7 +182,8 @@ namespace Exomia.Network
                     if (_dataReceivedCallbacks.TryGetValue(
                         commandid, out ServerClientEventEntry<T, TServerClient> buffer))
                     {
-                        object result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
+                        object result = await Task.Run(
+                            delegate { return DeserializeData(commandid, data, offset, length); });
                         if (result == null) { return; }
 
                         buffer.RaiseAsync(this, arg0, result, responseid);
@@ -302,7 +303,6 @@ namespace Exomia.Network
             BeginSendDataTo(arg0, commandid, data, offset, lenght, responseid);
         }
 
-
         /// <inheritdoc />
         public void SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid = 0)
         {
@@ -319,7 +319,6 @@ namespace Exomia.Network
                     SendTo(arg0, commandid, serializable, responseid);
                 });
         }
-
 
         /// <inheritdoc />
         public void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid = 0) where T1 : struct
@@ -338,7 +337,6 @@ namespace Exomia.Network
                     BeginSendDataTo(arg0, commandid, dataB, 0, length);
                 });
         }
-
 
         private void BeginSendDataTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid = 0)
         {

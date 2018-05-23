@@ -71,7 +71,6 @@ namespace Exomia.Network
         /// <param name="responseid"></param>
         void SendToAsync(T arg0, uint commandid, ISerializable serializable, uint responseid = 0);
 
-
         /// <summary>
         ///     send data to the client
         /// </summary>
@@ -91,7 +90,6 @@ namespace Exomia.Network
         /// <param name="data">data</param>
         /// <param name="responseid"></param>
         void SendToAsync<T1>(T arg0, uint commandid, in T1 data, uint responseid = 0) where T1 : struct;
-
 
         /// <summary>
         ///     send data to all clients

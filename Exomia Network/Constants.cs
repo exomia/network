@@ -37,8 +37,10 @@ namespace Exomia.Network
         internal const double UDP_IDLE_TIME = 20000.0;
 
         internal const uint COMMANDID_MASK = 0xFFFF0000;
+
         // ReSharper disable once UnusedMember.Global
         internal const uint UNUSED2_BIT_MASK = 0x8000;
+
         // ReSharper disable once UnusedMember.Global
         internal const uint UNUSED1_BIT_MASK = 0x4000;
         internal const uint DATA_LENGTH_MASK = 0x3FFF;
