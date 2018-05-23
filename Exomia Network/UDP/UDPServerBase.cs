@@ -149,7 +149,7 @@ namespace Exomia.Network.UDP
             {
                 byte[] data = ByteArrayPool.Rent(dataLength);
                 Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
-                DeserializeDataAsync(state.EndPoint, commandID, data, dataLength, responseID);
+                DeserializeDataAsync(state.EndPoint, commandID, data, 0, dataLength, responseID);
                 ByteArrayPool.Return(data);
             }
 

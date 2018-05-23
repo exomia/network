@@ -48,8 +48,9 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
+        /// <param name="offset">offset</param>
         /// <param name="lenght">lenght of data</param>
-        void Send(uint commandid, byte[] data, int lenght);
+        void Send(uint commandid, byte[] data, int offset, int lenght);
 
         /// <summary>
         ///     send data to the server
@@ -87,9 +88,10 @@ namespace Exomia.Network
         /// <typeparam name="TResult">struct type</typeparam>
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
+        /// <param name="offset">offset</param>
         /// <param name="lenght">lenght of data</param>
         /// <returns></returns>
-        Task<TResult> SendR<TResult>(uint commandid, byte[] data, int lenght)
+        Task<TResult> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght)
             where TResult : struct;
 
         /// <summary>

@@ -280,13 +280,13 @@ namespace Exomia.Network
         #region Send
 
         /// <inheritdoc />
-        public void Send(uint commandid, byte[] data, int lenght)
+        public void Send(uint commandid, byte[] data, int offset, int lenght)
         {
-            BeginSendData(commandid, data, lenght);
+            BeginSendData(commandid, data, offset, lenght);
         }
 
         /// <inheritdoc />
-        public async Task<TResult> SendR<TResult>(uint commandid, byte[] data, int lenght)
+        public async Task<TResult> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght)
             where TResult : struct
         {
             TaskCompletionSource<byte[]> tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.None);
@@ -322,7 +322,7 @@ namespace Exomia.Network
                     if (lockTaken) { _lock.Exit(false); }
                 }
 
-                BeginSendData(commandid, data, lenght, responseID);
+                BeginSendData(commandid, data, offset, lenght, responseID);
 
                 return (await tcs.Task).FromBytesUnsafe<TResult>();
             }
@@ -332,7 +332,7 @@ namespace Exomia.Network
         public void Send(uint commandid, ISerializable serializable)
         {
             byte[] dataB = serializable.Serialize();
-            BeginSendData(commandid, dataB, dataB.Length);
+            BeginSendData(commandid, dataB, 0, dataB.Length);
         }
 
         /// <inheritdoc />
@@ -350,14 +350,14 @@ namespace Exomia.Network
             where TResult : struct
         {
             byte[] dataB = serializable.Serialize();
-            return SendR<TResult>(commandid, dataB, dataB.Length);
+            return SendR<TResult>(commandid, dataB, 0, dataB.Length);
         }
 
         /// <inheritdoc />
         public void Send<T>(uint commandid, in T data) where T : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            BeginSendData(commandid, dataB, lenght);
+            BeginSendData(commandid, dataB, 0,  lenght);
         }
 
         /// <inheritdoc />
@@ -367,7 +367,7 @@ namespace Exomia.Network
             Task.Run(
                 delegate
                 {
-                    BeginSendData(commandid, dataB, lenght);
+                    BeginSendData(commandid, dataB, 0, lenght);
                 });
         }
 
@@ -377,14 +377,14 @@ namespace Exomia.Network
             where TResult : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            return SendR<TResult>(commandid, dataB, lenght);
+            return SendR<TResult>(commandid, dataB, 0, lenght);
         }
 
-        private void BeginSendData(uint commandid, byte[] data, int lenght, uint responseID = 0)
+        private void BeginSendData(uint commandid, byte[] data, int offset, int lenght, uint responseID = 0)
         {
             if (_clientSocket == null) { return; }
 
-            byte[] send = Serialization.Serialization.Serialize(commandid, data, lenght, responseID);
+            byte[] send = Serialization.Serialization.Serialize(commandid, data, offset, lenght, responseID);
 
             try
             {

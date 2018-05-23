@@ -33,7 +33,7 @@ namespace Exomia.Network.Serialization
         #region Methods
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static byte[] Serialize(uint commandID, byte[] data, int lenght, uint responseID)
+        internal static byte[] Serialize(uint commandID, byte[] data, int offset, int lenght, uint responseID)
         {
             // 32bit
             // 
@@ -58,7 +58,7 @@ namespace Exomia.Network.Serialization
             }
 
             //DATA
-            Buffer.BlockCopy(data, 0, buffer, Constants.HEADER_SIZE, lenght);
+            Buffer.BlockCopy(data, offset, buffer, Constants.HEADER_SIZE, lenght);
 
             return buffer;
         }
