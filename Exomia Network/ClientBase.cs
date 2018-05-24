@@ -303,8 +303,19 @@ namespace Exomia.Network
             TaskCompletionSource<byte[]> tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.None);
             using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
             {
-                uint responseID = _responseID++;
-                if (responseID == 0) { responseID++; }
+                uint responseID;
+                bool lockTaken = false;
+                try
+                {
+                    _lock.Enter(ref lockTaken);
+                    responseID = _responseID++;
+                    if (responseID == 0) { responseID++; }
+                    _taskCompletionSources.Add(responseID, tcs);
+                }
+                finally
+                {
+                    if (lockTaken) { _lock.Exit(false); }
+                }
 
                 cts.Token.Register(
                     delegate
@@ -321,17 +332,6 @@ namespace Exomia.Network
                         }
                         tcs.TrySetCanceled();
                     }, false);
-
-                bool lockTaken = false;
-                try
-                {
-                    _lock.Enter(ref lockTaken);
-                    _taskCompletionSources.Add(responseID, tcs);
-                }
-                finally
-                {
-                    if (lockTaken) { _lock.Exit(false); }
-                }
 
                 BeginSendData(commandid, data, offset, lenght, responseID);
 
