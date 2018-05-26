@@ -26,7 +26,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
@@ -53,6 +55,8 @@ namespace Exomia.Network
         ///     called than a client is disconnected
         /// </summary>
         public event ClientActionHandler<T> ClientDisconnected;
+
+        private SpinLock _clientsLock;
 
         /// <summary>
         ///     Dictionary{EndPoint, TServerClient}
@@ -101,6 +105,8 @@ namespace Exomia.Network
         {
             _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<T, TServerClient>>(INITIAL_QUEUE_SIZE);
             _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
+
+            _clientsLock = new SpinLock(Debugger.IsAttached);
         }
 
         /// <inheritdoc />
@@ -158,24 +164,36 @@ namespace Exomia.Network
         {
             switch (commandid)
             {
-                case Constants.PING_COMMAND_ID:
-                {
-                    SendTo(arg0, Constants.PING_COMMAND_ID, data, offset, length, responseid);
-                    return;
-                }
-                case Constants.CLIENTINFO_COMMAND_ID:
-                {
-                    if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                case CommandID.PING:
                     {
-                        data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
-                        sClient.SetClientInfo(clientinfoStruct);
+                        SendTo(arg0, CommandID.PING, data, offset, length, responseid);
+                        return;
                     }
-                    return;
-                }
-                case Constants.UDP_CONNECT_COMMAND_ID:
+                case CommandID.CLIENTINFO:
+                    {
+                        bool lockTaken = false;
+                        try
+                        {
+                            _clientsLock.Enter(ref lockTaken);
+                            if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                            {
+                                data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
+                                sClient.SetClientInfo(clientinfoStruct);
+                            }
+                        }
+                        catch { if (lockTaken) { _clientsLock.Exit(); } }
+
+                        return;
+                    }
+                case CommandID.UDP_CONNECT:
+                    {
+                        InvokeClientConnected(arg0);
+                        SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
+                        return;
+                    }
+                case CommandID.UDP_DISCONNECT:
                 {
-                    InvokeClientConnected(arg0);
-                    SendTo(arg0, Constants.UDP_CONNECT_COMMAND_ID, data, offset, length, responseid);
+                    InvokeClientDisconnected(arg0);
                     return;
                 }
                 default:
@@ -210,8 +228,15 @@ namespace Exomia.Network
         {
             if (CreateServerClient(arg0, out TServerClient serverClient))
             {
-                _clients.Add(arg0, serverClient);
+                bool lockTaken = false;
+                try
+                {
+                    _clientsLock.Enter(ref lockTaken);
+                    _clients.Add(arg0, serverClient);
+                }
+                catch { if (lockTaken) { _clientsLock.Exit(); } }
             }
+
             OnClientConnected(arg0);
             ClientConnected?.Invoke(arg0);
         }
@@ -268,16 +293,13 @@ namespace Exomia.Network
         /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void AddDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
-            if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
+            if (!_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
             {
-                buffer.Add(callback);
+                buffer = new ServerClientEventEntry<T, TServerClient>();
+                _dataReceivedCallbacks.Add(commandid, buffer);
             }
-            else
-            {
-                ServerClientEventEntry<T, TServerClient> entry = new ServerClientEventEntry<T, TServerClient>();
-                entry.Add(callback);
-                _dataReceivedCallbacks.Add(commandid, entry);
-            }
+
+            buffer.Add(callback);
         }
 
         /// <summary>

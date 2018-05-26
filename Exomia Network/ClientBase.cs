@@ -177,7 +177,7 @@ namespace Exomia.Network
             object result = null;
             switch (commandid)
             {
-                case Constants.PING_COMMAND_ID:
+                case CommandID.PING:
                 {
                     unsafe
                     {
@@ -188,14 +188,14 @@ namespace Exomia.Network
                     }
                     break;
                 }
-                case Constants.UDP_CONNECT_COMMAND_ID:
+                case CommandID.UDP_CONNECT:
                 {
                     data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connectStruct);
                     result = connectStruct;
                     break;
                 }
 
-                case Constants.CLIENTINFO_COMMAND_ID:
+                case CommandID.CLIENTINFO:
                 {
                     data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
                     result = clientinfoStruct;
@@ -254,16 +254,13 @@ namespace Exomia.Network
         /// <param name="callback">callback</param>
         public void AddDataReceivedCallback(uint commandid, DataReceivedHandler callback)
         {
-            if (_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
+            if (!_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
             {
-                buffer.Add(callback);
+                buffer = new ClientEventEntry();
+                _dataReceivedCallbacks.Add(commandid, buffer);
             }
-            else
-            {
-                ClientEventEntry entry = new ClientEventEntry();
-                entry.Add(callback);
-                _dataReceivedCallbacks.Add(commandid, entry);
-            }
+
+            buffer.Add(callback);
         }
 
         /// <summary>
@@ -430,7 +427,10 @@ namespace Exomia.Network
         {
             try
             {
-                _clientSocket.EndSend(iar);
+                if (_clientSocket.EndSend(iar) <= 0)
+                {
+                    OnDisconnected();
+                }
                 byte[] send = (byte[])iar.AsyncState;
                 ByteArrayPool.Return(send);
             }
@@ -443,21 +443,21 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void SendPing()
         {
-            Send(Constants.PING_COMMAND_ID, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
+            Send(CommandID.PING, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
         }
 
         /// <inheritdoc />
         public Task<PING_STRUCT> SendRPing()
         {
             return SendR<PING_STRUCT, PING_STRUCT>(
-                Constants.PING_COMMAND_ID, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
+                CommandID.PING, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
         }
 
         /// <inheritdoc />
         public void SendClientInfo(long clientID, string clientName)
         {
             Send(
-                Constants.CLIENTINFO_COMMAND_ID,
+                CommandID.CLIENTINFO,
                 new CLIENTINFO_STRUCT { ClientID = clientID, ClientName = clientName });
         }
 

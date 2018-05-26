@@ -70,7 +70,10 @@ namespace Exomia.Network.TCP
                     {
                         try
                         {
-                            arg0.EndSend(iar);
+                            if (arg0.EndSend(iar) <= 0)
+                            {
+                                InvokeClientDisconnected(arg0);
+                            }
                             ByteArrayPool.Return(send);
                         }
                         catch

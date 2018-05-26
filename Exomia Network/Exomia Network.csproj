@@ -96,6 +96,7 @@
   <ItemGroup>
     <Compile Include="Buffers\ByteArrayPool.cs" />
     <Compile Include="ClientBase.cs" />
+    <Compile Include="CommandID.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DELEGATES.cs" />
     <Compile Include="Extensions\ClassExt.cs" />

@@ -58,7 +58,7 @@ namespace Exomia.Network.UDP
             _manuelResetEvent = new ManualResetEvent(false);
 
             AddDataReceivedCallback(
-                Constants.UDP_CONNECT_COMMAND_ID, (_, data) =>
+                CommandID.UDP_CONNECT, (_, data) =>
                 {
                     UDP_CONNECT_STRUCT connectStruct = (UDP_CONNECT_STRUCT)data;
                     if (connectStruct.Checksum.SequenceEqual(_connectChecksum))
@@ -151,7 +151,7 @@ namespace Exomia.Network.UDP
 
         private void SendConnect()
         {
-            Send(Constants.UDP_CONNECT_COMMAND_ID, new UDP_CONNECT_STRUCT { Checksum = _connectChecksum });
+            Send(CommandID.UDP_CONNECT, new UDP_CONNECT_STRUCT { Checksum = _connectChecksum });
         }
 
         #endregion
