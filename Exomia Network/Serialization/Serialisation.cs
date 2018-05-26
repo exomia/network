@@ -67,37 +67,68 @@ namespace Exomia.Network.Serialization
                 if (responseID != 0)
                 {
                     send = ByteArrayPool.Rent(Constants.HEADER_SIZE + 8 + length);
-
                     int s = LZ4Codec.Encode(
                         data, offset, length, send, Constants.HEADER_SIZE + 8, length);
-                    size = Constants.HEADER_SIZE + 8 + s;
-
-                    fixed (byte* ptr = send)
+                    if (s > 0)
                     {
-                        *(uint*)ptr =
-                            ((uint)(s + 8) & DATA_LENGTH_MASK) |
-                            COMPRESSED_1BIT |
-                            RESPONSE_1BIT |
-                            ((commandID << 16) & COMMANDID_MASK);
-                        *(uint*)(ptr + 4) = responseID;
-                        *(int*)(ptr + 8) = length;
+                        size = Constants.HEADER_SIZE + 8 + s;
+                        fixed (byte* ptr = send)
+                        {
+                            *(uint*)ptr =
+                                ((uint)(s + 8) & DATA_LENGTH_MASK) |
+                                COMPRESSED_1BIT |
+                                RESPONSE_1BIT |
+                                ((commandID << 16) & COMMANDID_MASK);
+                            *(uint*)(ptr + 4) = responseID;
+                            *(int*)(ptr + 8) = length;
+                        }
+                    }
+                    else
+                    {
+                        size = Constants.HEADER_SIZE + 4 + length;
+                        fixed (byte* ptr = send)
+                        {
+                            *(uint*)ptr =
+                                ((uint)(length + 4) & DATA_LENGTH_MASK) |
+                                RESPONSE_1BIT |
+                                ((commandID << 16) & COMMANDID_MASK);
+                            *(uint*)(ptr + 4) = responseID;
+                        }
+
+                        //DATA
+                        Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE + 4, length);
                     }
                 }
                 else
                 {
                     send = ByteArrayPool.Rent(Constants.HEADER_SIZE + 4 + length);
-
                     int s = LZ4Codec.Encode(
                         data, offset, length, send, Constants.HEADER_SIZE + 4, length);
-                    size = Constants.HEADER_SIZE + 4 + s;
-
-                    fixed (byte* ptr = send)
+                    if (s > 0)
                     {
-                        *(uint*)ptr =
-                            ((uint)(s + 4) & DATA_LENGTH_MASK) |
-                            COMPRESSED_1BIT |
-                            ((commandID << 16) & COMMANDID_MASK);
-                        *(int*)(ptr + 4) = length;
+                        size = Constants.HEADER_SIZE + 4 + s;
+
+                        fixed (byte* ptr = send)
+                        {
+                            *(uint*)ptr =
+                                ((uint)(s + 4) & DATA_LENGTH_MASK) |
+                                COMPRESSED_1BIT |
+                                ((commandID << 16) & COMMANDID_MASK);
+                            *(int*)(ptr + 4) = length;
+                        }
+                    }
+                    else
+                    {
+                        size = Constants.HEADER_SIZE + length;
+                        fixed (byte* ptr = send)
+                        {
+                            *(uint*)ptr =
+                                ((uint)length & DATA_LENGTH_MASK) |
+                                ((commandID << 16) & COMMANDID_MASK);
+                        }
+
+                        //DATA
+                        Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE, length);
                     }
                 }
             }
