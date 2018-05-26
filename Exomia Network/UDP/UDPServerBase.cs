@@ -134,27 +134,55 @@ namespace Exomia.Network.UDP
 
             Listen();
 
-            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out _);
+            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
             if (dataLength == length - Constants.HEADER_SIZE)
             {
-                byte[] data;
+
                 uint responseID = 0;
-                if (response != 0)
+                byte[] data;
+                if (compressed != 0)
                 {
-                    responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
-                    dataLength -= Constants.RESPONSE_SIZE;
-                    data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(
-                        state.Buffer, Constants.HEADER_SIZE + Constants.RESPONSE_SIZE, data, 0, dataLength);
+                    int l;
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
+                        l = BitConverter.ToInt32(state.Buffer, Constants.HEADER_SIZE + 4);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4.LZ4Codec.Decode(state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                    }
+                    else
+                    {
+                        l = BitConverter.ToInt32(state.Buffer, 0);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4.LZ4Codec.Decode(state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+
+                    DeserializeDataAsync(state.EndPoint, commandID, data, 0, l, responseID);
+                    ByteArrayPool.Return(data);
                 }
                 else
                 {
-                    data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
-                }
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
+                        dataLength -= 4;
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                    }
+                    else
+                    {
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                    }
 
-                DeserializeDataAsync(state.EndPoint, commandID, data, 0, dataLength, responseID);
-                ByteArrayPool.Return(data);
+                    DeserializeDataAsync(state.EndPoint, commandID, data, 0, dataLength, responseID);
+                    ByteArrayPool.Return(data);
+                }
             }
 
             _pool.Return(state);

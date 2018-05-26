@@ -25,7 +25,6 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Exomia.Network.Buffers;
 
 namespace Exomia.Network.Extensions.Struct
 {
@@ -52,7 +51,7 @@ namespace Exomia.Network.Extensions.Struct
             {
                 Marshal.StructureToPtr(data, ptr, true);
 
-                byte[] arr = ByteArrayPool.Rent(size);
+                byte[] arr = new byte[size];
                 Marshal.Copy(ptr, arr, 0, size);
                 return arr;
             }
@@ -77,7 +76,7 @@ namespace Exomia.Network.Extensions.Struct
             try
             {
                 Marshal.StructureToPtr(data, ptr, true);
-                arr = ByteArrayPool.Rent(size);
+                arr = new byte[size];
                 Marshal.Copy(ptr, arr, 0, size);
             }
             finally
@@ -97,7 +96,7 @@ namespace Exomia.Network.Extensions.Struct
         public static unsafe byte[] ToBytesUnsafe<T>(this T data, out int size) where T : struct
         {
             size = Marshal.SizeOf(typeof(T));
-            byte[] arr = ByteArrayPool.Rent(size);
+            byte[] arr = new byte[size];
             fixed (byte* ptr = arr)
             {
                 Marshal.StructureToPtr(data, new IntPtr(ptr), true);
@@ -116,7 +115,7 @@ namespace Exomia.Network.Extensions.Struct
         public static unsafe void ToBytesUnsafe<T>(this T data, out byte[] arr, out int size) where T : struct
         {
             size = Marshal.SizeOf(typeof(T));
-            arr = ByteArrayPool.Rent(size);
+            arr = new byte[size];
             fixed (byte* ptr = arr)
             {
                 Marshal.StructureToPtr(data, new IntPtr(ptr), true);
@@ -134,7 +133,7 @@ namespace Exomia.Network.Extensions.Struct
         public static byte[] ToBytes2<T>(this T data, out int size) where T : struct
         {
             size = Marshal.SizeOf(typeof(T));
-            byte[] arr = ByteArrayPool.Rent(size);
+            byte[] arr = new byte[size];
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {
@@ -158,7 +157,7 @@ namespace Exomia.Network.Extensions.Struct
         public static void ToBytes2<T>(this T data, out byte[] arr, out int size) where T : struct
         {
             size = Marshal.SizeOf(typeof(T));
-            arr = ByteArrayPool.Rent(size);
+            arr = new byte[size];
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {

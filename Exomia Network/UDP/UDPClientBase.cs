@@ -48,9 +48,10 @@ namespace Exomia.Network.UDP
         #region Constructors
 
         /// <inheritdoc />
-        protected UdpClientBase()
+        protected UdpClientBase(uint maxPacketSize = 0)
+            : base()
         {
-            _state = new ClientStateObject { Buffer = new byte[Constants.PACKET_SIZE_MAX] };
+            _state = new ClientStateObject { Buffer = new byte[maxPacketSize != 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX] };
 
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
@@ -122,28 +123,60 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out _);
+            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
 
             if (dataLength == length - Constants.HEADER_SIZE)
             {
-                byte[] data;
                 uint responseID = 0;
+                byte[] data;
+                if (compressed != 0)
+                {
+                    int l;
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
+                        l = BitConverter.ToInt32(_state.Buffer, Constants.HEADER_SIZE + 4);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4.LZ4Codec.Decode(_state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                    }
+                    else
+                    {
+                        l = BitConverter.ToInt32(_state.Buffer, 0);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4.LZ4Codec.Decode(_state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+
+                    ClientReceiveDataAsync();
+
+                    DeserializeDataAsync(commandID, data, 0, l, responseID);
+                    ByteArrayPool.Return(data);
+
+                    return;
+                }
+
                 if (response != 0)
                 {
                     responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
-
-                    dataLength -= Constants.RESPONSE_SIZE;
+                    dataLength -= 4;
                     data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(
-                        _state.Buffer, Constants.HEADER_SIZE + Constants.RESPONSE_SIZE, data, 0, dataLength);
+                    Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
                 }
                 else
                 {
                     data = ByteArrayPool.Rent(dataLength);
                     Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
                 }
+
+                ClientReceiveDataAsync();
+
                 DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
                 ByteArrayPool.Return(data);
+                return;
             }
 
             ClientReceiveDataAsync();

@@ -48,7 +48,7 @@ namespace Exomia.Network.Buffers
         {
             s_lock = new SpinLock(Debugger.IsAttached);
 
-            s_bufferLength = new[] { 128, 256, 512, 1024, 4096, 8192, 16384 };
+            s_bufferLength = new[] { 128, 256, 512, 1024, 2048, 4096, 8192, 16384 };
             s_index = new uint[s_bufferLength.Length];
             s_buffers = new byte[s_bufferLength.Length][][];
         }
@@ -92,7 +92,7 @@ namespace Exomia.Network.Buffers
             int bucketIndex = SelectBucketIndex(array.Length);
             if (array.Length != s_bufferLength[bucketIndex])
             {
-                throw new ArgumentException(nameof(array));
+                throw new ArgumentException($"{nameof(array)} ({array.Length} != {s_bufferLength[bucketIndex]})");
             }
 
             bool lockTaken = false;

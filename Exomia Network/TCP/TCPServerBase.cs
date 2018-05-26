@@ -146,7 +146,7 @@ namespace Exomia.Network.TCP
                     return;
                 }
 
-                state.Header.GetHeader(out state.CommandID, out state.DataLength, out state.Response, out _);
+                state.Header.GetHeader(out state.CommandID, out state.DataLength, out state.Response, out state.Compressed);
 
                 if (state.DataLength > 0)
                 {
@@ -184,17 +184,47 @@ namespace Exomia.Network.TCP
             uint commandID = state.CommandID;
             int dataLength = state.DataLength;
             uint response = state.Response;
+            uint compressed = state.Compressed;
+
             Socket socket = state.Socket;
             if (length == dataLength)
             {
                 uint responseID = 0;
                 byte[] data;
+                if (compressed != 0)
+                {
+                    int l;
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(state.Data, 0);
+                        l = BitConverter.ToInt32(state.Data, 4);
+                        data = ByteArrayPool.Rent(l);
+                        int s = LZ4.LZ4Codec.Decode(state.Data, 8, dataLength - 8, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                    }
+                    else
+                    {
+                        l = BitConverter.ToInt32(state.Data, 0);
+                        data = ByteArrayPool.Rent(l);
+                        int s = LZ4.LZ4Codec.Decode(state.Data, 4, dataLength - 4, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+
+                    ClientReceiveHeaderAsync(state);
+
+                    DeserializeDataAsync(socket, commandID, data, 0, l, responseID);
+                    ByteArrayPool.Return(data);
+
+                    return;
+                }
+
                 if (response != 0)
                 {
                     responseID = BitConverter.ToUInt32(state.Data, 0);
-                    dataLength -= Constants.RESPONSE_SIZE;
+                    dataLength -= 4;
                     data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(state.Data, Constants.RESPONSE_SIZE, data, 0, dataLength);
+                    Buffer.BlockCopy(state.Data, 4, data, 0, dataLength);
                 }
                 else
                 {
@@ -202,8 +232,11 @@ namespace Exomia.Network.TCP
                     Buffer.BlockCopy(state.Data, 0, data, 0, dataLength);
                 }
 
+                ClientReceiveHeaderAsync(state);
+
                 DeserializeDataAsync(socket, commandID, data, 0, dataLength, responseID);
                 ByteArrayPool.Return(data);
+                return;
             }
 
             ClientReceiveHeaderAsync(state);
@@ -222,6 +255,7 @@ namespace Exomia.Network.TCP
             public int DataLength;
             public byte[] Header;
             public uint Response;
+            public uint Compressed;
             public Socket Socket;
 
             #endregion

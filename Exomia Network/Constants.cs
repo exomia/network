@@ -29,7 +29,6 @@ namespace Exomia.Network
         #region Variables
 
         internal const int HEADER_SIZE = 4;
-        internal const int RESPONSE_SIZE = 4;
 
         internal const int PACKET_SIZE_MAX = 16000;
         internal const double UDP_IDLE_TIME = 20000.0;

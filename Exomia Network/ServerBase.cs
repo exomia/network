@@ -57,6 +57,7 @@ namespace Exomia.Network
         public event ClientActionHandler<T> ClientDisconnected;
 
         private SpinLock _clientsLock;
+        private SpinLock _dataReceivedCallbacksLock;
 
         /// <summary>
         ///     Dictionary{EndPoint, TServerClient}
@@ -107,6 +108,7 @@ namespace Exomia.Network
             _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
 
             _clientsLock = new SpinLock(Debugger.IsAttached);
+            _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
         }
 
         /// <inheritdoc />
@@ -181,7 +183,7 @@ namespace Exomia.Network
                                 sClient.SetClientInfo(clientinfoStruct);
                             }
                         }
-                        catch { if (lockTaken) { _clientsLock.Exit(); } }
+                        finally { if (lockTaken) { _clientsLock.Exit(false); } }
 
                         return;
                     }
@@ -192,10 +194,10 @@ namespace Exomia.Network
                         return;
                     }
                 case CommandID.UDP_DISCONNECT:
-                {
-                    InvokeClientDisconnected(arg0);
-                    return;
-                }
+                    {
+                        InvokeClientDisconnected(arg0);
+                        return;
+                    }
                 default:
                     if (_dataReceivedCallbacks.TryGetValue(
                         commandid, out ServerClientEventEntry<T, TServerClient> buffer))
@@ -234,7 +236,7 @@ namespace Exomia.Network
                     _clientsLock.Enter(ref lockTaken);
                     _clients.Add(arg0, serverClient);
                 }
-                catch { if (lockTaken) { _clientsLock.Exit(); } }
+                finally { if (lockTaken) { _clientsLock.Exit(false); } }
             }
 
             OnClientConnected(arg0);
@@ -261,10 +263,20 @@ namespace Exomia.Network
         /// <param name="arg0">Socket|EndPoint</param>
         protected void InvokeClientDisconnected(T arg0)
         {
-            _clients.Remove(arg0);
+            bool lockTaken = false;
+            bool removed;
+            try
+            {
+                _clientsLock.Enter(ref lockTaken);
+                removed = _clients.Remove(arg0);
+            }
+            finally { if (lockTaken) { _clientsLock.Exit(false); } }
 
-            OnClientDisconnected(arg0);
-            ClientDisconnected?.Invoke(arg0);
+            if (removed)
+            {
+                OnClientDisconnected(arg0);
+                ClientDisconnected?.Invoke(arg0);
+            }
         }
 
         /// <summary>
@@ -283,7 +295,13 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         public bool RemoveCommand(uint commandid)
         {
-            return _dataReceivedCallbacks.Remove(commandid);
+            bool lockTaken = false;
+            try
+            {
+                _dataReceivedCallbacksLock.Enter(ref lockTaken);
+                return _dataReceivedCallbacks.Remove(commandid);
+            }
+            finally { if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); } }
         }
 
         /// <summary>
@@ -293,11 +311,18 @@ namespace Exomia.Network
         /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void AddDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
-            if (!_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
+            ServerClientEventEntry<T, TServerClient> buffer;
+            bool lockTaken = false;
+            try
             {
-                buffer = new ServerClientEventEntry<T, TServerClient>();
-                _dataReceivedCallbacks.Add(commandid, buffer);
+                _dataReceivedCallbacksLock.Enter(ref lockTaken);
+                if (!_dataReceivedCallbacks.TryGetValue(commandid, out buffer))
+                {
+                    buffer = new ServerClientEventEntry<T, TServerClient>();
+                    _dataReceivedCallbacks.Add(commandid, buffer);
+                }
             }
+            finally { if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); } }
 
             buffer.Add(callback);
         }

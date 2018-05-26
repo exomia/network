@@ -37,7 +37,7 @@ using Exomia.Network.Serialization;
 
 namespace Exomia.Network
 {
-    /// <inheritdoc />
+    /// <inheritdoc cref="IClient" />
     public abstract class ClientBase : IClient, IDisposable
     {
         #region Variables
@@ -62,6 +62,7 @@ namespace Exomia.Network
         protected Socket _clientSocket;
 
         private SpinLock _lock;
+        private SpinLock _dataReceivedCallbacksLock;
 
         private int _port;
 
@@ -103,6 +104,7 @@ namespace Exomia.Network
                 new Dictionary<uint, TaskCompletionSource<byte[]>>(INITIAL_TASKCOMPLETION_QUEUE_SIZE);
 
             _lock = new SpinLock(Debugger.IsAttached);
+            _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
             _responseID = 1;
         }
 
@@ -174,38 +176,38 @@ namespace Exomia.Network
                 return;
             }
 
-            object result = null;
+            object result;
             switch (commandid)
             {
                 case CommandID.PING:
-                {
-                    unsafe
                     {
-                        fixed (byte* ptr = data)
+                        unsafe
                         {
-                            result = *(PING_STRUCT*)ptr;
+                            fixed (byte* ptr = data)
+                            {
+                                result = *(PING_STRUCT*)ptr;
+                            }
                         }
+                        break;
                     }
-                    break;
-                }
                 case CommandID.UDP_CONNECT:
-                {
-                    data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connectStruct);
-                    result = connectStruct;
-                    break;
-                }
+                    {
+                        data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connectStruct);
+                        result = connectStruct;
+                        break;
+                    }
 
                 case CommandID.CLIENTINFO:
-                {
-                    data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
-                    result = clientinfoStruct;
-                    break;
-                }
+                    {
+                        data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
+                        result = clientinfoStruct;
+                        break;
+                    }
                 default:
-                {
-                    result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
-                    break;
-                }
+                    {
+                        result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
+                        break;
+                    }
             }
 
             if (result == null) { return; }
@@ -241,10 +243,13 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         public void RemoveCommand(uint commandid)
         {
-            if (_dataReceivedCallbacks.ContainsKey(commandid))
+            bool lockTaken = false;
+            try
             {
+                _dataReceivedCallbacksLock.Enter(ref lockTaken);
                 _dataReceivedCallbacks.Remove(commandid);
             }
+            finally { if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); } }
         }
 
         /// <summary>
@@ -254,12 +259,18 @@ namespace Exomia.Network
         /// <param name="callback">callback</param>
         public void AddDataReceivedCallback(uint commandid, DataReceivedHandler callback)
         {
-            if (!_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
+            ClientEventEntry buffer;
+            bool lockTaken = false;
+            try
             {
-                buffer = new ClientEventEntry();
-                _dataReceivedCallbacks.Add(commandid, buffer);
+                _dataReceivedCallbacksLock.Enter(ref lockTaken);
+                if (!_dataReceivedCallbacks.TryGetValue(commandid, out buffer))
+                {
+                    buffer = new ClientEventEntry();
+                    _dataReceivedCallbacks.Add(commandid, buffer);
+                }
             }
-
+            finally { if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); } }
             buffer.Add(callback);
         }
 
@@ -309,10 +320,7 @@ namespace Exomia.Network
                     if (responseID == 0) { responseID++; }
                     _taskCompletionSources.Add(responseID, tcs);
                 }
-                finally
-                {
-                    if (lockTaken) { _lock.Exit(false); }
-                }
+                finally { if (lockTaken) { _lock.Exit(false); } }
 
                 cts.Token.Register(
                     delegate
