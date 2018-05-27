@@ -88,6 +88,15 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
+        protected override void OnDispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Send(CommandID.UDP_DISCONNECT, new byte[1] { 255 }, 0, 1);
+            }
+        }
+
+        /// <inheritdoc />
         internal override void OnDefaultCommand(uint commandid, byte[] data, int offset, int length)
         {
             switch (commandid)
