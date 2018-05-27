@@ -57,15 +57,15 @@ namespace Exomia.Network
         /// </summary>
         public event ClientActionHandler<T> ClientDisconnected;
 
-        private SpinLock _clientsLock;
-        private SpinLock _dataReceivedCallbacksLock;
-
         /// <summary>
         ///     Dictionary{EndPoint, TServerClient}
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
 
         private readonly Dictionary<uint, ServerClientEventEntry<T, TServerClient>> _dataReceivedCallbacks;
+
+        private SpinLock _clientsLock;
+        private SpinLock _dataReceivedCallbacksLock;
 
         private bool _isRunning;
 
@@ -168,36 +168,39 @@ namespace Exomia.Network
             switch (commandid)
             {
                 case CommandID.PING:
-                    {
-                        SendTo(arg0, CommandID.PING, data, offset, length, responseid);
-                        break;
-                    }
+                {
+                    SendTo(arg0, CommandID.PING, data, offset, length, responseid);
+                    break;
+                }
                 case CommandID.CLIENTINFO:
+                {
+                    bool lockTaken = false;
+                    try
                     {
-                        bool lockTaken = false;
-                        try
+                        _clientsLock.Enter(ref lockTaken);
+                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
                         {
-                            _clientsLock.Enter(ref lockTaken);
-                            if (_clients.TryGetValue(arg0, out TServerClient sClient))
-                            {
-                                data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
-                                sClient.SetClientInfo(clientinfoStruct);
-                            }
+                            data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
+                            sClient.SetClientInfo(clientinfoStruct);
                         }
-                        finally { if (lockTaken) { _clientsLock.Exit(false); } }
-                        break;
                     }
+                    finally
+                    {
+                        if (lockTaken) { _clientsLock.Exit(false); }
+                    }
+                    break;
+                }
                 case CommandID.UDP_CONNECT:
-                    {
-                        InvokeClientConnected(arg0);
-                        SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
-                        break;
-                    }
+                {
+                    InvokeClientConnected(arg0);
+                    SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
+                    break;
+                }
                 case CommandID.UDP_DISCONNECT:
-                    {
-                        InvokeClientDisconnected(arg0);
-                        break;
-                    }
+                {
+                    InvokeClientDisconnected(arg0);
+                    break;
+                }
                 default:
                     if (_dataReceivedCallbacks.TryGetValue(
                         commandid, out ServerClientEventEntry<T, TServerClient> scee))
@@ -235,7 +238,10 @@ namespace Exomia.Network
                     _clientsLock.Enter(ref lockTaken);
                     _clients.Add(arg0, serverClient);
                 }
-                finally { if (lockTaken) { _clientsLock.Exit(false); } }
+                finally
+                {
+                    if (lockTaken) { _clientsLock.Exit(false); }
+                }
             }
 
             OnClientConnected(arg0);
@@ -269,7 +275,10 @@ namespace Exomia.Network
                 _clientsLock.Enter(ref lockTaken);
                 removed = _clients.Remove(arg0);
             }
-            finally { if (lockTaken) { _clientsLock.Exit(false); } }
+            finally
+            {
+                if (lockTaken) { _clientsLock.Exit(false); }
+            }
 
             if (removed)
             {
@@ -300,7 +309,10 @@ namespace Exomia.Network
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
                 return _dataReceivedCallbacks.Remove(commandid);
             }
-            finally { if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); } }
+            finally
+            {
+                if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
+            }
         }
 
         /// <summary>
@@ -321,7 +333,10 @@ namespace Exomia.Network
                     _dataReceivedCallbacks.Add(commandid, buffer);
                 }
             }
-            finally { if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); } }
+            finally
+            {
+                if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
+            }
 
             buffer.Add(callback);
         }

@@ -47,7 +47,19 @@ namespace Exomia.Network.Buffers
         {
             s_lock = new SpinLock(Debugger.IsAttached);
 
-            s_bufferLength = new[] { 1 << 7, 1 << 8, 1 << 9, 1 << 10, 1 << 11, 1 << 12, 1 << 13, 1 << 14, 1 << 15, 1 << 16 };
+            s_bufferLength = new[]
+            {
+                1 << 7,
+                1 << 8,
+                1 << 9,
+                1 << 10,
+                1 << 11,
+                1 << 12,
+                1 << 13,
+                1 << 14,
+                1 << 15,
+                1 << 16
+            };
             s_bufferCount = new[] { 128, 128, 64, 64, 64, 32, 32, 16, 8, 8 };
             s_index = new uint[s_bufferLength.Length];
             s_buffers = new byte[s_bufferLength.Length][][];

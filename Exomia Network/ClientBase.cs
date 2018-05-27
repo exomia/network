@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network.Buffers;
@@ -45,7 +46,7 @@ namespace Exomia.Network
         private const int INITIAL_QUEUE_SIZE = 16;
         private const int INITIAL_TASKCOMPLETION_QUEUE_SIZE = 128;
 
-        private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(10);
 
         /// <summary>
         ///     called than the client is Disconnected
@@ -61,8 +62,9 @@ namespace Exomia.Network
         /// </summary>
         protected Socket _clientSocket;
 
-        private SpinLock _lock;
         private SpinLock _dataReceivedCallbacksLock;
+
+        private SpinLock _lock;
 
         private int _port;
 
@@ -141,13 +143,6 @@ namespace Exomia.Network
         /// <returns></returns>
         protected abstract bool OnConnect(string serverAddress, int port, int timeout, out Socket socket);
 
-        private struct ResponsePacket
-        {
-            public byte[] Buffer;
-            public int Offset;
-            public int Length;
-        }
-
         /// <summary>
         ///     call to deserialize the data async
         /// </summary>
@@ -175,12 +170,7 @@ namespace Exomia.Network
                     if (lockTaken) { _lock.Exit(false); }
                 }
                 if (cs != null && !cs.TrySetResult(
-                    new ResponsePacket
-                    {
-                        Buffer = data,
-                        Offset = offset,
-                        Length = length
-                    }))
+                        new ResponsePacket(data, offset, length)))
                 {
                     ByteArrayPool.Return(data);
                 }
@@ -193,34 +183,34 @@ namespace Exomia.Network
                 switch (commandid)
                 {
                     case CommandID.PING:
+                    {
+                        unsafe
                         {
-                            unsafe
+                            fixed (byte* ptr = data)
                             {
-                                fixed (byte* ptr = data)
-                                {
-                                    result = *(PING_STRUCT*)ptr;
-                                }
+                                result = *(PING_STRUCT*)ptr;
                             }
-                            break;
                         }
+                        break;
+                    }
                     case CommandID.UDP_CONNECT:
-                        {
-                            data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connectStruct);
-                            result = connectStruct;
-                            break;
-                        }
+                    {
+                        data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connectStruct);
+                        result = connectStruct;
+                        break;
+                    }
 
                     case CommandID.CLIENTINFO:
-                        {
-                            data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
-                            result = clientinfoStruct;
-                            break;
-                        }
+                    {
+                        data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
+                        result = clientinfoStruct;
+                        break;
+                    }
                     default:
-                        {
-                            result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
-                            break;
-                        }
+                    {
+                        result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
+                        break;
+                    }
                 }
 
                 if (result != null) { cee.RaiseAsync(this, result); }
@@ -262,7 +252,10 @@ namespace Exomia.Network
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
                 _dataReceivedCallbacks.Remove(commandid);
             }
-            finally { if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); } }
+            finally
+            {
+                if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
+            }
         }
 
         /// <summary>
@@ -283,7 +276,10 @@ namespace Exomia.Network
                     _dataReceivedCallbacks.Add(commandid, buffer);
                 }
             }
-            finally { if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); } }
+            finally
+            {
+                if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
+            }
             buffer.Add(callback);
         }
 
@@ -311,17 +307,40 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public Task<TResult> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght)
+        public Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght)
             where TResult : struct
         {
-            return SendR<TResult>(commandid, data, offset, lenght, s_defaultTimeout);
+            return SendR(commandid, data, offset, lenght, DeserializeResponse<TResult>, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public async Task<TResult> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght, TimeSpan timeout)
+        public Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght,
+            DeserializeResponse<TResult> deserialize)
+        {
+            return SendR(commandid, data, offset, lenght, deserialize, s_defaultTimeout);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static TResult DeserializeResponse<TResult>(ref ResponsePacket packet)
             where TResult : struct
         {
-            TaskCompletionSource<ResponsePacket> tcs = new TaskCompletionSource<ResponsePacket>(TaskCreationOptions.None);
+            return packet.Buffer.FromBytesUnsafe<TResult>(packet.Offset);
+        }
+
+        /// <inheritdoc />
+        public Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght,
+            TimeSpan timeout)
+            where TResult : struct
+        {
+            return SendR(commandid, data, offset, lenght, DeserializeResponse<TResult>, timeout);
+        }
+
+        /// <inheritdoc />
+        public async Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght,
+            DeserializeResponse<TResult> deserialize, TimeSpan timeout)
+        {
+            TaskCompletionSource<ResponsePacket> tcs =
+                new TaskCompletionSource<ResponsePacket>(TaskCreationOptions.None);
             using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
             {
                 uint responseID;
@@ -333,7 +352,10 @@ namespace Exomia.Network
                     if (responseID == 0) { responseID++; }
                     _taskCompletionSources.Add(responseID, tcs);
                 }
-                finally { if (lockTaken) { _lock.Exit(false); } }
+                finally
+                {
+                    if (lockTaken) { _lock.Exit(false); }
+                }
 
                 cts.Token.Register(
                     delegate
@@ -348,15 +370,23 @@ namespace Exomia.Network
                         {
                             if (lockTaken1) { _lock.Exit(false); }
                         }
-                        tcs.TrySetCanceled();
+                        tcs.TrySetResult(new ResponsePacket());
                     }, false);
-
                 BeginSendData(commandid, data, offset, lenght, responseID);
 
                 ResponsePacket packet = await tcs.Task;
-                TResult result = packet.Buffer.FromBytesUnsafe<TResult>(packet.Offset);
-                ByteArrayPool.Return(packet.Buffer);
-                return result;
+                if (packet.Buffer != null && deserialize != null)
+                {
+                    TResult result = deserialize(ref packet);
+                    ByteArrayPool.Return(packet.Buffer);
+                    return new Response<TResult>
+                    {
+                        Result = result,
+                        Success = true
+                    };
+                }
+                return new Response<TResult>
+                    { Success = false };
             }
         }
 
@@ -373,24 +403,41 @@ namespace Exomia.Network
             Task.Run(
                 delegate
                 {
-                    Send(commandid, serializable);
+                    byte[] dataB = serializable.Serialize(out int length);
+                    BeginSendData(commandid, dataB, 0, length);
                 });
         }
 
         /// <inheritdoc />
-        public Task<TResult> SendR<TResult>(uint commandid, ISerializable serializable, TimeSpan timeout)
+        public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable)
             where TResult : struct
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR<TResult>(commandid, dataB, 0, length, timeout);
+            return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<TResult> SendR<TResult>(uint commandid, ISerializable serializable)
+        public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable,
+            DeserializeResponse<TResult> deserialize)
+        {
+            byte[] dataB = serializable.Serialize(out int length);
+            return SendR(commandid, dataB, 0, length, deserialize, s_defaultTimeout);
+        }
+
+        /// <inheritdoc />
+        public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable, TimeSpan timeout)
             where TResult : struct
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR<TResult>(commandid, dataB, 0, length);
+            return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, timeout);
+        }
+
+        /// <inheritdoc />
+        public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable,
+            DeserializeResponse<TResult> deserialize, TimeSpan timeout)
+        {
+            byte[] dataB = serializable.Serialize(out int length);
+            return SendR(commandid, dataB, 0, length, deserialize, timeout);
         }
 
         /// <inheritdoc />
@@ -412,21 +459,37 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public Task<TResult> SendR<T, TResult>(uint commandid, in T data)
+        public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data)
             where T : struct
             where TResult : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            return SendR<TResult>(commandid, dataB, 0, lenght);
+            return SendR(commandid, dataB, 0, lenght, DeserializeResponse<TResult>, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<TResult> SendR<T, TResult>(uint commandid, in T data, TimeSpan timeout)
+        public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data,
+            DeserializeResponse<TResult> deserialize) where T : struct
+        {
+            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
+            return SendR(commandid, dataB, 0, lenght, deserialize, s_defaultTimeout);
+        }
+
+        /// <inheritdoc />
+        public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, TimeSpan timeout)
             where T : struct
             where TResult : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            return SendR<TResult>(commandid, dataB, 0, lenght, timeout);
+            return SendR(commandid, dataB, 0, lenght, DeserializeResponse<TResult>, timeout);
+        }
+
+        /// <inheritdoc />
+        public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data,
+            DeserializeResponse<TResult> deserialize, TimeSpan timeout) where T : struct
+        {
+            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
+            return SendR(commandid, dataB, 0, lenght, deserialize, timeout);
         }
 
         private void BeginSendData(uint commandid, byte[] data, int offset, int lenght, uint responseID = 0)
@@ -471,7 +534,7 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public Task<PING_STRUCT> SendRPing()
+        public Task<Response<PING_STRUCT>> SendRPing()
         {
             return SendR<PING_STRUCT, PING_STRUCT>(
                 CommandID.PING, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });

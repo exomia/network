@@ -27,6 +27,7 @@ using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
+using LZ4;
 
 namespace Exomia.Network.TCP
 {
@@ -167,16 +168,15 @@ namespace Exomia.Network.TCP
                         l = BitConverter.ToInt32(_state.Data, 4);
                         data = ByteArrayPool.Rent(l);
 
-                        int s = LZ4.LZ4Codec.Decode(_state.Data, 8, dataLength - 8, data, 0, l, true);
+                        int s = LZ4Codec.Decode(_state.Data, 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
                     }
                     else
                     {
                         l = BitConverter.ToInt32(_state.Data, 0);
                         data = ByteArrayPool.Rent(l);
 
-                        int s = LZ4.LZ4Codec.Decode(_state.Data, 4, dataLength - 4, data, 0, l, true);
+                        int s = LZ4Codec.Decode(_state.Data, 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 

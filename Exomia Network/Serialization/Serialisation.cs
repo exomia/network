@@ -42,6 +42,7 @@ namespace Exomia.Network.Serialization
         private const uint RESPONSE_1_BIT = 1u << 15;
 
         private const int LENGTH_THRESHOLD = 1 << 11; //2048
+
         #endregion
 
         #region Methods

@@ -155,7 +155,8 @@ namespace Exomia.Network.Extensions.Struct
         /// <param name="offset">offset</param>
         /// <param name="length">out the size of T</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void ToBytesUnsafe<T>(this T data, ref byte[] arr, int offset, out int length) where T : struct
+        public static unsafe void ToBytesUnsafe<T>(this T data, ref byte[] arr, int offset, out int length)
+            where T : struct
         {
             length = Marshal.SizeOf(typeof(T));
             fixed (byte* ptr = arr)

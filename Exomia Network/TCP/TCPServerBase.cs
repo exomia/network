@@ -27,6 +27,7 @@ using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
+using LZ4;
 
 namespace Exomia.Network.TCP
 {
@@ -146,7 +147,8 @@ namespace Exomia.Network.TCP
                     return;
                 }
 
-                state.Header.GetHeader(out state.CommandID, out state.DataLength, out state.Response, out state.Compressed);
+                state.Header.GetHeader(
+                    out state.CommandID, out state.DataLength, out state.Response, out state.Compressed);
 
                 if (state.DataLength > 0)
                 {
@@ -199,15 +201,14 @@ namespace Exomia.Network.TCP
                         responseID = BitConverter.ToUInt32(state.Data, 0);
                         l = BitConverter.ToInt32(state.Data, 4);
                         data = ByteArrayPool.Rent(l);
-                        int s = LZ4.LZ4Codec.Decode(state.Data, 8, dataLength - 8, data, 0, l, true);
+                        int s = LZ4Codec.Decode(state.Data, 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
                     }
                     else
                     {
                         l = BitConverter.ToInt32(state.Data, 0);
                         data = ByteArrayPool.Rent(l);
-                        int s = LZ4.LZ4Codec.Decode(state.Data, 4, dataLength - 4, data, 0, l, true);
+                        int s = LZ4Codec.Decode(state.Data, 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
@@ -249,11 +250,11 @@ namespace Exomia.Network.TCP
             #region Variables
 
             public uint CommandID;
+            public uint Compressed;
             public byte[] Data;
             public int DataLength;
             public byte[] Header;
             public uint Response;
-            public uint Compressed;
             public Socket Socket;
 
             #endregion

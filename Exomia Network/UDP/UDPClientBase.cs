@@ -29,6 +29,7 @@ using System.Net.Sockets;
 using System.Threading;
 using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
+using LZ4;
 
 namespace Exomia.Network.UDP
 {
@@ -49,9 +50,9 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         protected UdpClientBase(uint maxPacketSize = 0)
-            : base()
         {
-            _state = new ClientStateObject { Buffer = new byte[maxPacketSize != 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX] };
+            _state = new ClientStateObject
+                { Buffer = new byte[maxPacketSize != 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX] };
 
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
@@ -138,17 +139,16 @@ namespace Exomia.Network.UDP
                         l = BitConverter.ToInt32(_state.Buffer, Constants.HEADER_SIZE + 4);
                         data = ByteArrayPool.Rent(l);
 
-                        int s = LZ4.LZ4Codec.Decode(
+                        int s = LZ4Codec.Decode(
                             _state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
                     }
                     else
                     {
                         l = BitConverter.ToInt32(_state.Buffer, 0);
                         data = ByteArrayPool.Rent(l);
 
-                        int s = LZ4.LZ4Codec.Decode(
+                        int s = LZ4Codec.Decode(
                             _state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
