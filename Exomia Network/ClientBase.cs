@@ -375,13 +375,6 @@ namespace Exomia.Network
             return SendR(commandid, data, offset, lenght, deserialize, s_defaultTimeout);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static TResult DeserializeResponse<TResult>(ref ResponsePacket packet)
-            where TResult : struct
-        {
-            return packet.Buffer.FromBytesUnsafe<TResult>(packet.Offset);
-        }
-
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght,
             TimeSpan timeout)
@@ -580,6 +573,13 @@ namespace Exomia.Network
             {
                 /* IGNORE */
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static TResult DeserializeResponse<TResult>(ref ResponsePacket packet)
+            where TResult : struct
+        {
+            return packet.Buffer.FromBytesUnsafe<TResult>(packet.Offset);
         }
 
         /// <inheritdoc />
