@@ -30,6 +30,7 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Exomia.Network.Buffers;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
@@ -169,7 +170,7 @@ namespace Exomia.Network
                 case CommandID.PING:
                     {
                         SendTo(arg0, CommandID.PING, data, offset, length, responseid);
-                        return;
+                        break;
                     }
                 case CommandID.CLIENTINFO:
                     {
@@ -184,32 +185,30 @@ namespace Exomia.Network
                             }
                         }
                         finally { if (lockTaken) { _clientsLock.Exit(false); } }
-
-                        return;
+                        break;
                     }
                 case CommandID.UDP_CONNECT:
                     {
                         InvokeClientConnected(arg0);
                         SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
-                        return;
+                        break;
                     }
                 case CommandID.UDP_DISCONNECT:
                     {
                         InvokeClientDisconnected(arg0);
-                        return;
+                        break;
                     }
                 default:
                     if (_dataReceivedCallbacks.TryGetValue(
-                        commandid, out ServerClientEventEntry<T, TServerClient> buffer))
+                        commandid, out ServerClientEventEntry<T, TServerClient> scee))
                     {
                         object result = await Task.Run(
                             delegate { return DeserializeData(commandid, data, offset, length); });
-                        if (result == null) { return; }
-
-                        buffer.RaiseAsync(this, arg0, result, responseid);
+                        if (result != null) { scee.RaiseAsync(this, arg0, result, responseid); }
                     }
                     break;
             }
+            ByteArrayPool.Return(data);
         }
 
         /// <summary>
@@ -353,8 +352,8 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid = 0)
         {
-            byte[] dataB = serializable.Serialize();
-            BeginSendDataTo(arg0, commandid, dataB, 0, dataB.Length);
+            byte[] dataB = serializable.Serialize(out int length);
+            BeginSendDataTo(arg0, commandid, dataB, 0, length);
         }
 
         /// <inheritdoc />
@@ -451,8 +450,8 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void SendToAll(uint commandid, ISerializable serializable)
         {
-            byte[] dataB = serializable.Serialize();
-            SendToAll(commandid, dataB, 0, dataB.Length);
+            byte[] dataB = serializable.Serialize(out int length);
+            SendToAll(commandid, dataB, 0, length);
         }
 
         /// <inheritdoc />

@@ -182,7 +182,6 @@ namespace Exomia.Network.TCP
 
                     ReceiveHeaderAsync();
                     DeserializeDataAsync(commandID, data, 0, l, responseID);
-                    ByteArrayPool.Return(data);
                 }
                 else
                 {
@@ -201,7 +200,6 @@ namespace Exomia.Network.TCP
 
                     ReceiveHeaderAsync();
                     DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
-                    ByteArrayPool.Return(data);
                 }
                 return;
             }

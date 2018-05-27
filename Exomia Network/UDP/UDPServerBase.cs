@@ -163,7 +163,6 @@ namespace Exomia.Network.UDP
                     }
 
                     DeserializeDataAsync(state.EndPoint, commandID, data, 0, l, responseID);
-                    ByteArrayPool.Return(data);
                 }
                 else
                 {
@@ -181,7 +180,6 @@ namespace Exomia.Network.UDP
                     }
 
                     DeserializeDataAsync(state.EndPoint, commandID, data, 0, dataLength, responseID);
-                    ByteArrayPool.Return(data);
                 }
             }
 
