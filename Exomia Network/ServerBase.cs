@@ -322,6 +322,8 @@ namespace Exomia.Network
         /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void AddDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
+            if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
+
             ServerClientEventEntry<T, TServerClient> buffer;
             bool lockTaken = false;
             try
@@ -348,6 +350,8 @@ namespace Exomia.Network
         /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void RemoveDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
+            if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
+
             if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
             {
                 buffer.Remove(callback);

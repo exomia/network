@@ -23,6 +23,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.Remoting.Messaging;
 
 namespace Exomia.Network.Lib
@@ -111,6 +112,7 @@ namespace Exomia.Network.Lib
         private void EndRaiseEventAsync(IAsyncResult iar)
         {
             DataReceivedHandler caller = (DataReceivedHandler)((AsyncResult)iar).AsyncDelegate;
+
             if (!caller.EndInvoke(iar))
             {
                 Remove(caller);
@@ -119,4 +121,48 @@ namespace Exomia.Network.Lib
 
         #endregion
     }
+
+    /*internal sealed class ClientEventEntry
+    {
+        #region Variables
+
+        private event DataReceivedHandler _dataReceived;
+
+        #endregion
+
+        #region Methods
+
+        public void Add(DataReceivedHandler callback)
+        {
+            _dataReceived += callback;
+        }
+
+        public void Remove(DataReceivedHandler callback)
+        {
+            _dataReceived -= callback;
+        }
+
+        public void RaiseAsync(IClient client, object data)
+        {
+            if (_dataReceived != null)
+            {
+                Delegate[] delegates = _dataReceived.GetInvocationList();
+                for (int i = 0; i < delegates.Length; i++)
+                {
+                    ((DataReceivedHandler)delegates[i]).BeginInvoke(client, data, EndRaiseEventAsync, null);
+                }
+            }
+        }
+
+        private void EndRaiseEventAsync(IAsyncResult iar)
+        {
+            DataReceivedHandler caller = (DataReceivedHandler)((AsyncResult)iar).AsyncDelegate;
+            if (!caller.EndInvoke(iar))
+            {
+                Remove(caller);
+            }
+        }
+
+        #endregion
+    }*/
 }

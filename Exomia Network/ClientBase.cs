@@ -183,34 +183,34 @@ namespace Exomia.Network
                 switch (commandid)
                 {
                     case CommandID.PING:
-                    {
-                        unsafe
                         {
-                            fixed (byte* ptr = data)
+                            unsafe
                             {
-                                result = *(PING_STRUCT*)ptr;
+                                fixed (byte* ptr = data)
+                                {
+                                    result = *(PING_STRUCT*)ptr;
+                                }
                             }
+                            break;
                         }
-                        break;
-                    }
                     case CommandID.UDP_CONNECT:
-                    {
-                        data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connectStruct);
-                        result = connectStruct;
-                        break;
-                    }
+                        {
+                            data.FromBytesUnsafe(out UDP_CONNECT_STRUCT connectStruct);
+                            result = connectStruct;
+                            break;
+                        }
 
                     case CommandID.CLIENTINFO:
-                    {
-                        data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
-                        result = clientinfoStruct;
-                        break;
-                    }
+                        {
+                            data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
+                            result = clientinfoStruct;
+                            break;
+                        }
                     default:
-                    {
-                        result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
-                        break;
-                    }
+                        {
+                            result = await Task.Run(delegate { return DeserializeData(commandid, data, offset, length); });
+                            break;
+                        }
                 }
 
                 if (result != null) { cee.RaiseAsync(this, result); }
@@ -265,6 +265,8 @@ namespace Exomia.Network
         /// <param name="callback">callback</param>
         public void AddDataReceivedCallback(uint commandid, DataReceivedHandler callback)
         {
+            if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
+
             ClientEventEntry buffer;
             bool lockTaken = false;
             try
@@ -290,6 +292,8 @@ namespace Exomia.Network
         /// <param name="callback">DataReceivedHandler</param>
         public void RemoveDataReceivedCallback(uint commandid, DataReceivedHandler callback)
         {
+            if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
+
             if (_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
             {
                 buffer.Remove(callback);
@@ -386,7 +390,7 @@ namespace Exomia.Network
                     };
                 }
                 return new Response<TResult>
-                    { Success = false };
+                { Success = false };
             }
         }
 
