@@ -76,7 +76,7 @@ namespace Exomia.Network
     /// <typeparam name="TResult"></typeparam>
     /// <param name="packet"></param>
     /// <returns></returns>
-    public delegate TResult DeserializeResponse<out TResult>(ref ResponsePacket packet);
+    public delegate TResult DeserializeResponse<out TResult>(in ResponsePacket packet);
 
     /// <summary>
     ///     DeserializeData callback

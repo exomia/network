@@ -30,7 +30,7 @@ namespace Exomia.Network
 {
     /// <summary>
     /// </summary>
-    public struct ResponsePacket
+    public readonly struct ResponsePacket
     {
         /// <summary>
         /// </summary>
@@ -60,17 +60,28 @@ namespace Exomia.Network
     /// <summary>
     /// </summary>
     /// <typeparam name="TResult"></typeparam>
-    public struct Response<TResult>
+    public readonly struct Response<TResult>
     {
         /// <summary>
         ///     Result
         /// </summary>
-        public TResult Result;
+        public readonly TResult Result;
 
         /// <summary>
         ///     <c>true</c> if a valid result; <c>false</c> otherwise
         /// </summary>
-        public bool Success;
+        public readonly bool Success;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="result"></param>
+        /// <param name="success"></param>
+        public Response(in TResult result, bool success)
+        {
+            Result = result;
+            Success = success;
+        }
     }
 
     /// <summary>

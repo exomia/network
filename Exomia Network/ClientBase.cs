@@ -425,16 +425,11 @@ namespace Exomia.Network
                 ResponsePacket packet = await tcs.Task;
                 if (packet.Buffer != null && deserialize != null)
                 {
-                    TResult result = deserialize(ref packet);
+                    TResult result = deserialize(in packet);
                     ByteArrayPool.Return(packet.Buffer);
-                    return new Response<TResult>
-                    {
-                        Result = result,
-                        Success = true
-                    };
+                    return new Response<TResult>(result, true);
                 }
-                return new Response<TResult>
-                    { Success = false };
+                return new Response<TResult>(default, true);
             }
         }
 
@@ -576,7 +571,7 @@ namespace Exomia.Network
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static TResult DeserializeResponse<TResult>(ref ResponsePacket packet)
+        private static TResult DeserializeResponse<TResult>(in ResponsePacket packet)
             where TResult : struct
         {
             return packet.Buffer.FromBytesUnsafe<TResult>(packet.Offset);
