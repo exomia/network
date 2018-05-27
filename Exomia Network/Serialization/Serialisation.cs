@@ -25,56 +25,161 @@
 using System;
 using System.Runtime.CompilerServices;
 using Exomia.Network.Buffers;
+using LZ4;
 
 namespace Exomia.Network.Serialization
 {
-    internal static class Serialization
+    internal static unsafe class Serialization
     {
+        #region Variables
+
+        private const uint COMMANDID_MASK = 0xFFFF0000;
+        private const uint RESPONSE_BIT_MASK = 0x8000;
+        private const uint COMPRESSED_BIT_MASK = 0x4000;
+        private const uint DATA_LENGTH_MASK = 0x3FFF;
+
+        private const uint COMPRESSED_1_BIT = 1u << 14;
+        private const uint RESPONSE_1_BIT = 1u << 15;
+
+        private const int LENGTH_THRESHOLD = 1 << 11; //2048
+
+        #endregion
+
         #region Methods
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static byte[] Serialize(uint commandid, uint type, byte[] data, int lenght)
+        internal static void Serialize(uint commandID, byte[] data, int offset, int length, uint responseID,
+            out byte[] send, out int size)
         {
-            // uint = 32bit
+            // 32bit
             // 
-            // | COMMANDID 0-9 (10)bit | TYPE 10-17 (8)bit       | DATALENGTH 18-31 (14)bit                  |
-            // | 0 1 2 3 4 5 6 7 8 9   | 10 11 12 13 14 15 16 17 | 18 19 20 21 22 23 24 25 26 27 28 29 30 31 |
-            // | VR: 0-1023            | VR: 0-255               | VR: 0-16383                               | VR = VALUE RANGE
+            // | COMMANDID 0-15 (16)bit                          | RESPONSE BIT | COMPRESSED BIT | DATALENGTH 18-31 (14)bit                  |
+            // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 | 15           | 14             | 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
+            // | VR: 0-65535                                     | VR: 0/1      | VR: 0/1        | VR: 0-16382                               | VR = VALUE RANGE
             // 
-            // | 0 0 0 0 0 0 0 0 0 0   |  0  0  0  0  0  0  0  0 |  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0x3FFF
-            // | 0 0 0 0 0 0 0 0 0 0   |  1  1  1  1  1  1  1  1 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | TYPE_MASK 0x3FC000
-            // | 1 1 1 1 1 1 1 1 1 1   |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFC00000
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  0             |  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0x3FFF
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  1             |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMPRESSED_BIT_MASK 0x4000
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  1           |  0             |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | RESPONSE_BIT_MASK 0x8000
+            // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |  0           |  0             |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
 
-            byte[] header = BitConverter.GetBytes((commandid << 22) | (type << 14) | (ushort)lenght);
-            byte[] buffer = ByteArrayPool.Rent(header.Length + lenght);
+            //COMPRESS DATA
+            if (length >= LENGTH_THRESHOLD)
+            {
+                if (responseID != 0)
+                {
+                    send = ByteArrayPool.Rent(Constants.HEADER_SIZE + 8 + length);
+                    int s = LZ4Codec.Encode(
+                        data, offset, length, send, Constants.HEADER_SIZE + 8, length);
+                    if (s > 0)
+                    {
+                        size = Constants.HEADER_SIZE + 8 + s;
+                        fixed (byte* ptr = send)
+                        {
+                            *(uint*)ptr =
+                                ((uint)(s + 8) & DATA_LENGTH_MASK) |
+                                COMPRESSED_1_BIT |
+                                RESPONSE_1_BIT |
+                                ((commandID << 16) & COMMANDID_MASK);
+                            *(uint*)(ptr + 4) = responseID;
+                            *(int*)(ptr + 8) = length;
+                        }
+                    }
+                    else
+                    {
+                        size = Constants.HEADER_SIZE + 4 + length;
+                        fixed (byte* ptr = send)
+                        {
+                            *(uint*)ptr =
+                                ((uint)(length + 4) & DATA_LENGTH_MASK) |
+                                RESPONSE_1_BIT |
+                                ((commandID << 16) & COMMANDID_MASK);
+                            *(uint*)(ptr + 4) = responseID;
+                        }
+                        Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE + 4, length);
+                    }
+                }
+                else
+                {
+                    send = ByteArrayPool.Rent(Constants.HEADER_SIZE + 4 + length);
+                    int s = LZ4Codec.Encode(
+                        data, offset, length, send, Constants.HEADER_SIZE + 4, length);
+                    if (s > 0)
+                    {
+                        size = Constants.HEADER_SIZE + 4 + s;
 
-            //HEADER
-            Buffer.BlockCopy(header, 0, buffer, 0, header.Length);
-
-            //DATA
-            Buffer.BlockCopy(data, 0, buffer, header.Length, lenght);
-
-            return buffer;
+                        fixed (byte* ptr = send)
+                        {
+                            *(uint*)ptr =
+                                ((uint)(s + 4) & DATA_LENGTH_MASK) |
+                                COMPRESSED_1_BIT |
+                                ((commandID << 16) & COMMANDID_MASK);
+                            *(int*)(ptr + 4) = length;
+                        }
+                    }
+                    else
+                    {
+                        size = Constants.HEADER_SIZE + length;
+                        fixed (byte* ptr = send)
+                        {
+                            *(uint*)ptr =
+                                ((uint)length & DATA_LENGTH_MASK) |
+                                ((commandID << 16) & COMMANDID_MASK);
+                        }
+                        Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE, length);
+                    }
+                }
+            }
+            else if (responseID != 0)
+            {
+                size = Constants.HEADER_SIZE + 4 + length;
+                send = ByteArrayPool.Rent(size);
+                fixed (byte* ptr = send)
+                {
+                    *(uint*)ptr =
+                        ((uint)(length + 4) & DATA_LENGTH_MASK) |
+                        RESPONSE_1_BIT |
+                        ((commandID << 16) & COMMANDID_MASK);
+                    *(uint*)(ptr + 4) = responseID;
+                }
+                Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE + 4, length);
+            }
+            else
+            {
+                size = Constants.HEADER_SIZE + length;
+                send = ByteArrayPool.Rent(size);
+                fixed (byte* ptr = send)
+                {
+                    *(uint*)ptr =
+                        ((uint)length & DATA_LENGTH_MASK) |
+                        ((commandID << 16) & COMMANDID_MASK);
+                }
+                Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE, length);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeader(this byte[] header, out uint commandID, out uint type, out int dataLenght)
+        internal static void GetHeader(this byte[] header, out uint commandID, out int dataLenght, out uint response,
+            out uint compressed)
         {
-            // uint = 32bit
+            // 32bit
             // 
-            // | COMMANDID 0-9 (10)bit | TYPE 10-17 (8)bit       | DATALENGTH 18-31 (14)bit                  |
-            // | 0 1 2 3 4 5 6 7 8 9   | 10 11 12 13 14 15 16 17 | 18 19 20 21 22 23 24 25 26 27 28 29 30 31 |
-            // | VR: 0-1023            | VR: 0-255               | VR: 0-16383                               | VR = VALUE RANGE
+            // | COMMANDID 0-15 (16)bit                          | RESPONSE BIT | COMPRESSED BIT | DATALENGTH 18-31 (14)bit                  |
+            // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 | 15           | 14             | 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
+            // | VR: 0-65535                                     | VR: 0/1      | VR: 0/1        | VR: 0-16382                               | VR = VALUE RANGE
             // 
-            // | 0 0 0 0 0 0 0 0 0 0   |  0  0  0  0  0  0  0  0 |  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0x3FFF
-            // | 0 0 0 0 0 0 0 0 0 0   |  1  1  1  1  1  1  1  1 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | TYPE_MASK 0x3FC000
-            // | 1 1 1 1 1 1 1 1 1 1   |  0  0  0  0  0  0  0  0 |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFC00000
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  0             |  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0x3FFF
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  0           |  1             |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMPRESSED_BIT_MASK 0x4000
+            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |  1           |  0             |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | RESPONSE_BIT_MASK 0x8000
+            // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |  0           |  0             |  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
 
-            uint h = BitConverter.ToUInt32(header, 0);
-
-            commandID = (Constants.COMMANDID_MASK & h) >> 22;
-            type = (Constants.TYPE_MASK & h) >> 14;
-            dataLenght = (int)(Constants.DATA_LENGTH_MASK & h);
+            fixed (byte* ptr = header)
+            {
+                uint h = *(uint*)ptr;
+                commandID = (h & COMMANDID_MASK) >> 16;
+                response = (h & RESPONSE_BIT_MASK) >> 15;
+                compressed = (h & COMPRESSED_BIT_MASK) >> 14;
+                dataLenght = (int)(h & DATA_LENGTH_MASK);
+            }
         }
 
         #endregion

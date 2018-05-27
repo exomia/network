@@ -24,16 +24,37 @@
 
 namespace Exomia.Network
 {
-    internal static class Constants
+    /// <summary>
+    ///     CommandID
+    /// </summary>
+    public static class CommandID
     {
         #region Variables
 
-        internal const int HEADER_SIZE = 4;
+        /// <summary>
+        ///     RESPONSE_ID
+        /// </summary>
+        public const uint RESPONSE = 65535;
 
-        internal const int PACKET_SIZE_MAX = 16000;
-        internal const double UDP_IDLE_TIME = 20000.0;
+        /// <summary>
+        ///     CLIENTINFO_ID
+        /// </summary>
+        public const uint CLIENTINFO = 65534;
 
-        internal const uint USER_COMMAND_LIMIT = 65500;
+        /// <summary>
+        ///     UDP_CONNECT_ID
+        /// </summary>
+        public const uint UDP_CONNECT = 65533;
+
+        /// <summary>
+        ///     UDP_DISCONNECT_ID
+        /// </summary>
+        public const uint UDP_DISCONNECT = 65532;
+
+        /// <summary>
+        ///     PING_ID
+        /// </summary>
+        public const uint PING = 65531;
 
         #endregion
     }

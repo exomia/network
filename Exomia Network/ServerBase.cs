@@ -26,8 +26,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
+using Exomia.Network.Buffers;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
@@ -42,7 +45,17 @@ namespace Exomia.Network
         #region Variables
 
         private const int INITIAL_QUEUE_SIZE = 16;
-        private const int INITIAL_CLIENT_QUEUE_SIZE = 128;
+        private const int INITIAL_CLIENT_QUEUE_SIZE = 32;
+
+        /// <summary>
+        ///     called than a client is connected
+        /// </summary>
+        public event ClientActionHandler<T> ClientConnected;
+
+        /// <summary>
+        ///     called than a client is disconnected
+        /// </summary>
+        public event ClientActionHandler<T> ClientDisconnected;
 
         /// <summary>
         ///     Dictionary{EndPoint, TServerClient}
@@ -50,6 +63,9 @@ namespace Exomia.Network
         protected readonly Dictionary<T, TServerClient> _clients;
 
         private readonly Dictionary<uint, ServerClientEventEntry<T, TServerClient>> _dataReceivedCallbacks;
+
+        private SpinLock _clientsLock;
+        private SpinLock _dataReceivedCallbacksLock;
 
         private bool _isRunning;
 
@@ -91,6 +107,9 @@ namespace Exomia.Network
         {
             _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<T, TServerClient>>(INITIAL_QUEUE_SIZE);
             _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
+
+            _clientsLock = new SpinLock(Debugger.IsAttached);
+            _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
         }
 
         /// <inheritdoc />
@@ -127,16 +146,6 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     called than a client is connected
-        /// </summary>
-        public event ClientActionHandler<T> ClientConnected;
-
-        /// <summary>
-        ///     called than a client is disconnected
-        /// </summary>
-        public event ClientActionHandler<T> ClientDisconnected;
-
-        /// <summary>
         ///     called than a server wants to run
         /// </summary>
         /// <param name="port">port</param>
@@ -149,56 +158,60 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="arg0">Soicket|Endpoint</param>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
+        /// <param name="offset">offset</param>
         /// <param name="length">data length</param>
-        protected async void DeserializeDataAsync(T arg0, uint commandid, uint type, byte[] data, int length)
+        /// <param name="responseid">responseid</param>
+        protected void DeserializeData(T arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid)
         {
             switch (commandid)
             {
-                case Constants.PING_COMMAND_ID:
+                case CommandID.PING:
                 {
-                    SendDataTo(
-                        arg0, Constants.PING_COMMAND_ID, Constants.PING_STRUCT_TYPE_ID, data,
-                        Constants.HEADER_SIZE + length);
-                    return;
+                    SendTo(arg0, CommandID.PING, data, offset, length, responseid);
+                    break;
                 }
-                case Constants.CLIENTINFO_COMMAND_ID:
+                case CommandID.CLIENTINFO:
                 {
-                    if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                    bool lockTaken = false;
+                    try
                     {
-                        data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
-                        sClient.SetClientInfo(clientinfoStruct);
+                        _clientsLock.Enter(ref lockTaken);
+                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                        {
+                            data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
+                            sClient.SetClientInfo(clientinfoStruct);
+                        }
                     }
-                    return;
+                    finally
+                    {
+                        if (lockTaken) { _clientsLock.Exit(false); }
+                    }
+                    break;
                 }
-                case Constants.UDP_CONNECT_COMMAND_ID:
-                {
-                    InvokeClientConnected(arg0);
-                    SendDataTo(
-                        arg0, Constants.UDP_CONNECT_COMMAND_ID, Constants.UDP_CONNECT_STRUCT_TYPE_ID, data,
-                        Constants.HEADER_SIZE + length);
-                    return;
-                }
-            }
+                default:
+                    if (commandid > Constants.USER_COMMAND_LIMIT)
+                    {
+                        OnDefaultCommand(arg0, commandid, data, offset, length, responseid);
+                    }
+                    else if (_dataReceivedCallbacks.TryGetValue(
+                        commandid, out ServerClientEventEntry<T, TServerClient> scee))
+                    {
+                        scee._deserialize.BeginInvoke(
+                            data, offset, length, iar =>
+                            {
+                                object res = scee._deserialize.EndInvoke(iar);
+                                ByteArrayPool.Return(data);
 
-            if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
-            {
-                object result = await Task.Run(delegate { return DeserializeData(type, data, length); });
-                if (result == null) { return; }
-
-                buffer.RaiseAsync(this, arg0, result);
+                                if (res != null) { scee.RaiseAsync(this, arg0, res, responseid); }
+                            }, null);
+                        return;
+                    }
+                    break;
             }
+            ByteArrayPool.Return(data);
         }
-
-        /// <summary>
-        ///     deserialize data from type and byte array
-        /// </summary>
-        /// <param name="type">type</param>
-        /// <param name="data">byte array</param>
-        /// <param name="length">data length</param>
-        /// <returns>a new created object</returns>
-        protected abstract object DeserializeData(uint type, byte[] data, int length);
 
         /// <summary>
         ///     needs to be called than a new client is connected
@@ -208,8 +221,18 @@ namespace Exomia.Network
         {
             if (CreateServerClient(arg0, out TServerClient serverClient))
             {
-                _clients.Add(arg0, serverClient);
+                bool lockTaken = false;
+                try
+                {
+                    _clientsLock.Enter(ref lockTaken);
+                    _clients.Add(arg0, serverClient);
+                }
+                finally
+                {
+                    if (lockTaken) { _clientsLock.Exit(false); }
+                }
             }
+
             OnClientConnected(arg0);
             ClientConnected?.Invoke(arg0);
         }
@@ -234,10 +257,23 @@ namespace Exomia.Network
         /// <param name="arg0">Socket|EndPoint</param>
         protected void InvokeClientDisconnected(T arg0)
         {
-            OnClientDisconnected(arg0);
-            ClientDisconnected?.Invoke(arg0);
+            bool lockTaken = false;
+            bool removed;
+            try
+            {
+                _clientsLock.Enter(ref lockTaken);
+                removed = _clients.Remove(arg0);
+            }
+            finally
+            {
+                if (lockTaken) { _clientsLock.Exit(false); }
+            }
 
-            _clients.Remove(arg0);
+            if (removed)
+            {
+                OnClientDisconnected(arg0);
+                ClientDisconnected?.Invoke(arg0);
+            }
         }
 
         /// <summary>
@@ -246,19 +282,65 @@ namespace Exomia.Network
         /// <param name="arg0">Socket|EndPoint</param>
         protected virtual void OnClientDisconnected(T arg0) { }
 
+        internal virtual void OnDefaultCommand(T arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid) { }
+
         #endregion
 
         #region Add & Remove
 
         /// <summary>
+        ///     add a command
+        /// </summary>
+        /// <param name="commandid">command id</param>
+        /// <param name="deserialize"></param>
+        public void AddCommand(uint commandid, DeserializeData deserialize)
+        {
+            if (commandid > Constants.USER_COMMAND_LIMIT)
+            {
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+            }
+
+            if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
+
+            bool lockTaken = false;
+            try
+            {
+                _dataReceivedCallbacksLock.Enter(ref lockTaken);
+                if (!_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
+                {
+                    buffer = new ServerClientEventEntry<T, TServerClient>(deserialize);
+                    _dataReceivedCallbacks.Add(commandid, buffer);
+                }
+            }
+            finally
+            {
+                if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
+            }
+        }
+
+        /// <summary>
         ///     remove a command
         /// </summary>
         /// <param name="commandid">command id</param>
-        public void RemoveCommand(uint commandid)
+        public bool RemoveCommand(uint commandid)
         {
-            if (_dataReceivedCallbacks.ContainsKey(commandid))
+            if (commandid > Constants.USER_COMMAND_LIMIT)
             {
-                _dataReceivedCallbacks.Remove(commandid);
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+            }
+
+            bool lockTaken = false;
+            try
+            {
+                _dataReceivedCallbacksLock.Enter(ref lockTaken);
+                return _dataReceivedCallbacks.Remove(commandid);
+            }
+            finally
+            {
+                if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
             }
         }
 
@@ -266,28 +348,51 @@ namespace Exomia.Network
         ///     add a data received callback
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="callback">ClientDataReceivedHandler{Socket}</param>
+        /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void AddDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
-            if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
+            if (commandid > Constants.USER_COMMAND_LIMIT)
             {
-                buffer.Add(callback);
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
-            else
+
+            if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
+
+            ServerClientEventEntry<T, TServerClient> buffer;
+            bool lockTaken = false;
+            try
             {
-                ServerClientEventEntry<T, TServerClient> entry = new ServerClientEventEntry<T, TServerClient>();
-                entry.Add(callback);
-                _dataReceivedCallbacks.Add(commandid, entry);
+                _dataReceivedCallbacksLock.Enter(ref lockTaken);
+                if (!_dataReceivedCallbacks.TryGetValue(commandid, out buffer))
+                {
+                    throw new Exception(
+                        $"Invalid paramater '{nameof(commandid)}'! Use 'AddCommand(uint, DeserializeData)' first.");
+                }
             }
+            finally
+            {
+                if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
+            }
+
+            buffer.Add(callback);
         }
 
         /// <summary>
         ///     remove a data received callback
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="callback">ClientDataReceivedHandler{Socket}</param>
+        /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void RemoveDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
+            if (commandid > Constants.USER_COMMAND_LIMIT)
+            {
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+            }
+
+            if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
+
             if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
             {
                 buffer.Remove(callback);
@@ -299,51 +404,52 @@ namespace Exomia.Network
         #region Send
 
         /// <inheritdoc />
-        public void SendDataTo(T arg0, uint commandid, uint type, byte[] data, int lenght)
+        public void SendTo(T arg0, uint commandid, byte[] data, int offset, int lenght, uint responseid = 0)
         {
-            BeginSendDataTo(arg0, commandid, type, data, lenght);
+            BeginSendDataTo(arg0, commandid, data, offset, lenght, responseid);
         }
 
         /// <inheritdoc />
-        public void SendDataTo(T arg0, uint commandid, uint type, ISerializable serializable)
+        public void SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid = 0)
         {
-            byte[] dataB = serializable.Serialize();
-            BeginSendDataTo(arg0, commandid, type, dataB, dataB.Length);
+            byte[] dataB = serializable.Serialize(out int length);
+            BeginSendDataTo(arg0, commandid, dataB, 0, length);
         }
 
         /// <inheritdoc />
-        public void SendDataToAsync(T arg0, uint commandid, uint type, ISerializable serializable)
+        public void SendToAsync(T arg0, uint commandid, ISerializable serializable, uint responseid = 0)
         {
             Task.Run(
                 delegate
                 {
-                    SendDataTo(arg0, commandid, type, serializable);
+                    SendTo(arg0, commandid, serializable, responseid);
                 });
         }
 
         /// <inheritdoc />
-        public void SendDataTo<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct
+        public void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid = 0) where T1 : struct
         {
             byte[] dataB = data.ToBytesUnsafe(out int length);
-            BeginSendDataTo(arg0, commandid, type, dataB, length);
+            BeginSendDataTo(arg0, commandid, dataB, 0, length);
         }
 
         /// <inheritdoc />
-        public void SendDataToAsync<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct
+        public void SendToAsync<T1>(T arg0, uint commandid, in T1 data, uint responseid = 0) where T1 : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int length);
             Task.Run(
                 delegate
                 {
-                    BeginSendDataTo(arg0, commandid, type, dataB, length);
+                    BeginSendDataTo(arg0, commandid, dataB, 0, length);
                 });
         }
 
-        private void BeginSendDataTo(T arg0, uint commandid, uint type, byte[] data, int length)
+        private void BeginSendDataTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid = 0)
         {
             if (_listener == null) { return; }
-            byte[] send = Serialization.Serialization.Serialize(commandid, type, data, length);
-            BeginSendDataTo(arg0, send, Constants.HEADER_SIZE + length);
+            Serialization.Serialization.Serialize(
+                commandid, data, offset, length, responseid, out byte[] send, out int size);
+            BeginSendDataTo(arg0, send, 0, size);
         }
 
         /// <summary>
@@ -351,11 +457,12 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="send">data to send</param>
+        /// <param name="offset">offset</param>
         /// <param name="length">data length</param>
-        protected abstract void BeginSendDataTo(T arg0, byte[] send, int length);
+        protected abstract void BeginSendDataTo(T arg0, byte[] send, int offset, int length);
 
         /// <inheritdoc />
-        public void SendToAll(uint commandid, uint type, byte[] data, int length)
+        public void SendToAll(uint commandid, byte[] data, int offset, int length)
         {
             Dictionary<T, TServerClient> buffer;
             lock (_clients)
@@ -367,53 +474,53 @@ namespace Exomia.Network
             {
                 foreach (T endPoint in buffer.Keys)
                 {
-                    SendDataTo(endPoint, commandid, type, data, length);
+                    SendTo(endPoint, commandid, data, offset, length);
                 }
             }
         }
 
         /// <inheritdoc />
-        public void SendToAllAsync(uint commandid, uint type, byte[] data, int length)
+        public void SendToAllAsync(uint commandid, byte[] data, int offset, int length)
         {
             Task.Run(
                 delegate
                 {
-                    SendToAll(commandid, type, data, length);
+                    SendToAll(commandid, data, offset, length);
                 });
         }
 
         /// <inheritdoc />
-        public void SendToAll<T1>(uint commandid, uint type, in T1 data) where T1 : struct
+        public void SendToAll<T1>(uint commandid, in T1 data) where T1 : struct
         {
             byte[] dataB = data.ToBytesUnsafe(out int length);
-            SendToAll(commandid, type, dataB, length);
+            SendToAll(commandid, dataB, 0, length);
         }
 
         /// <inheritdoc />
-        public void SendToAllAsync<T1>(uint commandid, uint type, in T1 data) where T1 : struct
+        public void SendToAllAsync<T1>(uint commandid, in T1 data) where T1 : struct
         {
             byte[] dataB = data.ToBytesUnsafe(out int length);
             Task.Run(
                 delegate
                 {
-                    SendToAll(commandid, type, dataB, length);
+                    SendToAll(commandid, dataB, 0, length);
                 });
         }
 
         /// <inheritdoc />
-        public void SendToAll(uint commandid, uint type, ISerializable serializable)
+        public void SendToAll(uint commandid, ISerializable serializable)
         {
-            byte[] dataB = serializable.Serialize();
-            SendToAll(commandid, type, dataB, dataB.Length);
+            byte[] dataB = serializable.Serialize(out int length);
+            SendToAll(commandid, dataB, 0, length);
         }
 
         /// <inheritdoc />
-        public void SendToAllAsync(uint commandid, uint type, ISerializable serializable)
+        public void SendToAllAsync(uint commandid, ISerializable serializable)
         {
             Task.Run(
                 delegate
                 {
-                    SendToAll(commandid, type, serializable);
+                    SendToAll(commandid, serializable);
                 });
         }
 

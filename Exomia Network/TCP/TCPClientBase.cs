@@ -27,6 +27,7 @@ using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
+using LZ4;
 
 namespace Exomia.Network.TCP
 {
@@ -120,8 +121,8 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            _state.Header.GetHeader(out _state.CommandID, out _state.Type, out _state.DataLength);
-
+            _state.Header.GetHeader(
+                out _state.CommandID, out _state.DataLength, out _state.Response, out _state.Compressed);
             if (_state.DataLength > 0)
             {
                 _clientSocket.BeginReceive(
@@ -148,20 +149,62 @@ namespace Exomia.Network.TCP
                 OnDisconnected();
                 return;
             }
-            uint type = _state.Type;
-            uint commandID = _state.CommandID;
-            int dataLenght = _state.DataLength;
 
-            byte[] data = ByteArrayPool.Rent(dataLenght);
-            Buffer.BlockCopy(_state.Data, 0, data, 0, dataLenght);
+            uint commandID = _state.CommandID;
+            int dataLength = _state.DataLength;
+            uint response = _state.Response;
+            uint compressed = _state.Compressed;
+
+            if (length == dataLength)
+            {
+                uint responseID = 0;
+                byte[] data;
+                if (compressed != 0)
+                {
+                    int l;
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Data, 0);
+                        l = BitConverter.ToInt32(_state.Data, 4);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4Codec.Decode(_state.Data, 8, dataLength - 8, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+                    else
+                    {
+                        l = BitConverter.ToInt32(_state.Data, 0);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4Codec.Decode(_state.Data, 4, dataLength - 4, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+
+                    ReceiveHeaderAsync();
+                    DeserializeData(commandID, data, 0, l, responseID);
+                }
+                else
+                {
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Data, 0);
+                        dataLength -= 4;
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Data, 4, data, 0, dataLength);
+                    }
+                    else
+                    {
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Data, 0, data, 0, dataLength);
+                    }
+
+                    ReceiveHeaderAsync();
+                    DeserializeData(commandID, data, 0, dataLength, responseID);
+                }
+                return;
+            }
 
             ReceiveHeaderAsync();
-
-            if (length == dataLenght)
-            {
-                DeserializeDataAsync(commandID, type, data, dataLenght);
-                ByteArrayPool.Return(data);
-            }
         }
 
         #endregion
@@ -173,8 +216,9 @@ namespace Exomia.Network.TCP
             public byte[] Header;
             public byte[] Data;
             public uint CommandID;
-            public uint Type;
             public int DataLength;
+            public uint Response;
+            public uint Compressed;
         }
 
         #endregion

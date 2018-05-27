@@ -33,12 +33,11 @@ namespace Exomia.Network.Buffers
     {
         #region Variables
 
-        private const int BUFFER_LENGTH_FACTOR = 20;
-
         private static SpinLock s_lock;
         private static readonly byte[][][] s_buffers;
-        private static readonly int[] s_index;
+        private static readonly uint[] s_index;
         private static readonly int[] s_bufferLength;
+        private static readonly int[] s_bufferCount;
 
         #endregion
 
@@ -48,8 +47,21 @@ namespace Exomia.Network.Buffers
         {
             s_lock = new SpinLock(Debugger.IsAttached);
 
-            s_bufferLength = new[] { 128, 256, 512, 1024, 4096, 8192, 16384 };
-            s_index = new int[s_bufferLength.Length];
+            s_bufferLength = new[]
+            {
+                1 << 7,
+                1 << 8,
+                1 << 9,
+                1 << 10,
+                1 << 11,
+                1 << 12,
+                1 << 13,
+                1 << 14,
+                1 << 15,
+                1 << 16
+            };
+            s_bufferCount = new[] { 128, 128, 64, 64, 64, 32, 32, 16, 8, 8 };
+            s_index = new uint[s_bufferLength.Length];
             s_buffers = new byte[s_bufferLength.Length][][];
         }
 
@@ -59,43 +71,40 @@ namespace Exomia.Network.Buffers
 
         internal static byte[] Rent(int size)
         {
-            int index = SelectBucketIndex(size);
+            int bucketIndex = SelectBucketIndex(size);
 
             byte[] buffer = null;
-            bool lockTaken = false, allocateBuffer = false;
+            bool lockTaken = false;
             try
             {
                 s_lock.Enter(ref lockTaken);
 
-                if (s_buffers[index] == null)
+                if (s_buffers[bucketIndex] == null)
                 {
-                    s_buffers[index] = new byte[(s_bufferLength.Length - index) * BUFFER_LENGTH_FACTOR][];
+                    s_buffers[bucketIndex] = new byte[s_bufferCount[bucketIndex]][];
                 }
 
-                if (s_index[index] < s_buffers[index].Length)
+                if (s_index[bucketIndex] < s_buffers[bucketIndex].Length)
                 {
-                    buffer = s_buffers[index][s_index[index]];
-                    s_buffers[s_index[index]++] = null;
-                    allocateBuffer = buffer == null;
+                    uint index = s_index[bucketIndex]++;
+                    buffer = s_buffers[bucketIndex][index];
+                    s_buffers[bucketIndex][index] = null;
                 }
             }
             finally
             {
-                if (lockTaken)
-                {
-                    s_lock.Exit(false);
-                }
+                if (lockTaken) { s_lock.Exit(false); }
             }
 
-            return !allocateBuffer ? buffer : new byte[s_bufferLength[index]];
+            return buffer ?? new byte[s_bufferLength[bucketIndex]];
         }
 
         internal static void Return(byte[] array)
         {
-            int index = SelectBucketIndex(array.Length);
-            if (array.Length != s_bufferLength[index])
+            int bucketIndex = SelectBucketIndex(array.Length);
+            if (array.Length != s_bufferLength[bucketIndex])
             {
-                throw new ArgumentException(nameof(array));
+                throw new ArgumentException($"{nameof(array)} ({array.Length} != {s_bufferLength[bucketIndex]})");
             }
 
             bool lockTaken = false;
@@ -103,17 +112,14 @@ namespace Exomia.Network.Buffers
             {
                 s_lock.Enter(ref lockTaken);
 
-                if (s_index[index] != 0)
+                if (s_index[bucketIndex] != 0)
                 {
-                    s_buffers[index][--s_index[index]] = array;
+                    s_buffers[bucketIndex][--s_index[bucketIndex]] = array;
                 }
             }
             finally
             {
-                if (lockTaken)
-                {
-                    s_lock.Exit(false);
-                }
+                if (lockTaken) { s_lock.Exit(false); }
             }
         }
 

@@ -28,7 +28,9 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using Exomia.Network.Buffers;
+using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Serialization;
+using LZ4;
 
 namespace Exomia.Network.UDP
 {
@@ -48,25 +50,15 @@ namespace Exomia.Network.UDP
         #region Constructors
 
         /// <inheritdoc />
-        protected UdpClientBase()
+        protected UdpClientBase(uint maxPacketSize = 0)
         {
-            _state = new ClientStateObject { Buffer = new byte[Constants.PACKET_SIZE_MAX] };
+            _state = new ClientStateObject
+                { Buffer = new byte[maxPacketSize != 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX] };
 
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
 
             _manuelResetEvent = new ManualResetEvent(false);
-
-            AddDataReceivedCallback(
-                Constants.UDP_CONNECT_COMMAND_ID, (_, data) =>
-                {
-                    UDP_CONNECT_STRUCT connectStruct = (UDP_CONNECT_STRUCT)data;
-                    if (connectStruct.Checksum.SequenceEqual(_connectChecksum))
-                    {
-                        _manuelResetEvent.Set();
-                    }
-                    return true;
-                });
         }
 
         #endregion
@@ -93,6 +85,32 @@ namespace Exomia.Network.UDP
 
             socket = null;
             return false;
+        }
+
+        /// <inheritdoc />
+        protected override void OnDispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Send(CommandID.UDP_DISCONNECT, new byte[1] { 255 }, 0, 1);
+            }
+        }
+
+        /// <inheritdoc />
+        internal override void OnDefaultCommand(uint commandid, byte[] data, int offset, int length)
+        {
+            switch (commandid)
+            {
+                case CommandID.UDP_CONNECT:
+                {
+                    data.FromBytesUnsafe(offset, out UDP_CONNECT_STRUCT connectStruct);
+                    if (connectStruct.Checksum.SequenceEqual(_connectChecksum))
+                    {
+                        _manuelResetEvent.Set();
+                    }
+                    break;
+                }
+            }
         }
 
         private void ClientReceiveDataAsync()
@@ -122,14 +140,59 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            _state.Buffer.GetHeader(out uint commandID, out uint type, out int dataLength);
+            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
 
             if (dataLength == length - Constants.HEADER_SIZE)
             {
-                byte[] data = ByteArrayPool.Rent(dataLength);
-                Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
-                DeserializeDataAsync(commandID, type, data, dataLength);
-                ByteArrayPool.Return(data);
+                uint responseID = 0;
+                byte[] data;
+                if (compressed != 0)
+                {
+                    int l;
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
+                        l = BitConverter.ToInt32(_state.Buffer, Constants.HEADER_SIZE + 4);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4Codec.Decode(
+                            _state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+                    else
+                    {
+                        l = BitConverter.ToInt32(_state.Buffer, 0);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4Codec.Decode(
+                            _state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+
+                    ClientReceiveDataAsync();
+
+                    DeserializeData(commandID, data, 0, l, responseID);
+                }
+                else
+                {
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
+                        dataLength -= 4;
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                    }
+                    else
+                    {
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                    }
+
+                    ClientReceiveDataAsync();
+
+                    DeserializeData(commandID, data, 0, dataLength, responseID);
+                }
+                return;
             }
 
             ClientReceiveDataAsync();
@@ -137,9 +200,7 @@ namespace Exomia.Network.UDP
 
         private void SendConnect()
         {
-            UDP_CONNECT_STRUCT connect = new UDP_CONNECT_STRUCT { Checksum = _connectChecksum };
-            base.SendData<UDP_CONNECT_STRUCT>(
-                Constants.UDP_CONNECT_COMMAND_ID, Constants.UDP_CONNECT_STRUCT_TYPE_ID, connect);
+            Send(CommandID.UDP_CONNECT, new UDP_CONNECT_STRUCT { Checksum = _connectChecksum });
         }
 
         #endregion

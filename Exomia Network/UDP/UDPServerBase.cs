@@ -29,6 +29,7 @@ using System.Net.Sockets;
 using System.Threading;
 using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
+using LZ4;
 
 namespace Exomia.Network.UDP
 {
@@ -79,31 +80,42 @@ namespace Exomia.Network.UDP
         protected override bool OnRun(int port, out Socket listener)
         {
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            listener.Bind(new IPEndPoint(IPAddress.Any, port));
 
-            try
-            {
-                listener.Bind(new IPEndPoint(IPAddress.Any, port));
-
-                Listen();
-                return true;
-            }
-            catch
-            {
-                listener = null;
-                return false;
-            }
+            Listen();
+            return true;
         }
 
         /// <inheritdoc />
-        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int lenght)
+        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int offset, int lenght)
         {
             try
             {
-                _listener.BeginSendTo(send, 0, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
+                _listener.BeginSendTo(send, offset, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
             }
             catch
             {
                 /* IGNORE */
+            }
+        }
+
+        /// <inheritdoc />
+        internal override void OnDefaultCommand(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid)
+        {
+            switch (commandid)
+            {
+                case CommandID.UDP_CONNECT:
+                {
+                    InvokeClientConnected(arg0);
+                    SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
+                    break;
+                }
+                case CommandID.UDP_DISCONNECT:
+                {
+                    InvokeClientDisconnected(arg0);
+                    break;
+                }
             }
         }
 
@@ -143,14 +155,53 @@ namespace Exomia.Network.UDP
 
             Listen();
 
-            state.Buffer.GetHeader(out uint commandID, out uint type, out int dataLength);
-
+            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
             if (dataLength == length - Constants.HEADER_SIZE)
             {
-                byte[] data = ByteArrayPool.Rent(dataLength);
-                Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
-                DeserializeDataAsync(state.EndPoint, commandID, type, data, dataLength);
-                ByteArrayPool.Return(data);
+                uint responseID = 0;
+                byte[] data;
+                if (compressed != 0)
+                {
+                    int l;
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
+                        l = BitConverter.ToInt32(state.Buffer, Constants.HEADER_SIZE + 4);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4Codec.Decode(
+                            state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+                    else
+                    {
+                        l = BitConverter.ToInt32(state.Buffer, 0);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4Codec.Decode(
+                            state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+
+                    DeserializeData(state.EndPoint, commandID, data, 0, l, responseID);
+                }
+                else
+                {
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
+                        dataLength -= 4;
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                    }
+                    else
+                    {
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                    }
+
+                    DeserializeData(state.EndPoint, commandID, data, 0, dataLength, responseID);
+                }
             }
 
             _pool.Return(state);

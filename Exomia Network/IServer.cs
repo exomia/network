@@ -43,32 +43,33 @@ namespace Exomia.Network
         bool Run(int port);
 
         /// <summary>
-        ///     send data to the server
+        ///     send data to the client
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
+        /// <param name="offset">offset</param>
         /// <param name="lenght">data lenght</param>
-        void SendDataTo(T arg0, uint commandid, uint type, byte[] data, int lenght);
+        /// <param name="responseid"></param>
+        void SendTo(T arg0, uint commandid, byte[] data, int offset, int lenght, uint responseid = 0);
 
         /// <summary>
         ///     send data to the client
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
-        void SendDataTo(T arg0, uint commandid, uint type, ISerializable serializable);
+        /// <param name="responseid"></param>
+        void SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid = 0);
 
         /// <summary>
         ///     send data async to the client
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
-        void SendDataToAsync(T arg0, uint commandid, uint type, ISerializable serializable);
+        /// <param name="responseid"></param>
+        void SendToAsync(T arg0, uint commandid, ISerializable serializable, uint responseid = 0);
 
         /// <summary>
         ///     send data to the client
@@ -76,9 +77,9 @@ namespace Exomia.Network
         /// <typeparam name="T1">struct type</typeparam>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendDataTo<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct;
+        /// <param name="responseid"></param>
+        void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid = 0) where T1 : struct;
 
         /// <summary>
         ///     send data async to the client
@@ -86,59 +87,55 @@ namespace Exomia.Network
         /// <typeparam name="T1">struct type</typeparam>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendDataToAsync<T1>(T arg0, uint commandid, uint type, in T1 data) where T1 : struct;
+        /// <param name="responseid"></param>
+        void SendToAsync<T1>(T arg0, uint commandid, in T1 data, uint responseid = 0) where T1 : struct;
 
         /// <summary>
         ///     send data to all clients
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
+        /// <param name="offset">offset</param>
         /// <param name="lenght">data lenght</param>
-        void SendToAll(uint commandid, uint type, byte[] data, int lenght);
+        void SendToAll(uint commandid, byte[] data, int offset, int lenght);
 
         /// <summary>
         ///     send data async to all clients
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
+        /// <param name="offset">offset</param>
         /// <param name="lenght">data lenght</param>
-        void SendToAllAsync(uint commandid, uint type, byte[] data, int lenght);
+        void SendToAllAsync(uint commandid, byte[] data, int offset, int lenght);
 
         /// <summary>
         ///     send data to all clients
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendToAll<T1>(uint commandid, uint type, in T1 data) where T1 : struct;
+        void SendToAll<T1>(uint commandid, in T1 data) where T1 : struct;
 
         /// <summary>
         ///     send data async to all clients
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="data">data</param>
-        void SendToAllAsync<T1>(uint commandid, uint type, in T1 data) where T1 : struct;
+        void SendToAllAsync<T1>(uint commandid, in T1 data) where T1 : struct;
 
         /// <summary>
         ///     send data to all clients
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
-        void SendToAll(uint commandid, uint type, ISerializable serializable);
+        void SendToAll(uint commandid, ISerializable serializable);
 
         /// <summary>
         ///     send data async to all clients
         /// </summary>
         /// <param name="commandid">command id</param>
-        /// <param name="type">type</param>
         /// <param name="serializable">ISerializable</param>
-        void SendToAllAsync(uint commandid, uint type, ISerializable serializable);
+        void SendToAllAsync(uint commandid, ISerializable serializable);
 
         #endregion
     }

@@ -34,8 +34,9 @@ namespace Exomia.Network.Serialization
         /// <summary>
         ///     serialize the object to a byte array
         /// </summary>
-        /// <returns></returns>
-        byte[] Serialize();
+        /// <param name="length">the length of the data</param>
+        /// <returns>serialized data</returns>
+        byte[] Serialize(out int length);
 
         /// <summary>
         ///     deserialize the object from a byte array
