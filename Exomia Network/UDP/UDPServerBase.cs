@@ -99,6 +99,26 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <inheritdoc />
+        internal override void OnDefaultCommand(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid)
+        {
+            switch (commandid)
+            {
+                case CommandID.UDP_CONNECT:
+                {
+                    InvokeClientConnected(arg0);
+                    SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
+                    break;
+                }
+                case CommandID.UDP_DISCONNECT:
+                {
+                    InvokeClientDisconnected(arg0);
+                    break;
+                }
+            }
+        }
+
         private void Listen()
         {
             ServerClientStateObject state = _pool.Rent();
@@ -163,7 +183,7 @@ namespace Exomia.Network.UDP
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
-                    DeserializeDataAsync(state.EndPoint, commandID, data, 0, l, responseID);
+                    DeserializeData(state.EndPoint, commandID, data, 0, l, responseID);
                 }
                 else
                 {
@@ -180,7 +200,7 @@ namespace Exomia.Network.UDP
                         Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
                     }
 
-                    DeserializeDataAsync(state.EndPoint, commandID, data, 0, dataLength, responseID);
+                    DeserializeData(state.EndPoint, commandID, data, 0, dataLength, responseID);
                 }
             }
 

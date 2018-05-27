@@ -181,7 +181,7 @@ namespace Exomia.Network.TCP
                     }
 
                     ReceiveHeaderAsync();
-                    DeserializeDataAsync(commandID, data, 0, l, responseID);
+                    DeserializeData(commandID, data, 0, l, responseID);
                 }
                 else
                 {
@@ -199,7 +199,7 @@ namespace Exomia.Network.TCP
                     }
 
                     ReceiveHeaderAsync();
-                    DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
+                    DeserializeData(commandID, data, 0, dataLength, responseID);
                 }
                 return;
             }

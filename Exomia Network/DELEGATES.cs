@@ -69,4 +69,21 @@ namespace Exomia.Network
     public delegate void ClientInfoHandler<in T, TArg0>(T client, object oldValue, object newValue)
         where T : ServerClientBase<TArg0>
         where TArg0 : class;
+
+    /// <summary>
+    ///     DeserializeResponse callback
+    /// </summary>
+    /// <typeparam name="TResult"></typeparam>
+    /// <param name="packet"></param>
+    /// <returns></returns>
+    public delegate TResult DeserializeResponse<out TResult>(ref ResponsePacket packet);
+
+    /// <summary>
+    ///     DeserializeData callback
+    /// </summary>
+    /// <param name="data"></param>
+    /// <param name="offset"></param>
+    /// <param name="length"></param>
+    /// <returns></returns>
+    public delegate object DeserializeData(byte[] data, int offset, int length);
 }

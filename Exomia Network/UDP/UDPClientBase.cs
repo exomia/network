@@ -28,6 +28,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using Exomia.Network.Buffers;
+using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Serialization;
 using LZ4;
 
@@ -58,17 +59,6 @@ namespace Exomia.Network.UDP
             rnd.NextBytes(_connectChecksum);
 
             _manuelResetEvent = new ManualResetEvent(false);
-
-            AddDataReceivedCallback(
-                CommandID.UDP_CONNECT, (_, data) =>
-                {
-                    UDP_CONNECT_STRUCT connectStruct = (UDP_CONNECT_STRUCT)data;
-                    if (connectStruct.Checksum.SequenceEqual(_connectChecksum))
-                    {
-                        _manuelResetEvent.Set();
-                    }
-                    return true;
-                });
         }
 
         #endregion
@@ -95,6 +85,23 @@ namespace Exomia.Network.UDP
 
             socket = null;
             return false;
+        }
+
+        /// <inheritdoc />
+        internal override void OnDefaultCommand(uint commandid, byte[] data, int offset, int length)
+        {
+            switch (commandid)
+            {
+                case CommandID.UDP_CONNECT:
+                {
+                    data.FromBytesUnsafe(offset, out UDP_CONNECT_STRUCT connectStruct);
+                    if (connectStruct.Checksum.SequenceEqual(_connectChecksum))
+                    {
+                        _manuelResetEvent.Set();
+                    }
+                    break;
+                }
+            }
         }
 
         private void ClientReceiveDataAsync()
@@ -155,7 +162,7 @@ namespace Exomia.Network.UDP
 
                     ClientReceiveDataAsync();
 
-                    DeserializeDataAsync(commandID, data, 0, l, responseID);
+                    DeserializeData(commandID, data, 0, l, responseID);
                 }
                 else
                 {
@@ -174,7 +181,7 @@ namespace Exomia.Network.UDP
 
                     ClientReceiveDataAsync();
 
-                    DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
+                    DeserializeData(commandID, data, 0, dataLength, responseID);
                 }
                 return;
             }

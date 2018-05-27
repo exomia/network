@@ -30,13 +30,6 @@ namespace Exomia.Network
 {
     /// <summary>
     /// </summary>
-    /// <typeparam name="TResult"></typeparam>
-    /// <param name="packet"></param>
-    /// <returns></returns>
-    public delegate TResult DeserializeResponse<out TResult>(ref ResponsePacket packet);
-
-    /// <summary>
-    /// </summary>
     public struct ResponsePacket
     {
         /// <summary>

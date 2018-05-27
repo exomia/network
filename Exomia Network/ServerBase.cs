@@ -162,7 +162,7 @@ namespace Exomia.Network
         /// <param name="offset">offset</param>
         /// <param name="length">data length</param>
         /// <param name="responseid">responseid</param>
-        protected async void DeserializeDataAsync(T arg0, uint commandid, byte[] data, int offset, int length,
+        protected void DeserializeData(T arg0, uint commandid, byte[] data, int offset, int length,
             uint responseid)
         {
             switch (commandid)
@@ -190,39 +190,28 @@ namespace Exomia.Network
                     }
                     break;
                 }
-                case CommandID.UDP_CONNECT:
-                {
-                    InvokeClientConnected(arg0);
-                    SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
-                    break;
-                }
-                case CommandID.UDP_DISCONNECT:
-                {
-                    InvokeClientDisconnected(arg0);
-                    break;
-                }
                 default:
-                    if (_dataReceivedCallbacks.TryGetValue(
+                    if (commandid > Constants.USER_COMMAND_LIMIT)
+                    {
+                        OnDefaultCommand(arg0, commandid, data, offset, length, responseid);
+                    }
+                    else if (_dataReceivedCallbacks.TryGetValue(
                         commandid, out ServerClientEventEntry<T, TServerClient> scee))
                     {
-                        object result = await Task.Run(
-                            delegate { return DeserializeData(commandid, data, offset, length); });
-                        if (result != null) { scee.RaiseAsync(this, arg0, result, responseid); }
+                        scee._deserialize.BeginInvoke(
+                            data, offset, length, iar =>
+                            {
+                                object res = scee._deserialize.EndInvoke(iar);
+                                ByteArrayPool.Return(data);
+
+                                if (res != null) { scee.RaiseAsync(this, arg0, res, responseid); }
+                            }, null);
+                        return;
                     }
                     break;
             }
             ByteArrayPool.Return(data);
         }
-
-        /// <summary>
-        ///     deserialize data from type and byte array
-        /// </summary>
-        /// <param name="commandid">commandid</param>
-        /// <param name="data">byte array</param>
-        /// <param name="offset">offset</param>
-        /// <param name="length">data length</param>
-        /// <returns>a new created object</returns>
-        protected abstract object DeserializeData(uint commandid, byte[] data, int offset, int length);
 
         /// <summary>
         ///     needs to be called than a new client is connected
@@ -293,9 +282,43 @@ namespace Exomia.Network
         /// <param name="arg0">Socket|EndPoint</param>
         protected virtual void OnClientDisconnected(T arg0) { }
 
+        internal virtual void OnDefaultCommand(T arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid) { }
+
         #endregion
 
         #region Add & Remove
+
+        /// <summary>
+        ///     add a command
+        /// </summary>
+        /// <param name="commandid">command id</param>
+        /// <param name="deserialize"></param>
+        public void AddCommand(uint commandid, DeserializeData deserialize)
+        {
+            if (commandid > Constants.USER_COMMAND_LIMIT)
+            {
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+            }
+
+            if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
+
+            bool lockTaken = false;
+            try
+            {
+                _dataReceivedCallbacksLock.Enter(ref lockTaken);
+                if (!_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))
+                {
+                    buffer = new ServerClientEventEntry<T, TServerClient>(deserialize);
+                    _dataReceivedCallbacks.Add(commandid, buffer);
+                }
+            }
+            finally
+            {
+                if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
+            }
+        }
 
         /// <summary>
         ///     remove a command
@@ -303,6 +326,12 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         public bool RemoveCommand(uint commandid)
         {
+            if (commandid > Constants.USER_COMMAND_LIMIT)
+            {
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+            }
+
             bool lockTaken = false;
             try
             {
@@ -322,6 +351,12 @@ namespace Exomia.Network
         /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void AddDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
+            if (commandid > Constants.USER_COMMAND_LIMIT)
+            {
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+            }
+
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
             ServerClientEventEntry<T, TServerClient> buffer;
@@ -331,8 +366,8 @@ namespace Exomia.Network
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
                 if (!_dataReceivedCallbacks.TryGetValue(commandid, out buffer))
                 {
-                    buffer = new ServerClientEventEntry<T, TServerClient>();
-                    _dataReceivedCallbacks.Add(commandid, buffer);
+                    throw new Exception(
+                        $"Invalid paramater '{nameof(commandid)}'! Use 'AddCommand(uint, DeserializeData)' first.");
                 }
             }
             finally
@@ -350,6 +385,12 @@ namespace Exomia.Network
         /// <param name="callback">ClientDataReceivedHandler{Socket|Endpoint}</param>
         public void RemoveDataReceivedCallback(uint commandid, ClientDataReceivedHandler<T, TServerClient> callback)
         {
+            if (commandid > Constants.USER_COMMAND_LIMIT)
+            {
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+            }
+
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
             if (_dataReceivedCallbacks.TryGetValue(commandid, out ServerClientEventEntry<T, TServerClient> buffer))

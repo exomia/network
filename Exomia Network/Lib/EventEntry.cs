@@ -23,7 +23,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Runtime.Remoting.Messaging;
 
 namespace Exomia.Network.Lib
@@ -35,6 +34,17 @@ namespace Exomia.Network.Lib
         #region Variables
 
         private event ClientDataReceivedHandler<T, TServerClient> _dataReceived;
+
+        internal readonly DeserializeData _deserialize;
+
+        #endregion
+
+        #region Constructors
+
+        public ServerClientEventEntry(DeserializeData deserialize)
+        {
+            _deserialize = deserialize;
+        }
 
         #endregion
 
@@ -55,7 +65,7 @@ namespace Exomia.Network.Lib
             if (_dataReceived != null)
             {
                 Delegate[] delegates = _dataReceived.GetInvocationList();
-                for (int i = 0; i < delegates.Length; i++)
+                for (int i = 0; i < delegates.Length; ++i)
                 {
                     ((ClientDataReceivedHandler<T, TServerClient>)delegates[i]).BeginInvoke(
                         server, arg0, data, responseid, EndRaiseEventAsync, null);
@@ -83,6 +93,17 @@ namespace Exomia.Network.Lib
 
         private event DataReceivedHandler _dataReceived;
 
+        internal readonly DeserializeData _deserialize;
+
+        #endregion
+
+        #region Constructors
+
+        public ClientEventEntry(DeserializeData deserialize)
+        {
+            _deserialize = deserialize;
+        }
+
         #endregion
 
         #region Methods
@@ -97,14 +118,14 @@ namespace Exomia.Network.Lib
             _dataReceived -= callback;
         }
 
-        public void RaiseAsync(IClient client, object data)
+        public void RaiseAsync(IClient client, object result)
         {
             if (_dataReceived != null)
             {
                 Delegate[] delegates = _dataReceived.GetInvocationList();
-                for (int i = 0; i < delegates.Length; i++)
+                for (int i = 0; i < delegates.Length; ++i)
                 {
-                    ((DataReceivedHandler)delegates[i]).BeginInvoke(client, data, EndRaiseEventAsync, null);
+                    ((DataReceivedHandler)delegates[i]).BeginInvoke(client, result, EndRaiseEventAsync, null);
                 }
             }
         }
@@ -121,48 +142,4 @@ namespace Exomia.Network.Lib
 
         #endregion
     }
-
-    /*internal sealed class ClientEventEntry
-    {
-        #region Variables
-
-        private event DataReceivedHandler _dataReceived;
-
-        #endregion
-
-        #region Methods
-
-        public void Add(DataReceivedHandler callback)
-        {
-            _dataReceived += callback;
-        }
-
-        public void Remove(DataReceivedHandler callback)
-        {
-            _dataReceived -= callback;
-        }
-
-        public void RaiseAsync(IClient client, object data)
-        {
-            if (_dataReceived != null)
-            {
-                Delegate[] delegates = _dataReceived.GetInvocationList();
-                for (int i = 0; i < delegates.Length; i++)
-                {
-                    ((DataReceivedHandler)delegates[i]).BeginInvoke(client, data, EndRaiseEventAsync, null);
-                }
-            }
-        }
-
-        private void EndRaiseEventAsync(IAsyncResult iar)
-        {
-            DataReceivedHandler caller = (DataReceivedHandler)((AsyncResult)iar).AsyncDelegate;
-            if (!caller.EndInvoke(iar))
-            {
-                Remove(caller);
-            }
-        }
-
-        #endregion
-    }*/
 }

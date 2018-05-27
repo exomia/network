@@ -33,6 +33,8 @@ namespace Exomia.Network
         internal const int PACKET_SIZE_MAX = 16000;
         internal const double UDP_IDLE_TIME = 20000.0;
 
+        internal const uint USER_COMMAND_LIMIT = 65500;
+
         #endregion
     }
 }
