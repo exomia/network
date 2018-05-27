@@ -182,10 +182,11 @@ namespace Exomia.Network
                     else if (_dataReceivedCallbacks.TryGetValue(
                         commandid, out ServerClientEventEntry<T, TServerClient> scee))
                     {
+                        Packet packet = new Packet(data, offset, length);
                         scee._deserialize.BeginInvoke(
-                            data, offset, length, iar =>
+                            in packet, iar =>
                             {
-                                object res = scee._deserialize.EndInvoke(iar);
+                                object res = scee._deserialize.EndInvoke(in packet, iar);
                                 ByteArrayPool.Return(data);
 
                                 if (res != null) { scee.RaiseAsync(this, arg0, res, responseid); }
@@ -278,7 +279,7 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandid">command id</param>
         /// <param name="deserialize"></param>
-        public void AddCommand(uint commandid, DeserializeData deserialize)
+        public void AddCommand(uint commandid, DeserializePacket<object> deserialize)
         {
             if (commandid > Constants.USER_COMMAND_LIMIT)
             {
