@@ -33,12 +33,11 @@ namespace Exomia.Network.Buffers
     {
         #region Variables
 
-        private const int BUFFER_LENGTH_FACTOR = 20;
-
         private static SpinLock s_lock;
         private static readonly byte[][][] s_buffers;
         private static readonly uint[] s_index;
         private static readonly int[] s_bufferLength;
+        private static readonly int[] s_bufferCount;
 
         #endregion
 
@@ -48,7 +47,8 @@ namespace Exomia.Network.Buffers
         {
             s_lock = new SpinLock(Debugger.IsAttached);
 
-            s_bufferLength = new[] { 128, 256, 512, 1024, 2048, 4096, 8192, 16384 };
+            s_bufferLength = new[] { 1 << 7, 1 << 8, 1 << 9, 1 << 10, 1 << 11, 1 << 12, 1 << 13, 1 << 14, 1 << 15, 1 << 16 };
+            s_bufferCount = new[] { 128, 128, 64, 64, 64, 32, 32, 16, 8, 8 };
             s_index = new uint[s_bufferLength.Length];
             s_buffers = new byte[s_bufferLength.Length][][];
         }
@@ -69,7 +69,7 @@ namespace Exomia.Network.Buffers
 
                 if (s_buffers[bucketIndex] == null)
                 {
-                    s_buffers[bucketIndex] = new byte[(s_bufferLength.Length - bucketIndex) * BUFFER_LENGTH_FACTOR][];
+                    s_buffers[bucketIndex] = new byte[s_bufferCount[bucketIndex]][];
                 }
 
                 if (s_index[bucketIndex] < s_buffers[bucketIndex].Length)

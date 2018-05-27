@@ -183,28 +183,27 @@ namespace Exomia.Network.TCP
                     ReceiveHeaderAsync();
                     DeserializeDataAsync(commandID, data, 0, l, responseID);
                     ByteArrayPool.Return(data);
-                    return;
-                }
-
-                if (response != 0)
-                {
-                    responseID = BitConverter.ToUInt32(_state.Data, 0);
-                    dataLength -= 4;
-                    data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(_state.Data, 4, data, 0, dataLength);
                 }
                 else
                 {
-                    data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(_state.Data, 0, data, 0, dataLength);
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Data, 0);
+                        dataLength -= 4;
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Data, 4, data, 0, dataLength);
+                    }
+                    else
+                    {
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Data, 0, data, 0, dataLength);
+                    }
+
+                    ReceiveHeaderAsync();
+                    DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
+                    ByteArrayPool.Return(data);
                 }
-
-                ReceiveHeaderAsync();
-                Console.WriteLine(dataLength);
-                DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
-                ByteArrayPool.Return(data);
                 return;
-
             }
 
             ReceiveHeaderAsync();

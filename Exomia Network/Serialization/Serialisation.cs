@@ -38,8 +38,8 @@ namespace Exomia.Network.Serialization
         private const uint COMPRESSED_BIT_MASK = 0x4000;
         private const uint DATA_LENGTH_MASK = 0x3FFF;
 
-        private const uint COMPRESSED_1BIT = 1u << 14;
-        private const uint RESPONSE_1BIT = 1u << 15;
+        private const uint COMPRESSED_1_BIT = 1u << 14;
+        private const uint RESPONSE_1_BIT = 1u << 15;
 
         private const int LENGTH_THRESHOLD = 1 << 11; //2048
         #endregion
@@ -76,8 +76,8 @@ namespace Exomia.Network.Serialization
                         {
                             *(uint*)ptr =
                                 ((uint)(s + 8) & DATA_LENGTH_MASK) |
-                                COMPRESSED_1BIT |
-                                RESPONSE_1BIT |
+                                COMPRESSED_1_BIT |
+                                RESPONSE_1_BIT |
                                 ((commandID << 16) & COMMANDID_MASK);
                             *(uint*)(ptr + 4) = responseID;
                             *(int*)(ptr + 8) = length;
@@ -90,12 +90,10 @@ namespace Exomia.Network.Serialization
                         {
                             *(uint*)ptr =
                                 ((uint)(length + 4) & DATA_LENGTH_MASK) |
-                                RESPONSE_1BIT |
+                                RESPONSE_1_BIT |
                                 ((commandID << 16) & COMMANDID_MASK);
                             *(uint*)(ptr + 4) = responseID;
                         }
-
-                        //DATA
                         Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE + 4, length);
                     }
                 }
@@ -112,7 +110,7 @@ namespace Exomia.Network.Serialization
                         {
                             *(uint*)ptr =
                                 ((uint)(s + 4) & DATA_LENGTH_MASK) |
-                                COMPRESSED_1BIT |
+                                COMPRESSED_1_BIT |
                                 ((commandID << 16) & COMMANDID_MASK);
                             *(int*)(ptr + 4) = length;
                         }
@@ -126,8 +124,6 @@ namespace Exomia.Network.Serialization
                                 ((uint)length & DATA_LENGTH_MASK) |
                                 ((commandID << 16) & COMMANDID_MASK);
                         }
-
-                        //DATA
                         Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE, length);
                     }
                 }
@@ -140,12 +136,10 @@ namespace Exomia.Network.Serialization
                 {
                     *(uint*)ptr =
                         ((uint)(length + 4) & DATA_LENGTH_MASK) |
-                        RESPONSE_1BIT |
+                        RESPONSE_1_BIT |
                         ((commandID << 16) & COMMANDID_MASK);
                     *(uint*)(ptr + 4) = responseID;
                 }
-
-                //DATA
                 Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE + 4, length);
             }
             else
@@ -158,8 +152,6 @@ namespace Exomia.Network.Serialization
                         ((uint)length & DATA_LENGTH_MASK) |
                         ((commandID << 16) & COMMANDID_MASK);
                 }
-
-                //DATA
                 Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE, length);
             }
         }

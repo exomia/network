@@ -138,7 +138,8 @@ namespace Exomia.Network.UDP
                         l = BitConverter.ToInt32(_state.Buffer, Constants.HEADER_SIZE + 4);
                         data = ByteArrayPool.Rent(l);
 
-                        int s = LZ4.LZ4Codec.Decode(_state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                        int s = LZ4.LZ4Codec.Decode(
+                            _state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
 
                     }
@@ -147,7 +148,8 @@ namespace Exomia.Network.UDP
                         l = BitConverter.ToInt32(_state.Buffer, 0);
                         data = ByteArrayPool.Rent(l);
 
-                        int s = LZ4.LZ4Codec.Decode(_state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                        int s = LZ4.LZ4Codec.Decode(
+                            _state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
@@ -155,27 +157,27 @@ namespace Exomia.Network.UDP
 
                     DeserializeDataAsync(commandID, data, 0, l, responseID);
                     ByteArrayPool.Return(data);
-
-                    return;
-                }
-
-                if (response != 0)
-                {
-                    responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
-                    dataLength -= 4;
-                    data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
                 }
                 else
                 {
-                    data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
+                        dataLength -= 4;
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                    }
+                    else
+                    {
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                    }
+
+                    ClientReceiveDataAsync();
+
+                    DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
+                    ByteArrayPool.Return(data);
                 }
-
-                ClientReceiveDataAsync();
-
-                DeserializeDataAsync(commandID, data, 0, dataLength, responseID);
-                ByteArrayPool.Return(data);
                 return;
             }
 
