@@ -73,7 +73,6 @@ namespace Exomia.Network
         public readonly bool Success;
 
         /// <summary>
-        /// 
         /// </summary>
         /// <param name="result"></param>
         /// <param name="success"></param>

@@ -44,7 +44,7 @@ namespace Exomia.Network.UDP
         /// <summary>
         ///     _max_idle_time
         /// </summary>
-        protected double _max_Idle_Time;
+        protected double _maxIdleTime;
 
         #endregion
 
@@ -64,10 +64,9 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         protected UdpServerBase(int maxClients, int maxPacketSize, double maxIdleTime)
-            : base(maxPacketSize)
         {
             if (maxIdleTime <= 0) { maxIdleTime = Constants.UDP_IDLE_TIME; }
-            _max_Idle_Time = maxIdleTime;
+            _maxIdleTime = maxIdleTime;
 
             _pool = new ServerClientStateObjectPool(maxClients, maxPacketSize);
         }
@@ -240,7 +239,7 @@ namespace Exomia.Network.UDP
             #region Variables
 
             private readonly ServerClientStateObject[] _buffers;
-            private readonly int _max_packetSize;
+            private readonly int _maxPacketSize;
             private int _index;
             private SpinLock _lock;
 
@@ -250,7 +249,7 @@ namespace Exomia.Network.UDP
 
             public ServerClientStateObjectPool(int maxClients, int maxPacketSize)
             {
-                _max_packetSize = maxPacketSize;
+                _maxPacketSize = maxPacketSize;
                 _lock = new SpinLock(Debugger.IsAttached);
                 _buffers = new ServerClientStateObject[maxClients + 1];
             }
@@ -262,7 +261,7 @@ namespace Exomia.Network.UDP
             internal ServerClientStateObject Rent()
             {
                 ServerClientStateObject buffer = null;
-                bool lockTaken = false, allocateBuffer = false;
+                bool lockTaken = false;
                 try
                 {
                     _lock.Enter(ref lockTaken);
@@ -271,7 +270,6 @@ namespace Exomia.Network.UDP
                     {
                         buffer = _buffers[_index];
                         _buffers[_index++] = null;
-                        allocateBuffer = buffer == null;
                     }
                 }
                 finally
@@ -282,13 +280,11 @@ namespace Exomia.Network.UDP
                     }
                 }
 
-                return !allocateBuffer
-                    ? buffer
-                    : new ServerClientStateObject
-                    {
-                        Buffer = new byte[_max_packetSize],
-                        EndPoint = new IPEndPoint(IPAddress.Any, 0)
-                    };
+                return buffer ?? new ServerClientStateObject
+                {
+                    Buffer = new byte[_maxPacketSize],
+                    EndPoint = new IPEndPoint(IPAddress.Any, 0)
+                };
             }
 
             internal void Return(ServerClientStateObject obj)

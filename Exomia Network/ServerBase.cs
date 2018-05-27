@@ -75,11 +75,6 @@ namespace Exomia.Network
         protected Socket _listener;
 
         /// <summary>
-        ///     _max_PacketSize
-        /// </summary>
-        protected int _max_PacketSize = Constants.PACKET_SIZE_MAX;
-
-        /// <summary>
         ///     port
         /// </summary>
         protected int _port;
@@ -110,17 +105,6 @@ namespace Exomia.Network
 
             _clientsLock = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
-        }
-
-        /// <inheritdoc />
-        /// <summary>
-        ///     ServerBase constructor
-        /// </summary>
-        /// <param name="maxPacketSize">max_packet_size</param>
-        protected ServerBase(int maxPacketSize)
-            : this()
-        {
-            _max_PacketSize = maxPacketSize;
         }
 
         /// <summary>

@@ -35,14 +35,22 @@ namespace Exomia.Network.TCP
     public abstract class TcpServerBase<TServerClient> : ServerBase<Socket, TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
+        #region Variables
+
+        /// <summary>
+        ///     _maxPacketSize
+        /// </summary>
+        protected readonly int _maxPacketSize;
+
+        #endregion
+
         #region Constructors
 
         /// <inheritdoc />
-        protected TcpServerBase() { }
-
-        /// <inheritdoc />
-        protected TcpServerBase(int maxDataSize)
-            : base(maxDataSize) { }
+        protected TcpServerBase(int maxPacketSize = 0)
+        {
+            _maxPacketSize = maxPacketSize > 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX;
+        }
 
         #endregion
 
@@ -113,7 +121,7 @@ namespace Exomia.Network.TCP
                 {
                     Socket = socket,
                     Header = new byte[Constants.HEADER_SIZE],
-                    Data = new byte[_max_PacketSize]
+                    Buffer = new byte[_maxPacketSize]
                 };
 
                 ClientReceiveHeaderAsync(state);
@@ -153,7 +161,7 @@ namespace Exomia.Network.TCP
                 if (state.DataLength > 0)
                 {
                     state.Socket.BeginReceive(
-                        state.Data, 0, state.DataLength, SocketFlags.None, ClientReceiveDataCallback, state);
+                        state.Buffer, 0, state.DataLength, SocketFlags.None, ClientReceiveDataCallback, state);
                     return;
                 }
 
@@ -198,17 +206,17 @@ namespace Exomia.Network.TCP
                     int l;
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Data, 0);
-                        l = BitConverter.ToInt32(state.Data, 4);
+                        responseID = BitConverter.ToUInt32(state.Buffer, 0);
+                        l = BitConverter.ToInt32(state.Buffer, 4);
                         data = ByteArrayPool.Rent(l);
-                        int s = LZ4Codec.Decode(state.Data, 8, dataLength - 8, data, 0, l, true);
+                        int s = LZ4Codec.Decode(state.Buffer, 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
                     else
                     {
-                        l = BitConverter.ToInt32(state.Data, 0);
+                        l = BitConverter.ToInt32(state.Buffer, 0);
                         data = ByteArrayPool.Rent(l);
-                        int s = LZ4Codec.Decode(state.Data, 4, dataLength - 4, data, 0, l, true);
+                        int s = LZ4Codec.Decode(state.Buffer, 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
@@ -220,15 +228,15 @@ namespace Exomia.Network.TCP
                 {
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Data, 0);
+                        responseID = BitConverter.ToUInt32(state.Buffer, 0);
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Data, 4, data, 0, dataLength);
+                        Buffer.BlockCopy(state.Buffer, 4, data, 0, dataLength);
                     }
                     else
                     {
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Data, 0, data, 0, dataLength);
+                        Buffer.BlockCopy(state.Buffer, 0, data, 0, dataLength);
                     }
 
                     ClientReceiveHeaderAsync(state);
@@ -249,10 +257,11 @@ namespace Exomia.Network.TCP
         {
             #region Variables
 
+            public byte[] Buffer;
             public uint CommandID;
             public uint Compressed;
-            public byte[] Data;
             public int DataLength;
+
             public byte[] Header;
             public uint Response;
             public Socket Socket;

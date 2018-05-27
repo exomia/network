@@ -429,7 +429,7 @@ namespace Exomia.Network
                     ByteArrayPool.Return(packet.Buffer);
                     return new Response<TResult>(result, true);
                 }
-                return new Response<TResult>(default, true);
+                return new Response<TResult>();
             }
         }
 

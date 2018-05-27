@@ -50,10 +50,10 @@ namespace Exomia.Network.UDP
         #region Constructors
 
         /// <inheritdoc />
-        protected UdpClientBase(uint maxPacketSize = 0)
+        protected UdpClientBase(int maxPacketSize = 0)
         {
             _state = new ClientStateObject
-                { Buffer = new byte[maxPacketSize != 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX] };
+                { Buffer = new byte[maxPacketSize > 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX] };
 
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
@@ -118,7 +118,7 @@ namespace Exomia.Network.UDP
             try
             {
                 _clientSocket.BeginReceive(
-                    _state.Buffer, 0, Constants.PACKET_SIZE_MAX, SocketFlags.None, ClientReceiveDataCallback, null);
+                    _state.Buffer, 0, _state.Buffer.Length, SocketFlags.None, ClientReceiveDataCallback, null);
             }
             catch { OnDisconnected(); }
         }
