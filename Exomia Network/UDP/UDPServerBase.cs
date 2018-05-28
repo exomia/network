@@ -41,33 +41,13 @@ namespace Exomia.Network.UDP
 
         private readonly ServerClientStateObjectPool _pool;
 
-        /// <summary>
-        ///     _max_idle_time
-        /// </summary>
-        protected double _maxIdleTime;
-
         #endregion
 
         #region Constructors
 
         /// <inheritdoc />
-        protected UdpServerBase(int maxClients)
-            : this(maxClients, Constants.PACKET_SIZE_MAX, Constants.UDP_IDLE_TIME) { }
-
-        /// <inheritdoc />
-        protected UdpServerBase(int maxClients, int maxPacketSize)
-            : this(maxClients, maxPacketSize, Constants.UDP_IDLE_TIME) { }
-
-        /// <inheritdoc />
-        protected UdpServerBase(int maxClients, double maxIdleTime)
-            : this(maxClients, Constants.PACKET_SIZE_MAX, maxIdleTime) { }
-
-        /// <inheritdoc />
-        protected UdpServerBase(int maxClients, int maxPacketSize, double maxIdleTime)
+        protected UdpServerBase(uint maxClients, int maxPacketSize = Constants.PACKET_SIZE_MAX)
         {
-            if (maxIdleTime <= 0) { maxIdleTime = Constants.UDP_IDLE_TIME; }
-            _maxIdleTime = maxIdleTime;
-
             _pool = new ServerClientStateObjectPool(maxClients, maxPacketSize);
         }
 
@@ -80,7 +60,8 @@ namespace Exomia.Network.UDP
         {
             try
             {
-                listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
+                    { Blocking = false };
                 listener.Bind(new IPEndPoint(IPAddress.Any, port));
                 return true;
             }
@@ -99,12 +80,9 @@ namespace Exomia.Network.UDP
             {
                 _listener.BeginReceiveFrom(
                     state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
-                    ClientReceiveDataCallback, state);
+                    ReceiveDataCallback, state);
             }
-            catch
-            {
-                /* IGNORE */
-            }
+            catch { InvokeClientDisconnected(state.EndPoint); }
         }
 
         /// <inheritdoc />
@@ -143,7 +121,7 @@ namespace Exomia.Network.UDP
             }
         }
 
-        private void ClientReceiveDataCallback(IAsyncResult iar)
+        private void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
 
@@ -243,11 +221,13 @@ namespace Exomia.Network.UDP
 
             #region Constructors
 
-            public ServerClientStateObjectPool(int maxClients, int maxPacketSize)
+            public ServerClientStateObjectPool(uint maxClients, int maxPacketSize)
             {
-                _maxPacketSize = maxPacketSize;
+                _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+                    ? maxPacketSize
+                    : Constants.PACKET_SIZE_MAX;
                 _lock = new SpinLock(Debugger.IsAttached);
-                _buffers = new ServerClientStateObject[maxClients + 1];
+                _buffers = new ServerClientStateObject[maxClients != 0 ? maxClients + 1u : 33];
             }
 
             #endregion

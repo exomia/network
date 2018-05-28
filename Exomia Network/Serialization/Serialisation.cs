@@ -76,7 +76,7 @@ namespace Exomia.Network.Serialization
                     int s = LZ4Codec.Encode(
                         data, offset, length, send, Constants.HEADER_SIZE + 8, length);
 
-                    if (s > DATA_LENGTH_MASK - (Constants.HEADER_SIZE + 8))
+                    if (s > Constants.PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(
                             $"packet size of {Constants.PACKET_SIZE_MAX} exceeded (s: {s})");
@@ -114,7 +114,7 @@ namespace Exomia.Network.Serialization
                     send = ByteArrayPool.Rent(Constants.HEADER_SIZE + 4 + length);
                     int s = LZ4Codec.Encode(
                         data, offset, length, send, Constants.HEADER_SIZE + 4, length);
-                    if (s > DATA_LENGTH_MASK - (Constants.HEADER_SIZE + 4))
+                    if (s > Constants.PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(
                             $"packet size of {Constants.PACKET_SIZE_MAX} exceeded (s: {s})");

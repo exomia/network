@@ -49,7 +49,9 @@ namespace Exomia.Network.TCP
         /// <inheritdoc />
         protected TcpServerBase(int maxPacketSize = 0)
         {
-            _maxPacketSize = maxPacketSize > 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX;
+            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+                ? maxPacketSize
+                : Constants.PACKET_SIZE_MAX;
         }
 
         #endregion
@@ -61,7 +63,11 @@ namespace Exomia.Network.TCP
         {
             try
             {
-                listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                {
+                    NoDelay = true,
+                    Blocking = false
+                };
                 listener.Bind(new IPEndPoint(IPAddress.Any, port));
                 listener.Listen(100);
                 return true;
@@ -127,11 +133,10 @@ namespace Exomia.Network.TCP
                 ServerClientStateObject state = new ServerClientStateObject
                 {
                     Socket = socket,
-                    Header = new byte[Constants.HEADER_SIZE],
                     Buffer = new byte[_maxPacketSize]
                 };
 
-                ClientReceiveHeaderAsync(state);
+                ReceiveAsync(state);
             }
             catch
             {
@@ -141,46 +146,17 @@ namespace Exomia.Network.TCP
             ListenAsync();
         }
 
-        private void ClientReceiveHeaderAsync(ServerClientStateObject state)
+        private void ReceiveAsync(ServerClientStateObject state)
         {
             try
             {
                 state.Socket.BeginReceive(
-                    state.Header, 0, Constants.HEADER_SIZE, SocketFlags.None, ClientReceiveHeaderCallback, state);
+                    state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveDataCallback, state);
             }
             catch { InvokeClientDisconnected(state.Socket); }
         }
 
-        private void ClientReceiveHeaderCallback(IAsyncResult iar)
-        {
-            ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
-            try
-            {
-                if (state.Socket.EndReceive(iar) <= 0)
-                {
-                    InvokeClientDisconnected(state.Socket);
-                    return;
-                }
-
-                state.Header.GetHeader(
-                    out state.CommandID, out state.DataLength, out state.Response, out state.Compressed);
-
-                if (state.DataLength > 0)
-                {
-                    state.Socket.BeginReceive(
-                        state.Buffer, 0, state.DataLength, SocketFlags.None, ClientReceiveDataCallback, state);
-                    return;
-                }
-
-                ClientReceiveHeaderAsync(state);
-            }
-            catch
-            {
-                InvokeClientDisconnected(state.Socket);
-            }
-        }
-
-        private void ClientReceiveDataCallback(IAsyncResult iar)
+        private void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
             int length;
@@ -198,13 +174,9 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            uint commandID = state.CommandID;
-            int dataLength = state.DataLength;
-            uint response = state.Response;
-            uint compressed = state.Compressed;
+            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
 
-            Socket socket = state.Socket;
-            if (length == dataLength)
+            if (dataLength == length - Constants.HEADER_SIZE)
             {
                 uint responseID = 0;
                 byte[] data;
@@ -213,47 +185,46 @@ namespace Exomia.Network.TCP
                     int l;
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Buffer, 0);
-                        l = BitConverter.ToInt32(state.Buffer, 4);
+                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
+                        l = BitConverter.ToInt32(state.Buffer, Constants.HEADER_SIZE + 4);
                         data = ByteArrayPool.Rent(l);
-                        int s = LZ4Codec.Decode(state.Buffer, 8, dataLength - 8, data, 0, l, true);
+
+                        int s = LZ4Codec.Decode(
+                            state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
                     else
                     {
                         l = BitConverter.ToInt32(state.Buffer, 0);
                         data = ByteArrayPool.Rent(l);
-                        int s = LZ4Codec.Decode(state.Buffer, 4, dataLength - 4, data, 0, l, true);
+
+                        int s = LZ4Codec.Decode(
+                            state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
-                    ClientReceiveHeaderAsync(state);
-
-                    DeserializeData(socket, commandID, data, 0, l, responseID);
+                    DeserializeData(state.Socket, commandID, data, 0, l, responseID);
                 }
                 else
                 {
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Buffer, 0);
+                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Buffer, 4, data, 0, dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
                     }
                     else
                     {
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Buffer, 0, data, 0, dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
                     }
 
-                    ClientReceiveHeaderAsync(state);
-
-                    DeserializeData(socket, commandID, data, 0, dataLength, responseID);
+                    DeserializeData(state.Socket, commandID, data, 0, dataLength, responseID);
                 }
-                return;
             }
 
-            ClientReceiveHeaderAsync(state);
+            ReceiveAsync(state);
         }
 
         #endregion
@@ -265,12 +236,6 @@ namespace Exomia.Network.TCP
             #region Variables
 
             public byte[] Buffer;
-            public uint CommandID;
-            public uint Compressed;
-            public int DataLength;
-
-            public byte[] Header;
-            public uint Response;
             public Socket Socket;
 
             #endregion

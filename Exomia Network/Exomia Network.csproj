@@ -98,7 +98,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Buffers\ByteArrayPool.cs" />
-    <Compile Include="ClientBase.cs" />
+    <Compile Include="Client.cs" />
     <Compile Include="CommandID.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DELEGATES.cs" />
@@ -115,10 +115,9 @@
     <Compile Include="Serialization\Serialisation.cs" />
     <Compile Include="ServerBase.cs" />
     <Compile Include="ServerClientBase.cs" />
+    <Compile Include="SocketMode.cs" />
     <Compile Include="STRUCTS.cs" />
-    <Compile Include="TCP\TCPClientBase.cs" />
     <Compile Include="TCP\TCPServerBase.cs" />
-    <Compile Include="UDP\UDPClientBase.cs" />
     <Compile Include="UDP\UDPServerBase.cs" />
   </ItemGroup>
   <ItemGroup>

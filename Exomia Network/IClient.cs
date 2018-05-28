@@ -38,11 +38,12 @@ namespace Exomia.Network
         /// <summary>
         ///     trys to connect the client to a server
         /// </summary>
+        /// <param name="mode"></param>
         /// <param name="serverAddress"></param>
         /// <param name="port"></param>
         /// <param name="timeout"></param>
         /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
-        bool Connect(string serverAddress, int port, int timeout = 10);
+        bool Connect(SocketMode mode, string serverAddress, int port, int timeout = 10);
 
         /// <summary>
         ///     send data to the server

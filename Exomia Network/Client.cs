@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -37,11 +38,12 @@ using Exomia.Network.Buffers;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
+using LZ4;
 
 namespace Exomia.Network
 {
     /// <inheritdoc cref="IClient" />
-    public abstract class ClientBase : IClient, IDisposable
+    public sealed class Client : IClient, IDisposable
     {
         #region Variables
 
@@ -66,12 +68,11 @@ namespace Exomia.Network
 
         private readonly ManualResetEvent _manuelResetEvent;
 
+        private readonly ClientStateObject _state;
+
         private readonly Dictionary<uint, TaskCompletionSource<Packet>> _taskCompletionSources;
 
-        /// <summary>
-        ///     Socket
-        /// </summary>
-        protected Socket _clientSocket;
+        private Socket _clientSocket;
 
         private SpinLock _dataReceivedCallbacksLock;
 
@@ -109,7 +110,7 @@ namespace Exomia.Network
         /// <summary>
         ///     ClientBase constructor
         /// </summary>
-        protected ClientBase()
+        public Client(ushort maxPacketSize = 0)
         {
             _clientSocket = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
@@ -124,12 +125,14 @@ namespace Exomia.Network
             rnd.NextBytes(_connectChecksum);
 
             _manuelResetEvent = new ManualResetEvent(false);
+
+            _state = new ClientStateObject(new byte[maxPacketSize > 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX]);
         }
 
         /// <summary>
         ///     ClientBase destructor
         /// </summary>
-        ~ClientBase()
+        ~Client()
         {
             Dispose(false);
         }
@@ -139,7 +142,7 @@ namespace Exomia.Network
         #region Methods
 
         /// <inheritdoc />
-        public bool Connect(string serverAddress, int port, int timeout = 10)
+        public bool Connect(SocketMode mode, string serverAddress, int port, int timeout = 10)
         {
             if (_clientSocket != null)
             {
@@ -161,9 +164,21 @@ namespace Exomia.Network
 
             _manuelResetEvent.Reset();
 
-            if (!CreateSocket(out _clientSocket))
+            switch (mode)
             {
-                throw new SocketException();
+                case SocketMode.Tcp:
+                    _clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                    {
+                        NoDelay = true,
+                        Blocking = false
+                    };
+                    break;
+                case SocketMode.Udp:
+                    _clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
+                        { Blocking = false };
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException(nameof(mode), (int)mode, typeof(SocketMode));
             }
 
             try
@@ -171,6 +186,7 @@ namespace Exomia.Network
                 IAsyncResult iar = _clientSocket.BeginConnect(Dns.GetHostAddresses(serverAddress), port, null, null);
                 bool result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
                 _clientSocket.EndConnect(iar);
+
                 if (result)
                 {
                     ReceiveAsync();
@@ -185,28 +201,92 @@ namespace Exomia.Network
             return false;
         }
 
-        /// <summary>
-        ///     called than a client wants to connect with a server
-        /// </summary>
-        /// <param name="socket">out socket</param>
-        /// <returns></returns>
-        protected abstract bool CreateSocket(out Socket socket);
+        private void ReceiveAsync()
+        {
+            try
+            {
+                _clientSocket.BeginReceive(
+                    _state.Buffer, 0, _state.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, null);
+            }
+            catch { OnDisconnected(); }
+        }
 
-        /// <summary>
-        ///     called than a client wants to connect with a server
-        /// </summary>
-        /// <returns></returns>
-        protected abstract void ReceiveAsync();
+        private void ReceiveAsyncCallback(IAsyncResult iar)
+        {
+            int length;
+            try
+            {
+                if ((length = _clientSocket.EndReceive(iar)) <= 0)
+                {
+                    OnDisconnected();
+                    return;
+                }
+            }
+            catch
+            {
+                OnDisconnected();
+                return;
+            }
 
-        /// <summary>
-        ///     call to deserialize the data async
-        /// </summary>
-        /// <param name="commandid">command id</param>
-        /// <param name="data">data</param>
-        /// <param name="offset">offset</param>
-        /// <param name="length">data length</param>
-        /// <param name="responseid">response id</param>
-        protected void DeserializeData(uint commandid, byte[] data, int offset, int length, uint responseid)
+            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
+
+            if (dataLength == length - Constants.HEADER_SIZE)
+            {
+                uint responseID = 0;
+                byte[] data;
+                if (compressed != 0)
+                {
+                    int l;
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
+                        l = BitConverter.ToInt32(_state.Buffer, Constants.HEADER_SIZE + 4);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4Codec.Decode(
+                            _state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+                    else
+                    {
+                        l = BitConverter.ToInt32(_state.Buffer, 0);
+                        data = ByteArrayPool.Rent(l);
+
+                        int s = LZ4Codec.Decode(
+                            _state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    }
+
+                    ReceiveAsync();
+
+                    DeserializeData(commandID, data, 0, l, responseID);
+                }
+                else
+                {
+                    if (response != 0)
+                    {
+                        responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
+                        dataLength -= 4;
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                    }
+                    else
+                    {
+                        data = ByteArrayPool.Rent(dataLength);
+                        Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                    }
+
+                    ReceiveAsync();
+
+                    DeserializeData(commandID, data, 0, dataLength, responseID);
+                }
+                return;
+            }
+
+            ReceiveAsync();
+        }
+
+        private void DeserializeData(uint commandid, byte[] data, int offset, int length, uint responseid)
         {
             if (responseid != 0)
             {
@@ -245,7 +325,6 @@ namespace Exomia.Network
                         }
                     }
                     Ping?.Invoke(pingStruct);
-                    OnPing(pingStruct);
                     break;
                 }
                 case CommandID.CONNECT:
@@ -259,11 +338,8 @@ namespace Exomia.Network
                 }
                 default:
                 {
-                    if (commandid > Constants.USER_COMMAND_LIMIT)
-                    {
-                        OnDefaultCommand(commandid, data, offset, length);
-                    }
-                    else if (_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
+                    if (commandid <= Constants.USER_COMMAND_LIMIT &&
+                        _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
                     {
                         Packet packet = new Packet(data, offset, length);
                         cee._deserialize.BeginInvoke(
@@ -282,21 +358,24 @@ namespace Exomia.Network
             ByteArrayPool.Return(data);
         }
 
-        /// <summary>
-        ///     OnDisconnected called if the client is disconnected
-        /// </summary>
-        protected virtual void OnDisconnected()
+        private void OnDisconnected()
         {
             Disconnected?.Invoke(this);
         }
 
-        /// <summary>
-        ///     called after a ping is received
-        /// </summary>
-        /// <param name="ping"></param>
-        protected virtual void OnPing(PING_STRUCT ping) { }
+        #endregion
 
-        internal virtual void OnDefaultCommand(uint commandid, byte[] data, int offset, int length) { }
+        #region Nested
+
+        private struct ClientStateObject
+        {
+            public readonly byte[] Buffer;
+
+            public ClientStateObject(byte[] buffer)
+            {
+                Buffer = buffer;
+            }
+        }
 
         #endregion
 
@@ -658,15 +737,17 @@ namespace Exomia.Network
         {
             if (!_disposed)
             {
-                OnDispose(disposing);
                 if (disposing)
                 {
-                    /* USER CODE */
                     try
                     {
-                        _clientSocket?.Shutdown(SocketShutdown.Both);
-                        _clientSocket?.Close(5000);
-                        _clientSocket?.Dispose();
+                        if (_clientSocket != null)
+                        {
+                            Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
+                            _clientSocket.Shutdown(SocketShutdown.Both);
+                            _clientSocket.Close(5000);
+                            _clientSocket.Dispose();
+                        }
                     }
                     catch
                     {
@@ -677,12 +758,6 @@ namespace Exomia.Network
                 _disposed = true;
             }
         }
-
-        /// <summary>
-        ///     OnDispose
-        /// </summary>
-        /// <param name="disposing">disposing</param>
-        protected virtual void OnDispose(bool disposing) { }
 
         #endregion
     }
