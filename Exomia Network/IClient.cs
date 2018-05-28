@@ -29,60 +29,6 @@ using Exomia.Network.Serialization;
 namespace Exomia.Network
 {
     /// <summary>
-    /// </summary>
-    public readonly struct Packet
-    {
-        /// <summary>
-        /// </summary>
-        public readonly byte[] Buffer;
-
-        /// <summary>
-        /// </summary>
-        public readonly int Offset;
-
-        /// <summary>
-        /// </summary>
-        public readonly int Length;
-
-        /// <summary>
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="offset"></param>
-        /// <param name="length"></param>
-        public Packet(byte[] buffer, int offset, int length)
-        {
-            Buffer = buffer;
-            Offset = offset;
-            Length = length;
-        }
-    }
-
-    /// <summary>
-    /// </summary>
-    /// <typeparam name="TResult"></typeparam>
-    public readonly struct Response<TResult>
-    {
-        /// <summary>
-        ///     Result
-        /// </summary>
-        public readonly TResult Result;
-
-        /// <summary>
-        ///     <c>true</c> if a valid result; <c>false</c> otherwise
-        /// </summary>
-        public readonly bool Success;
-
-        /// <summary>
-        /// </summary>
-        /// <param name="result"></param>
-        public Response(in TResult result)
-        {
-            Result = result;
-            Success = true;
-        }
-    }
-
-    /// <summary>
     ///     IClient interface
     /// </summary>
     public interface IClient
@@ -115,27 +61,12 @@ namespace Exomia.Network
         void Send(uint commandid, ISerializable serializable);
 
         /// <summary>
-        ///     send data async to the server
-        /// </summary>
-        /// <param name="commandid">command id</param>
-        /// <param name="serializable">ISerializable</param>
-        void SendAsync(uint commandid, ISerializable serializable);
-
-        /// <summary>
         ///     send data to the server
         /// </summary>
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="commandid">command id</param>
         /// <param name="data">struct data</param>
         void Send<T>(uint commandid, in T data) where T : struct;
-
-        /// <summary>
-        ///     send data async to the server
-        /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="commandid">command id</param>
-        /// <param name="data">struct data</param>
-        void SendAsync<T>(uint commandid, in T data) where T : struct;
 
         /// <summary>
         ///     send data to the server

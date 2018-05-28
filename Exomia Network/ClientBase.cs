@@ -418,7 +418,7 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void Send(uint commandid, byte[] data, int offset, int lenght)
         {
-            BeginSendData(commandid, data, offset, lenght);
+            BeginSendData(commandid, data, offset, lenght, 0);
         }
 
         /// <inheritdoc />
@@ -497,18 +497,7 @@ namespace Exomia.Network
         public void Send(uint commandid, ISerializable serializable)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            BeginSendData(commandid, dataB, 0, length);
-        }
-
-        /// <inheritdoc />
-        public void SendAsync(uint commandid, ISerializable serializable)
-        {
-            Task.Run(
-                delegate
-                {
-                    byte[] dataB = serializable.Serialize(out int length);
-                    BeginSendData(commandid, dataB, 0, length);
-                });
+            BeginSendData(commandid, dataB, 0, length, 0);
         }
 
         /// <inheritdoc />
@@ -547,18 +536,7 @@ namespace Exomia.Network
         public void Send<T>(uint commandid, in T data) where T : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            BeginSendData(commandid, dataB, 0, lenght);
-        }
-
-        /// <inheritdoc />
-        public void SendAsync<T>(uint commandid, in T data) where T : struct
-        {
-            data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            Task.Run(
-                delegate
-                {
-                    BeginSendData(commandid, dataB, 0, lenght);
-                });
+            BeginSendData(commandid, dataB, 0, lenght, 0);
         }
 
         /// <inheritdoc />
@@ -595,7 +573,7 @@ namespace Exomia.Network
             return SendR(commandid, dataB, 0, lenght, deserialize, timeout);
         }
 
-        private void BeginSendData(uint commandid, byte[] data, int offset, int lenght, uint responseID = 0)
+        private void BeginSendData(uint commandid, byte[] data, int offset, int lenght, uint responseID)
         {
             if (_clientSocket == null) { return; }
 

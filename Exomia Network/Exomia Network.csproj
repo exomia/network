@@ -108,7 +108,9 @@
     <Compile Include="IClient.cs" />
     <Compile Include="IServer.cs" />
     <Compile Include="Lib\EventEntry.cs" />
+    <Compile Include="Packet.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Response.cs" />
     <Compile Include="Serialization\ISerializable.cs" />
     <Compile Include="Serialization\Serialisation.cs" />
     <Compile Include="ServerBase.cs" />
