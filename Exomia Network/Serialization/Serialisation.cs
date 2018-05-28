@@ -35,17 +35,19 @@ namespace Exomia.Network.Serialization
 
         private const uint COMMANDID_MASK = 0xFFFC0000;
         private const int COMMANDID_SHIFT = 18;
+
         private const uint RESPONSE_BIT_MASK = 0x20000;
         private const int RESPONSE_SHIFT = 17;
+
         private const uint COMPRESSED_BIT_MASK = 0x10000;
         private const int COMPRESSED_SHIFT = 16;
+
         private const uint DATA_LENGTH_MASK = 0xFFFF;
 
         private const uint RESPONSE_1_BIT = 1u << RESPONSE_SHIFT;
         private const uint COMPRESSED_1_BIT = 1u << COMPRESSED_SHIFT;
 
-
-        private const int LENGTH_THRESHOLD = 1 << 11; //2048
+        private const int LENGTH_THRESHOLD = 1 << 12; //4096
 
         #endregion
 
@@ -76,7 +78,8 @@ namespace Exomia.Network.Serialization
 
                     if (s > DATA_LENGTH_MASK - (Constants.HEADER_SIZE + 8))
                     {
-                        throw new ArgumentOutOfRangeException($"packet size of {Constants.PACKET_SIZE_MAX} exceeded (s: {s})");
+                        throw new ArgumentOutOfRangeException(
+                            $"packet size of {Constants.PACKET_SIZE_MAX} exceeded (s: {s})");
                     }
                     if (s > 0)
                     {
@@ -113,7 +116,8 @@ namespace Exomia.Network.Serialization
                         data, offset, length, send, Constants.HEADER_SIZE + 4, length);
                     if (s > DATA_LENGTH_MASK - (Constants.HEADER_SIZE + 4))
                     {
-                        throw new ArgumentOutOfRangeException($"packet size of {Constants.PACKET_SIZE_MAX} exceeded (s: {s})");
+                        throw new ArgumentOutOfRangeException(
+                            $"packet size of {Constants.PACKET_SIZE_MAX} exceeded (s: {s})");
                     }
                     if (s > 0)
                     {

@@ -111,7 +111,6 @@ namespace Exomia.Network.TCP
                         {
                             ByteArrayPool.Return(send);
                         }
-
                     }, null);
             }
             catch

@@ -127,9 +127,7 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         internal override void OnDefaultCommand(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
-            uint responseid)
-        {
-        }
+            uint responseid) { }
 
         private void SendDataToCallback(IAsyncResult iar)
         {
