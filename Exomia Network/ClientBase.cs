@@ -27,6 +27,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -58,7 +60,11 @@ namespace Exomia.Network
         /// </summary>
         public event Action<PING_STRUCT> Ping;
 
+        private readonly byte[] _connectChecksum = new byte[16];
+
         private readonly Dictionary<uint, ClientEventEntry> _dataReceivedCallbacks;
+
+        private readonly ManualResetEvent _manuelResetEvent;
 
         private readonly Dictionary<uint, TaskCompletionSource<Packet>> _taskCompletionSources;
 
@@ -113,6 +119,11 @@ namespace Exomia.Network
             _lock = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
             _responseID = 1;
+
+            Random rnd = new Random((int)DateTime.UtcNow.Ticks);
+            rnd.NextBytes(_connectChecksum);
+
+            _manuelResetEvent = new ManualResetEvent(false);
         }
 
         /// <summary>
@@ -130,23 +141,62 @@ namespace Exomia.Network
         /// <inheritdoc />
         public bool Connect(string serverAddress, int port, int timeout = 10)
         {
-            if (_clientSocket != null) { return true; }
+            if (_clientSocket != null)
+            {
+                try
+                {
+                    _clientSocket.Shutdown(SocketShutdown.Both);
+                    _clientSocket.Close(5000);
+                    _clientSocket.Dispose();
+                    _clientSocket = null;
+                }
+                catch
+                {
+                    /* IGNORE */
+                }
+            }
 
             _serverAddress = serverAddress;
             _port = port;
 
-            return OnConnect(serverAddress, port, timeout, out _clientSocket);
+            _manuelResetEvent.Reset();
+
+            if (!CreateSocket(out _clientSocket))
+            {
+                throw new SocketException();
+            }
+
+            try
+            {
+                IAsyncResult iar = _clientSocket.BeginConnect(Dns.GetHostAddresses(serverAddress), port, null, null);
+                bool result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
+                _clientSocket.EndConnect(iar);
+                if (result)
+                {
+                    ReceiveAsync();
+                    SendConnect();
+                    return _manuelResetEvent.WaitOne(timeout * 1000);
+                }
+            }
+            catch
+            {
+                /* IGNORE */
+            }
+            return false;
         }
 
         /// <summary>
         ///     called than a client wants to connect with a server
         /// </summary>
-        /// <param name="serverAddress">serverAddress</param>
-        /// <param name="port">port</param>
-        /// <param name="timeout">timeout</param>
         /// <param name="socket">out socket</param>
         /// <returns></returns>
-        protected abstract bool OnConnect(string serverAddress, int port, int timeout, out Socket socket);
+        protected abstract bool CreateSocket(out Socket socket);
+
+        /// <summary>
+        ///     called than a client wants to connect with a server
+        /// </summary>
+        /// <returns></returns>
+        protected abstract void ReceiveAsync();
 
         /// <summary>
         ///     call to deserialize the data async
@@ -196,6 +246,15 @@ namespace Exomia.Network
                     }
                     Ping?.Invoke(pingStruct);
                     OnPing(pingStruct);
+                    break;
+                }
+                case CommandID.CONNECT:
+                {
+                    data.FromBytesUnsafe(offset, out CONNECT_STRUCT connectStruct);
+                    if (connectStruct.Checksum.SequenceEqual(_connectChecksum))
+                    {
+                        _manuelResetEvent.Set();
+                    }
                     break;
                 }
                 default:
@@ -428,7 +487,7 @@ namespace Exomia.Network
                 {
                     TResult result = deserialize(in packet);
                     ByteArrayPool.Return(packet.Buffer);
-                    return new Response<TResult>(result, true);
+                    return new Response<TResult>(result);
                 }
                 return new Response<TResult>();
             }
@@ -599,6 +658,11 @@ namespace Exomia.Network
                 new CLIENTINFO_STRUCT { ClientID = clientID, ClientName = clientName });
         }
 
+        private void SendConnect()
+        {
+            Send(CommandID.CONNECT, new CONNECT_STRUCT { Checksum = _connectChecksum });
+        }
+
         #endregion
 
         #region IDisposable Support
@@ -624,6 +688,7 @@ namespace Exomia.Network
                     {
                         _clientSocket?.Shutdown(SocketShutdown.Both);
                         _clientSocket?.Close(5000);
+                        _clientSocket?.Dispose();
                     }
                     catch
                     {

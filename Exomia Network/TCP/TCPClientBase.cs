@@ -23,7 +23,6 @@
 #endregion
 
 using System;
-using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
@@ -57,43 +56,36 @@ namespace Exomia.Network.TCP
         #region Methods
 
         /// <inheritdoc />
-        protected override bool OnConnect(string serverAddress, int port, int timeout, out Socket socket)
+        protected override bool CreateSocket(out Socket socket)
         {
-            socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-            {
-                NoDelay = true,
-                Blocking = false
-            };
             try
             {
-                IAsyncResult iar = socket.BeginConnect(Dns.GetHostAddresses(serverAddress), port, null, null);
-                bool result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
-                socket.EndConnect(iar);
-                if (result)
+                socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                 {
-                    ReceiveHeaderAsync();
-                    return true;
-                }
+                    NoDelay = true,
+                    Blocking = false
+                };
+                return true;
             }
             catch
             {
-                /* IGNORE */
+                socket = null;
+                return false;
             }
-            socket = null;
-            return false;
         }
 
-        private void ReceiveHeaderAsync()
+        /// <inheritdoc />
+        protected override void ReceiveAsync()
         {
             try
             {
                 _clientSocket.BeginReceive(
-                    _state.Header, 0, Constants.HEADER_SIZE, SocketFlags.None, ReceiveHeaderCallback, null);
+                    _state.Header, 0, Constants.HEADER_SIZE, SocketFlags.None, ReceiveAsyncCallback, null);
             }
             catch { OnDisconnected(); }
         }
 
-        private void ReceiveHeaderCallback(IAsyncResult iar)
+        private void ReceiveAsyncCallback(IAsyncResult iar)
         {
             try
             {
@@ -118,7 +110,7 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            ReceiveHeaderAsync();
+            ReceiveAsync();
         }
 
         private void ClientReceiveDataCallback(IAsyncResult iar)
@@ -168,7 +160,7 @@ namespace Exomia.Network.TCP
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
-                    ReceiveHeaderAsync();
+                    ReceiveAsync();
                     DeserializeData(commandID, data, 0, l, responseID);
                 }
                 else
@@ -186,13 +178,13 @@ namespace Exomia.Network.TCP
                         Buffer.BlockCopy(_state.Buffer, 0, data, 0, dataLength);
                     }
 
-                    ReceiveHeaderAsync();
+                    ReceiveAsync();
                     DeserializeData(commandID, data, 0, dataLength, responseID);
                 }
                 return;
             }
 
-            ReceiveHeaderAsync();
+            ReceiveAsync();
         }
 
         #endregion

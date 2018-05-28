@@ -23,12 +23,8 @@
 #endregion
 
 using System;
-using System.Linq;
-using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 using Exomia.Network.Buffers;
-using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Serialization;
 using LZ4;
 
@@ -38,10 +34,6 @@ namespace Exomia.Network.UDP
     public abstract class UdpClientBase : ClientBase
     {
         #region Variables
-
-        private readonly byte[] _connectChecksum = new byte[16];
-
-        private readonly ManualResetEvent _manuelResetEvent;
 
         private readonly ClientStateObject _state;
 
@@ -54,11 +46,6 @@ namespace Exomia.Network.UDP
         {
             _state = new ClientStateObject
                 { Buffer = new byte[maxPacketSize > 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX] };
-
-            Random rnd = new Random((int)DateTime.UtcNow.Ticks);
-            rnd.NextBytes(_connectChecksum);
-
-            _manuelResetEvent = new ManualResetEvent(false);
         }
 
         #endregion
@@ -66,25 +53,19 @@ namespace Exomia.Network.UDP
         #region Methods
 
         /// <inheritdoc />
-        protected override bool OnConnect(string serverAddress, int port, int timeout, out Socket socket)
+        protected override bool CreateSocket(out Socket socket)
         {
-            _manuelResetEvent.Reset();
-            socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             try
             {
-                socket.Connect(Dns.GetHostAddresses(serverAddress), port);
-                ClientReceiveDataAsync();
-                SendConnect();
-
-                return _manuelResetEvent.WaitOne(timeout * 1000);
+                socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
+                    { Blocking = false };
+                return true;
             }
             catch
             {
-                /* IGNORE */
+                socket = null;
+                return false;
             }
-
-            socket = null;
-            return false;
         }
 
         /// <inheritdoc />
@@ -92,38 +73,22 @@ namespace Exomia.Network.UDP
         {
             if (disposing)
             {
-                Send(CommandID.UDP_DISCONNECT, new byte[1] { 255 }, 0, 1);
+                Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
             }
         }
 
         /// <inheritdoc />
-        internal override void OnDefaultCommand(uint commandid, byte[] data, int offset, int length)
-        {
-            switch (commandid)
-            {
-                case CommandID.UDP_CONNECT:
-                {
-                    data.FromBytesUnsafe(offset, out UDP_CONNECT_STRUCT connectStruct);
-                    if (connectStruct.Checksum.SequenceEqual(_connectChecksum))
-                    {
-                        _manuelResetEvent.Set();
-                    }
-                    break;
-                }
-            }
-        }
-
-        private void ClientReceiveDataAsync()
+        protected override void ReceiveAsync()
         {
             try
             {
                 _clientSocket.BeginReceive(
-                    _state.Buffer, 0, _state.Buffer.Length, SocketFlags.None, ClientReceiveDataCallback, null);
+                    _state.Buffer, 0, _state.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, null);
             }
             catch { OnDisconnected(); }
         }
 
-        private void ClientReceiveDataCallback(IAsyncResult iar)
+        private void ReceiveAsyncCallback(IAsyncResult iar)
         {
             int length;
             try
@@ -169,7 +134,7 @@ namespace Exomia.Network.UDP
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
-                    ClientReceiveDataAsync();
+                    ReceiveAsync();
 
                     DeserializeData(commandID, data, 0, l, responseID);
                 }
@@ -188,19 +153,14 @@ namespace Exomia.Network.UDP
                         Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
                     }
 
-                    ClientReceiveDataAsync();
+                    ReceiveAsync();
 
                     DeserializeData(commandID, data, 0, dataLength, responseID);
                 }
                 return;
             }
 
-            ClientReceiveDataAsync();
-        }
-
-        private void SendConnect()
-        {
-            Send(CommandID.UDP_CONNECT, new UDP_CONNECT_STRUCT { Checksum = _connectChecksum });
+            ReceiveAsync();
         }
 
         #endregion

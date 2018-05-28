@@ -126,7 +126,12 @@ namespace Exomia.Network
             _isRunning = true;
             _port = port;
 
-            return OnRun(port, out _listener);
+            if (OnRun(port, out _listener))
+            {
+                ListenAsync();
+                return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -136,6 +141,10 @@ namespace Exomia.Network
         /// <param name="listener">out socket</param>
         /// <returns></returns>
         protected abstract bool OnRun(int port, out Socket listener);
+
+        /// <summary>
+        /// </summary>
+        protected abstract void ListenAsync();
 
         /// <summary>
         ///     call to deserialize the data async
@@ -172,6 +181,17 @@ namespace Exomia.Network
                     {
                         if (lockTaken) { _clientsLock.Exit(false); }
                     }
+                    break;
+                }
+                case CommandID.CONNECT:
+                {
+                    InvokeClientConnected(arg0);
+                    SendTo(arg0, CommandID.CONNECT, data, offset, length, responseid);
+                    break;
+                }
+                case CommandID.DISCONNECT:
+                {
+                    InvokeClientDisconnected(arg0);
                     break;
                 }
                 default:
@@ -398,7 +418,7 @@ namespace Exomia.Network
         public void SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid = 0)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            BeginSendDataTo(arg0, commandid, dataB, 0, length);
+            BeginSendDataTo(arg0, commandid, dataB, 0, length, responseid);
         }
 
         /// <inheritdoc />
@@ -415,7 +435,7 @@ namespace Exomia.Network
         public void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid = 0) where T1 : struct
         {
             byte[] dataB = data.ToBytesUnsafe(out int length);
-            BeginSendDataTo(arg0, commandid, dataB, 0, length);
+            BeginSendDataTo(arg0, commandid, dataB, 0, length, responseid);
         }
 
         /// <inheritdoc />
@@ -425,7 +445,7 @@ namespace Exomia.Network
             Task.Run(
                 delegate
                 {
-                    BeginSendDataTo(arg0, commandid, dataB, 0, length);
+                    BeginSendDataTo(arg0, commandid, dataB, 0, length, responseid);
                 });
         }
 

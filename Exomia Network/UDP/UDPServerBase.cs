@@ -78,19 +78,28 @@ namespace Exomia.Network.UDP
         /// <inheritdoc />
         protected override bool OnRun(int port, out Socket listener)
         {
-            listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            listener.Bind(new IPEndPoint(IPAddress.Any, port));
-
-            Listen();
-            return true;
+            try
+            {
+                listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                listener.Bind(new IPEndPoint(IPAddress.Any, port));
+                return true;
+            }
+            catch
+            {
+                listener = null;
+                return false;
+            }
         }
 
         /// <inheritdoc />
-        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int offset, int lenght)
+        protected override void ListenAsync()
         {
+            ServerClientStateObject state = _pool.Rent();
             try
             {
-                _listener.BeginSendTo(send, offset, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
+                _listener.BeginReceiveFrom(
+                    state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
+                    ClientReceiveDataCallback, state);
             }
             catch
             {
@@ -99,33 +108,36 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-        internal override void OnDefaultCommand(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
-            uint responseid)
+        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int offset, int lenght)
         {
-            switch (commandid)
+            if (_listener == null)
             {
-                case CommandID.UDP_CONNECT:
-                {
-                    InvokeClientConnected(arg0);
-                    SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
-                    break;
-                }
-                case CommandID.UDP_DISCONNECT:
-                {
-                    InvokeClientDisconnected(arg0);
-                    break;
-                }
+                ByteArrayPool.Return(send);
+                return;
+            }
+            try
+            {
+                _listener.BeginSendTo(send, offset, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
+            }
+            catch
+            {
+                ByteArrayPool.Return(send);
             }
         }
 
-        private void Listen()
+        /// <inheritdoc />
+        internal override void OnDefaultCommand(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid)
         {
-            ServerClientStateObject state = _pool.Rent();
+        }
+
+        private void SendDataToCallback(IAsyncResult iar)
+        {
             try
             {
-                _listener.BeginReceiveFrom(
-                    state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
-                    ClientReceiveDataCallback, state);
+                _listener.EndSendTo(iar);
+                byte[] send = (byte[])iar.AsyncState;
+                ByteArrayPool.Return(send);
             }
             catch
             {
@@ -152,7 +164,7 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            Listen();
+            ListenAsync();
 
             state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
             if (dataLength == length - Constants.HEADER_SIZE)
@@ -204,20 +216,6 @@ namespace Exomia.Network.UDP
             }
 
             _pool.Return(state);
-        }
-
-        private void SendDataToCallback(IAsyncResult iar)
-        {
-            try
-            {
-                _listener.EndSendTo(iar);
-                byte[] send = (byte[])iar.AsyncState;
-                ByteArrayPool.Return(send);
-            }
-            catch
-            {
-                /* IGNORE */
-            }
         }
 
         #endregion

@@ -57,10 +57,10 @@ namespace Exomia.Network
     }
 
     /// <summary>
-    ///     UDP_CONNECT_STRUCT
+    ///     CONNECT_STRUCT
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Size = 16)]
-    public struct UDP_CONNECT_STRUCT
+    public struct CONNECT_STRUCT
     {
         /// <summary>
         ///     Checksum(16)

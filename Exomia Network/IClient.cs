@@ -75,11 +75,10 @@ namespace Exomia.Network
         /// <summary>
         /// </summary>
         /// <param name="result"></param>
-        /// <param name="success"></param>
-        public Response(in TResult result, bool success)
+        public Response(in TResult result)
         {
             Result = result;
-            Success = success;
+            Success = true;
         }
     }
 

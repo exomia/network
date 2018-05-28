@@ -59,18 +59,41 @@ namespace Exomia.Network.TCP
         /// <inheritdoc />
         protected override bool OnRun(int port, out Socket listener)
         {
-            listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            listener.Bind(new IPEndPoint(IPAddress.Any, port));
-            listener.Listen(100);
+            try
+            {
+                listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                listener.Bind(new IPEndPoint(IPAddress.Any, port));
+                listener.Listen(100);
+                return true;
+            }
+            catch
+            {
+                listener = null;
+                return false;
+            }
+        }
 
-            Listen();
-            return true;
+        /// <inheritdoc />
+        protected override void ListenAsync()
+        {
+            try
+            {
+                _listener.BeginAccept(AcceptCallback, null);
+            }
+            catch
+            {
+                /* IGNORE */
+            }
         }
 
         /// <inheritdoc />
         protected override void BeginSendDataTo(Socket arg0, byte[] send, int offset, int lenght)
         {
-            if (arg0 == null) { return; }
+            if (arg0 == null)
+            {
+                ByteArrayPool.Return(send);
+                return;
+            }
 
             try
             {
@@ -83,29 +106,17 @@ namespace Exomia.Network.TCP
                             {
                                 InvokeClientDisconnected(arg0);
                             }
+                        }
+                        finally
+                        {
                             ByteArrayPool.Return(send);
                         }
-                        catch
-                        {
-                            /* IGNORE */
-                        }
+
                     }, null);
             }
             catch
             {
-                /* IGNORE */
-            }
-        }
-
-        private void Listen()
-        {
-            try
-            {
-                _listener.BeginAccept(AcceptCallback, null);
-            }
-            catch
-            {
-                /* IGNORE */
+                ByteArrayPool.Return(send);
             }
         }
 
@@ -114,9 +125,6 @@ namespace Exomia.Network.TCP
             try
             {
                 Socket socket = _listener.EndAccept(ar);
-
-                InvokeClientConnected(socket);
-
                 ServerClientStateObject state = new ServerClientStateObject
                 {
                     Socket = socket,
@@ -131,7 +139,7 @@ namespace Exomia.Network.TCP
                 /* IGNORE */
             }
 
-            Listen();
+            ListenAsync();
         }
 
         private void ClientReceiveHeaderAsync(ServerClientStateObject state)
