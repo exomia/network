@@ -22,50 +22,30 @@
 
 #endregion
 
-using System.Runtime.InteropServices;
-
 namespace Exomia.Network
 {
     /// <summary>
-    ///     PING_STRUCT
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 8)]
-    public struct PING_STRUCT
+    /// <typeparam name="TResult"></typeparam>
+    public readonly struct Response<TResult>
     {
         /// <summary>
-        ///     TimeStamp
+        ///     Result
         /// </summary>
-        public long TimeStamp;
-    }
-
-    /// <summary>
-    ///     CLIENTINFO_STRUCT
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 72)]
-    public struct CLIENTINFO_STRUCT
-    {
-        /// <summary>
-        ///     ClientID
-        /// </summary>
-        public long ClientID;
+        public readonly TResult Result;
 
         /// <summary>
-        ///     ClientName (64)
+        ///     <c>true</c> if a valid result; <c>false</c> otherwise
         /// </summary>
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-        public string ClientName;
-    }
+        public readonly bool Success;
 
-    /// <summary>
-    ///     CONNECT_STRUCT
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 16)]
-    public struct CONNECT_STRUCT
-    {
         /// <summary>
-        ///     Checksum(16)
         /// </summary>
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] Checksum;
+        /// <param name="result"></param>
+        public Response(in TResult result)
+        {
+            Result = result;
+            Success = true;
+        }
     }
 }

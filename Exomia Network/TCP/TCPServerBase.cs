@@ -35,14 +35,24 @@ namespace Exomia.Network.TCP
     public abstract class TcpServerBase<TServerClient> : ServerBase<Socket, TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
+        #region Variables
+
+        /// <summary>
+        ///     _maxPacketSize
+        /// </summary>
+        protected readonly int _maxPacketSize;
+
+        #endregion
+
         #region Constructors
 
         /// <inheritdoc />
-        protected TcpServerBase() { }
-
-        /// <inheritdoc />
-        protected TcpServerBase(int maxDataSize)
-            : base(maxDataSize) { }
+        protected TcpServerBase(int maxPacketSize = 0)
+        {
+            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+                ? maxPacketSize
+                : Constants.PACKET_SIZE_MAX;
+        }
 
         #endregion
 
@@ -51,18 +61,45 @@ namespace Exomia.Network.TCP
         /// <inheritdoc />
         protected override bool OnRun(int port, out Socket listener)
         {
-            listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            listener.Bind(new IPEndPoint(IPAddress.Any, port));
-            listener.Listen(100);
+            try
+            {
+                listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                {
+                    NoDelay = true,
+                    Blocking = false
+                };
+                listener.Bind(new IPEndPoint(IPAddress.Any, port));
+                listener.Listen(100);
+                return true;
+            }
+            catch
+            {
+                listener = null;
+                return false;
+            }
+        }
 
-            Listen();
-            return true;
+        /// <inheritdoc />
+        protected override void ListenAsync()
+        {
+            try
+            {
+                _listener.BeginAccept(AcceptCallback, null);
+            }
+            catch
+            {
+                /* IGNORE */
+            }
         }
 
         /// <inheritdoc />
         protected override void BeginSendDataTo(Socket arg0, byte[] send, int offset, int lenght)
         {
-            if (arg0 == null) { return; }
+            if (arg0 == null)
+            {
+                ByteArrayPool.Return(send);
+                return;
+            }
 
             try
             {
@@ -75,29 +112,16 @@ namespace Exomia.Network.TCP
                             {
                                 InvokeClientDisconnected(arg0);
                             }
-                            ByteArrayPool.Return(send);
                         }
-                        catch
+                        finally
                         {
-                            /* IGNORE */
+                            ByteArrayPool.Return(send);
                         }
                     }, null);
             }
             catch
             {
-                /* IGNORE */
-            }
-        }
-
-        private void Listen()
-        {
-            try
-            {
-                _listener.BeginAccept(AcceptCallback, null);
-            }
-            catch
-            {
-                /* IGNORE */
+                ByteArrayPool.Return(send);
             }
         }
 
@@ -106,66 +130,33 @@ namespace Exomia.Network.TCP
             try
             {
                 Socket socket = _listener.EndAccept(ar);
-
-                InvokeClientConnected(socket);
-
                 ServerClientStateObject state = new ServerClientStateObject
                 {
                     Socket = socket,
-                    Header = new byte[Constants.HEADER_SIZE],
-                    Data = new byte[_max_PacketSize]
+                    Buffer = new byte[_maxPacketSize]
                 };
 
-                ClientReceiveHeaderAsync(state);
+                ReceiveAsync(state);
             }
             catch
             {
                 /* IGNORE */
             }
 
-            Listen();
+            ListenAsync();
         }
 
-        private void ClientReceiveHeaderAsync(ServerClientStateObject state)
+        private void ReceiveAsync(ServerClientStateObject state)
         {
             try
             {
                 state.Socket.BeginReceive(
-                    state.Header, 0, Constants.HEADER_SIZE, SocketFlags.None, ClientReceiveHeaderCallback, state);
+                    state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveDataCallback, state);
             }
             catch { InvokeClientDisconnected(state.Socket); }
         }
 
-        private void ClientReceiveHeaderCallback(IAsyncResult iar)
-        {
-            ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
-            try
-            {
-                if (state.Socket.EndReceive(iar) <= 0)
-                {
-                    InvokeClientDisconnected(state.Socket);
-                    return;
-                }
-
-                state.Header.GetHeader(
-                    out state.CommandID, out state.DataLength, out state.Response, out state.Compressed);
-
-                if (state.DataLength > 0)
-                {
-                    state.Socket.BeginReceive(
-                        state.Data, 0, state.DataLength, SocketFlags.None, ClientReceiveDataCallback, state);
-                    return;
-                }
-
-                ClientReceiveHeaderAsync(state);
-            }
-            catch
-            {
-                InvokeClientDisconnected(state.Socket);
-            }
-        }
-
-        private void ClientReceiveDataCallback(IAsyncResult iar)
+        private unsafe void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
             int length;
@@ -183,13 +174,9 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            uint commandID = state.CommandID;
-            int dataLength = state.DataLength;
-            uint response = state.Response;
-            uint compressed = state.Compressed;
+            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
 
-            Socket socket = state.Socket;
-            if (length == dataLength)
+            if (dataLength == length - Constants.HEADER_SIZE)
             {
                 uint responseID = 0;
                 byte[] data;
@@ -198,47 +185,55 @@ namespace Exomia.Network.TCP
                     int l;
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Data, 0);
-                        l = BitConverter.ToInt32(state.Data, 4);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
+                        }
                         data = ByteArrayPool.Rent(l);
-                        int s = LZ4Codec.Decode(state.Data, 8, dataLength - 8, data, 0, l, true);
+
+                        int s = LZ4Codec.Decode(
+                            state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
                     else
                     {
-                        l = BitConverter.ToInt32(state.Data, 0);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            l = *(int*)(ptr + Constants.HEADER_SIZE);
+                        }
                         data = ByteArrayPool.Rent(l);
-                        int s = LZ4Codec.Decode(state.Data, 4, dataLength - 4, data, 0, l, true);
+
+                        int s = LZ4Codec.Decode(
+                            state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
-                    ClientReceiveHeaderAsync(state);
-
-                    DeserializeData(socket, commandID, data, 0, l, responseID);
+                    DeserializeData(state.Socket, commandID, data, 0, l, responseID);
                 }
                 else
                 {
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Data, 0);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                        }
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Data, 4, data, 0, dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
                     }
                     else
                     {
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Data, 0, data, 0, dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
                     }
 
-                    ClientReceiveHeaderAsync(state);
-
-                    DeserializeData(socket, commandID, data, 0, dataLength, responseID);
+                    DeserializeData(state.Socket, commandID, data, 0, dataLength, responseID);
                 }
-                return;
             }
 
-            ClientReceiveHeaderAsync(state);
+            ReceiveAsync(state);
         }
 
         #endregion
@@ -249,12 +244,7 @@ namespace Exomia.Network.TCP
         {
             #region Variables
 
-            public uint CommandID;
-            public uint Compressed;
-            public byte[] Data;
-            public int DataLength;
-            public byte[] Header;
-            public uint Response;
+            public byte[] Buffer;
             public Socket Socket;
 
             #endregion

@@ -35,13 +35,13 @@ namespace Exomia.Network.Lib
 
         private event ClientDataReceivedHandler<T, TServerClient> _dataReceived;
 
-        internal readonly DeserializeData _deserialize;
+        internal readonly DeserializePacket<object> _deserialize;
 
         #endregion
 
         #region Constructors
 
-        public ServerClientEventEntry(DeserializeData deserialize)
+        public ServerClientEventEntry(DeserializePacket<object> deserialize)
         {
             _deserialize = deserialize;
         }
@@ -93,13 +93,13 @@ namespace Exomia.Network.Lib
 
         private event DataReceivedHandler _dataReceived;
 
-        internal readonly DeserializeData _deserialize;
+        internal readonly DeserializePacket<object> _deserialize;
 
         #endregion
 
         #region Constructors
 
-        public ClientEventEntry(DeserializeData deserialize)
+        public ClientEventEntry(DeserializePacket<object> deserialize)
         {
             _deserialize = deserialize;
         }

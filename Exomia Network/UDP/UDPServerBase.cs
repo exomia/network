@@ -41,34 +41,13 @@ namespace Exomia.Network.UDP
 
         private readonly ServerClientStateObjectPool _pool;
 
-        /// <summary>
-        ///     _max_idle_time
-        /// </summary>
-        protected double _max_Idle_Time;
-
         #endregion
 
         #region Constructors
 
         /// <inheritdoc />
-        protected UdpServerBase(int maxClients)
-            : this(maxClients, Constants.PACKET_SIZE_MAX, Constants.UDP_IDLE_TIME) { }
-
-        /// <inheritdoc />
-        protected UdpServerBase(int maxClients, int maxPacketSize)
-            : this(maxClients, maxPacketSize, Constants.UDP_IDLE_TIME) { }
-
-        /// <inheritdoc />
-        protected UdpServerBase(int maxClients, double maxIdleTime)
-            : this(maxClients, Constants.PACKET_SIZE_MAX, maxIdleTime) { }
-
-        /// <inheritdoc />
-        protected UdpServerBase(int maxClients, int maxPacketSize, double maxIdleTime)
-            : base(maxPacketSize)
+        protected UdpServerBase(uint maxClients, int maxPacketSize = Constants.PACKET_SIZE_MAX)
         {
-            if (maxIdleTime <= 0) { maxIdleTime = Constants.UDP_IDLE_TIME; }
-            _max_Idle_Time = maxIdleTime;
-
             _pool = new ServerClientStateObjectPool(maxClients, maxPacketSize);
         }
 
@@ -79,54 +58,62 @@ namespace Exomia.Network.UDP
         /// <inheritdoc />
         protected override bool OnRun(int port, out Socket listener)
         {
-            listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            listener.Bind(new IPEndPoint(IPAddress.Any, port));
-
-            Listen();
-            return true;
-        }
-
-        /// <inheritdoc />
-        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int offset, int lenght)
-        {
             try
             {
-                _listener.BeginSendTo(send, offset, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
+                listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
+                    { Blocking = false };
+                listener.Bind(new IPEndPoint(IPAddress.Any, port));
+                return true;
             }
             catch
             {
-                /* IGNORE */
+                listener = null;
+                return false;
             }
         }
 
         /// <inheritdoc />
-        internal override void OnDefaultCommand(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
-            uint responseid)
-        {
-            switch (commandid)
-            {
-                case CommandID.UDP_CONNECT:
-                {
-                    InvokeClientConnected(arg0);
-                    SendTo(arg0, CommandID.UDP_CONNECT, data, offset, length, responseid);
-                    break;
-                }
-                case CommandID.UDP_DISCONNECT:
-                {
-                    InvokeClientDisconnected(arg0);
-                    break;
-                }
-            }
-        }
-
-        private void Listen()
+        protected override void ListenAsync()
         {
             ServerClientStateObject state = _pool.Rent();
             try
             {
                 _listener.BeginReceiveFrom(
                     state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
-                    ClientReceiveDataCallback, state);
+                    ReceiveDataCallback, state);
+            }
+            catch { InvokeClientDisconnected(state.EndPoint); }
+        }
+
+        /// <inheritdoc />
+        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int offset, int lenght)
+        {
+            if (_listener == null)
+            {
+                ByteArrayPool.Return(send);
+                return;
+            }
+            try
+            {
+                _listener.BeginSendTo(send, offset, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
+            }
+            catch
+            {
+                ByteArrayPool.Return(send);
+            }
+        }
+
+        /// <inheritdoc />
+        internal override void OnDefaultCommand(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid) { }
+
+        private void SendDataToCallback(IAsyncResult iar)
+        {
+            try
+            {
+                _listener.EndSendTo(iar);
+                byte[] send = (byte[])iar.AsyncState;
+                ByteArrayPool.Return(send);
             }
             catch
             {
@@ -134,7 +121,7 @@ namespace Exomia.Network.UDP
             }
         }
 
-        private void ClientReceiveDataCallback(IAsyncResult iar)
+        private unsafe void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
 
@@ -153,7 +140,7 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            Listen();
+            ListenAsync();
 
             state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
             if (dataLength == length - Constants.HEADER_SIZE)
@@ -165,8 +152,11 @@ namespace Exomia.Network.UDP
                     int l;
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
-                        l = BitConverter.ToInt32(state.Buffer, Constants.HEADER_SIZE + 4);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
+                        }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
@@ -175,7 +165,10 @@ namespace Exomia.Network.UDP
                     }
                     else
                     {
-                        l = BitConverter.ToInt32(state.Buffer, 0);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            l = *(int*)(ptr + Constants.HEADER_SIZE);
+                        }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
@@ -189,7 +182,10 @@ namespace Exomia.Network.UDP
                 {
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                        }
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
                         Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
@@ -205,20 +201,6 @@ namespace Exomia.Network.UDP
             }
 
             _pool.Return(state);
-        }
-
-        private void SendDataToCallback(IAsyncResult iar)
-        {
-            try
-            {
-                _listener.EndSendTo(iar);
-                byte[] send = (byte[])iar.AsyncState;
-                ByteArrayPool.Return(send);
-            }
-            catch
-            {
-                /* IGNORE */
-            }
         }
 
         #endregion
@@ -240,7 +222,7 @@ namespace Exomia.Network.UDP
             #region Variables
 
             private readonly ServerClientStateObject[] _buffers;
-            private readonly int _max_packetSize;
+            private readonly int _maxPacketSize;
             private int _index;
             private SpinLock _lock;
 
@@ -248,11 +230,13 @@ namespace Exomia.Network.UDP
 
             #region Constructors
 
-            public ServerClientStateObjectPool(int maxClients, int maxPacketSize)
+            public ServerClientStateObjectPool(uint maxClients, int maxPacketSize)
             {
-                _max_packetSize = maxPacketSize;
+                _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+                    ? maxPacketSize
+                    : Constants.PACKET_SIZE_MAX;
                 _lock = new SpinLock(Debugger.IsAttached);
-                _buffers = new ServerClientStateObject[maxClients + 1];
+                _buffers = new ServerClientStateObject[maxClients != 0 ? maxClients + 1u : 33];
             }
 
             #endregion
@@ -262,7 +246,7 @@ namespace Exomia.Network.UDP
             internal ServerClientStateObject Rent()
             {
                 ServerClientStateObject buffer = null;
-                bool lockTaken = false, allocateBuffer = false;
+                bool lockTaken = false;
                 try
                 {
                     _lock.Enter(ref lockTaken);
@@ -271,7 +255,6 @@ namespace Exomia.Network.UDP
                     {
                         buffer = _buffers[_index];
                         _buffers[_index++] = null;
-                        allocateBuffer = buffer == null;
                     }
                 }
                 finally
@@ -282,13 +265,11 @@ namespace Exomia.Network.UDP
                     }
                 }
 
-                return !allocateBuffer
-                    ? buffer
-                    : new ServerClientStateObject
-                    {
-                        Buffer = new byte[_max_packetSize],
-                        EndPoint = new IPEndPoint(IPAddress.Any, 0)
-                    };
+                return buffer ?? new ServerClientStateObject
+                {
+                    Buffer = new byte[_maxPacketSize],
+                    EndPoint = new IPEndPoint(IPAddress.Any, 0)
+                };
             }
 
             internal void Return(ServerClientStateObject obj)
