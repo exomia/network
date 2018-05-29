@@ -97,23 +97,23 @@ using (Client client = new Client())
 	byte[] request = Encoding.UTF8.GetBytes("get time");
     for (int i = 0; i < 10; i++)
     {
-        Response<PING_STRUCT> res = await client.SendRPing();
-        if (res.Success)
-        {
-            Console.WriteLine(i +
-                "ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
-                    .TotalMilliseconds);
-        }
-        else { Console.WriteLine("error receiving response"); }
-        
-        Response<string> res = await client.SendR<string>(45, request, 0, request .Length, (in Packet packet) =>
-        {
-            return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
-        });
-
+		Response<PING_STRUCT> res = await client.SendRPing();
 		if (res.Success)
 		{
-			Console.WriteLine(res.Result);
+			Console.WriteLine(i +
+				"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
+					.TotalMilliseconds);
+		}
+		else { Console.WriteLine("error receiving response"); }
+
+		Response<string> res2 = await client.SendR<string>(45, request, 0, request .Length, (in Packet packet) =>
+		{
+			return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
+		});
+
+		if (res2.Success)
+		{
+			Console.WriteLine(res2.Result);
 		}
 		else { Console.WriteLine("error receiving response"); }
 	}
