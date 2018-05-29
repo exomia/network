@@ -150,7 +150,6 @@ namespace Exomia.Network
                 {
                     _clientSocket.Shutdown(SocketShutdown.Both);
                     _clientSocket.Close(5000);
-                    _clientSocket.Dispose();
                     _clientSocket = null;
                 }
                 catch
@@ -746,7 +745,6 @@ namespace Exomia.Network
                             Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
                             _clientSocket.Shutdown(SocketShutdown.Both);
                             _clientSocket.Close(5000);
-                            _clientSocket.Dispose();
                         }
                     }
                     catch
