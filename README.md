@@ -111,11 +111,11 @@ using (Client client = new Client())
             return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
         });
 
-	    if (res.Success)
-	    {
-	        Console.WriteLine(res.Result);
-	    }
-	     else { Console.WriteLine("error receiving response"); }
+		if (res.Success)
+		{
+			Console.WriteLine(res.Result);
+		}
+		else { Console.WriteLine("error receiving response"); }
 	}
 
     Console.WriteLine("press any key to exit...");
@@ -168,11 +168,11 @@ static void Main(string[] args)
 
 		server.AddDataReceivedCallback(45, (b, arg0, data, responseid) =>
         {
-	        string request = (string)data;
-	        Console.WriteLine($"Request: {request}");
-            byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
-            b.SendTo(arg0, 45, buffer, 0, buffer.Length, responseid);
-            return true;
+			string request = (string)data;
+			Console.WriteLine($"Request: {request}");
+			byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
+			b.SendTo(arg0, 45, buffer, 0, buffer.Length, responseid);
+			return true;
         });
         
 		server.Run(3000);
