@@ -80,23 +80,23 @@ static void Main(string[] args)
 ```csharp
 using (Client client = new Client())
 {
-    client.Disconnected += (c) => { Console.WriteLine("Disconnected"); };
+	client.Disconnected += (c) => { Console.WriteLine("Disconnected"); };
 	client.AddCommand(45, (in Packet packet) =>
-    {
-        return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
-    });
+	{
+		return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
+	});
 
-    client.AddDataReceivedCallback(45, (client1, data) =>
-    {
-        Console.WriteLine(data + " -- OK");
-        return true;
-    });
-    
-    if (client.Connect(SocketMode.TCP, "127.0.0.1", 3000)) { Console.WriteLine("CONNECTED"); }
-    else { Console.WriteLine("CONNECTION FAILED"); }
+	client.AddDataReceivedCallback(45, (client1, data) =>
+	{
+		Console.WriteLine(data + " -- OK");
+		return true;
+	});
+
+	if (client.Connect(SocketMode.TCP, "127.0.0.1", 3000)) { Console.WriteLine("CONNECTED"); }
+	else { Console.WriteLine("CONNECTION FAILED"); }
 	byte[] request = Encoding.UTF8.GetBytes("get time");
-    for (int i = 0; i < 10; i++)
-    {
+	for (int i = 0; i < 10; i++)
+	{
 		Response<PING_STRUCT> res = await client.SendRPing();
 		if (res.Success)
 		{
@@ -118,8 +118,8 @@ using (Client client = new Client())
 		else { Console.WriteLine("error receiving response"); }
 	}
 
-    Console.WriteLine("press any key to exit...");
-    Console.ReadKey();
+	Console.WriteLine("press any key to exit...");
+	Console.ReadKey();
 }
 ```
 
