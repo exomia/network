@@ -121,7 +121,7 @@ namespace Exomia.Network.UDP
             }
         }
 
-        private void ReceiveDataCallback(IAsyncResult iar)
+        private unsafe void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
 
@@ -152,8 +152,11 @@ namespace Exomia.Network.UDP
                     int l;
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
-                        l = BitConverter.ToInt32(state.Buffer, Constants.HEADER_SIZE + 4);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
+                        }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
@@ -162,7 +165,10 @@ namespace Exomia.Network.UDP
                     }
                     else
                     {
-                        l = BitConverter.ToInt32(state.Buffer, 0);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            l = *(int*)(ptr + Constants.HEADER_SIZE);
+                        }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
@@ -176,7 +182,10 @@ namespace Exomia.Network.UDP
                 {
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(state.Buffer, Constants.HEADER_SIZE);
+                        fixed (byte* ptr = state.Buffer)
+                        {
+                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                        }
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
                         Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);

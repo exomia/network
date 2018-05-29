@@ -210,7 +210,7 @@ namespace Exomia.Network
             catch { OnDisconnected(); }
         }
 
-        private void ReceiveAsyncCallback(IAsyncResult iar)
+        private unsafe void ReceiveAsyncCallback(IAsyncResult iar)
         {
             int length;
             try
@@ -238,8 +238,11 @@ namespace Exomia.Network
                     int l;
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
-                        l = BitConverter.ToInt32(_state.Buffer, Constants.HEADER_SIZE + 4);
+                        fixed (byte* ptr = _state.Buffer)
+                        {
+                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
+                        }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
@@ -248,7 +251,10 @@ namespace Exomia.Network
                     }
                     else
                     {
-                        l = BitConverter.ToInt32(_state.Buffer, 0);
+                        fixed (byte* ptr = _state.Buffer)
+                        {
+                            l = *(int*)(ptr + Constants.HEADER_SIZE);
+                        }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
@@ -264,7 +270,10 @@ namespace Exomia.Network
                 {
                     if (response != 0)
                     {
-                        responseID = BitConverter.ToUInt32(_state.Buffer, Constants.HEADER_SIZE);
+                        fixed (byte* ptr = _state.Buffer)
+                        {
+                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                        }
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
                         Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
