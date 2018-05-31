@@ -3,7 +3,6 @@
   <metadata>
     <id>$id$</id>
     <version>$version$</version>
-    <title>$title$</title>
     <authors>$author$</authors>
     <owners>$author$</owners>
     <licenseUrl>https://raw.githubusercontent.com/exomia/network/master/LICENSE</licenseUrl>
@@ -12,6 +11,6 @@
     <description>$description$</description>
     <releaseNotes></releaseNotes>
     <copyright>$copyright$</copyright>
-    <tags>exomia network</tags>
+    <tags>exomia network tcp udp server client</tags>
   </metadata>
 </package>
