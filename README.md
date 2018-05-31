@@ -186,8 +186,10 @@ static void Main(string[] args)
 ## Installing
 
 ```shell
-Install-Package Exomia.Network
+[Package Manager]
+PM> Install-Package Exomia.Network
 ```
+
 ## Send data
 
 to send data to a server or from a server to a client you have several options see:
