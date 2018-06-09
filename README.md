@@ -2,6 +2,8 @@
 
 exomia/network is a wrapper library around System.Socket for easy TCP/UDP client & server communication.
 
+![](https://img.shields.io/github/issues-pr/exomia/network.svg) ![](https://img.shields.io/github/issues/exomia/network.svg)  ![](https://img.shields.io/github/last-commit/exomia/network.svg) ![](https://img.shields.io/github/contributors/exomia/network.svg) ![](https://img.shields.io/github/commit-activity/y/exomia/network.svg) ![](https://img.shields.io/github/languages/top/exomia/network.svg) ![](https://img.shields.io/github/languages/count/exomia/network.svg) ![](https://img.shields.io/github/license/exomia/network.svg)
+
 ## Example
 
 -Client-UDP
@@ -292,7 +294,6 @@ void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : 
 
 ...
 ```
-
 
 ## Changelog
 
