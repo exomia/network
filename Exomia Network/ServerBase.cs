@@ -431,7 +431,7 @@ namespace Exomia.Network
         {
             if (_listener == null) { return; }
             Serialization.Serialization.Serialize(
-                commandid, data, offset, length, responseid, out byte[] send, out int size);
+                commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
             BeginSendDataTo(arg0, send, 0, size);
         }
 

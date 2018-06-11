@@ -29,6 +29,22 @@ using Exomia.Network.Serialization;
 namespace Exomia.Network
 {
     /// <summary>
+    ///     CryptographyMode
+    /// </summary>
+    public enum EncryptionMode : byte
+    {
+        /// <summary>
+        ///     None
+        /// </summary>
+        None = 0,
+
+        /// <summary>
+        ///     End2End
+        /// </summary>
+        End2End = 0b10001
+    }
+
+    /// <summary>
     ///     IClient interface
     /// </summary>
     public interface IClient

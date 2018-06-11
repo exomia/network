@@ -174,16 +174,16 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            state.Buffer.GetHeader(out uint commandID, out int dataLength, out uint response, out uint compressed);
+            state.Buffer.GetHeader(out uint commandID, out int dataLength, out byte h1);
 
             if (dataLength == length - Constants.HEADER_SIZE)
             {
                 uint responseID = 0;
                 byte[] data;
-                if (compressed != 0)
+                if ((h1 & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
                 {
                     int l;
-                    if (response != 0)
+                    if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                     {
                         fixed (byte* ptr = state.Buffer)
                         {
@@ -213,7 +213,7 @@ namespace Exomia.Network.TCP
                 }
                 else
                 {
-                    if (response != 0)
+                    if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                     {
                         fixed (byte* ptr = state.Buffer)
                         {

@@ -28,7 +28,7 @@ namespace Exomia.Network
     {
         #region Variables
 
-        internal const int HEADER_SIZE = 4;
+        internal const int HEADER_SIZE = 5;
 
         internal const int PACKET_SIZE_MAX = 65535 - HEADER_SIZE - 8;
 
