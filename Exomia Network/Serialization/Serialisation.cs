@@ -62,22 +62,22 @@ namespace Exomia.Network.Serialization
         {
             // 8bit
             // 
-            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED BIT | ENCRYPT BIT | ENCRYPT MODE      |
-            // | 7            | 6            | 5              | 4           | 3  2  1  0        |
-            // | VR: 0/1      | VR: 0/1      | VR: 0/1        |             |                   | VR = VALUE RANGE
-            // 
-            // | 0            | 0            | 0              | 0           | 1  1  1  1        | ENCRYPT_MODE_MASK    0b00001111
-            // | 0            | 0            | 0              | 1           | 0  0  0  0        | ENCRYPT_BIT_MASK     0b00010000
-            // | 0            | 0            | 1              | 0           | 0  0  0  0        | COMPRESSED_BIT_MASK  0b00100000
-            // | 0            | 1            | 0              | 0           | 0  0  0  0        | RESPONSE_BIT_MASK    0b01000000
-            // | 1            | 0            | 0              | 0           | 0  0  0  0        | UNUSED_BIT_MASK      0b10000000
+            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED BIT | ENCRYPT BIT | ENCRYPT MODE |
+            // | 7            | 6            | 5              | 4           | 3  2  1  0   |
+            // | VR: 0/1      | VR: 0/1      | VR: 0/1        | VR: 0/1     | VR: 0-15     | VR = VALUE RANGE
+            // -------------------------------------------------------------------------------------------------------------
+            // | 0            | 0            | 0              | 0           | 1  1  1  1   | ENCRYPT_MODE_MASK    0b00001111
+            // | 0            | 0            | 0              | 1           | 0  0  0  0   | ENCRYPT_BIT_MASK     0b00010000
+            // | 0            | 0            | 1              | 0           | 0  0  0  0   | COMPRESSED_BIT_MASK  0b00100000
+            // | 0            | 1            | 0              | 0           | 0  0  0  0   | RESPONSE_BIT_MASK    0b01000000
+            // | 1            | 0            | 0              | 0           | 0  0  0  0   | UNUSED_BIT_MASK      0b10000000
 
             // 32bit
             // 
-            // | COMMANDID 0-15 (14)bit                           | DATALENGTH 18-31 (16)bit                        |
+            // | COMMANDID 31-16 (16)bit                          | DATALENGTH 15-0 (16)bit                         |
             // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
             // | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE RANGE
-            // 
+            // --------------------------------------------------------------------------------------------------------------------------------
             // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0xFFFF
             // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
 
@@ -165,22 +165,22 @@ namespace Exomia.Network.Serialization
         {
             // 8bit
             // 
-            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED BIT | ENCRYPT BIT | ENCRYPT MODE      |
-            // | 7            | 6            | 5              | 4           | 3  2  1  0        |
-            // | VR: 0/1      | VR: 0/1      | VR: 0/1        |             |                   | VR = VALUE RANGE
-            // 
-            // | 0            | 0            | 0              | 0           | 1  1  1  1        | ENCRYPT_MODE_MASK    0b00001111
-            // | 0            | 0            | 0              | 1           | 0  0  0  0        | ENCRYPT_BIT_MASK     0b00010000
-            // | 0            | 0            | 1              | 0           | 0  0  0  0        | COMPRESSED_BIT_MASK  0b00100000
-            // | 0            | 1            | 0              | 0           | 0  0  0  0        | RESPONSE_BIT_MASK    0b01000000
-            // | 1            | 0            | 0              | 0           | 0  0  0  0        | UNUSED_BIT_MASK      0b10000000
+            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED BIT | ENCRYPT BIT | ENCRYPT MODE |
+            // | 7            | 6            | 5              | 4           | 3  2  1  0   |
+            // | VR: 0/1      | VR: 0/1      | VR: 0/1        | VR: 0/1     | VR: 0-15     | VR = VALUE RANGE
+            // -------------------------------------------------------------------------------------------------------------
+            // | 0            | 0            | 0              | 0           | 1  1  1  1   | ENCRYPT_MODE_MASK    0b00001111
+            // | 0            | 0            | 0              | 1           | 0  0  0  0   | ENCRYPT_BIT_MASK     0b00010000
+            // | 0            | 0            | 1              | 0           | 0  0  0  0   | COMPRESSED_BIT_MASK  0b00100000
+            // | 0            | 1            | 0              | 0           | 0  0  0  0   | RESPONSE_BIT_MASK    0b01000000
+            // | 1            | 0            | 0              | 0           | 0  0  0  0   | UNUSED_BIT_MASK      0b10000000
 
             // 32bit
             // 
-            // | COMMANDID 0-15 (14)bit                           | DATALENGTH 18-31 (16)bit                        |
+            // | COMMANDID 31-16 (16)bit                          | DATALENGTH 15-0 (16)bit                         |
             // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
             // | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE RANGE
-            // 
+            // --------------------------------------------------------------------------------------------------------------------------------
             // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0xFFFF
             // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
 
