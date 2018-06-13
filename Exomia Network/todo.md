@@ -5,6 +5,10 @@
 
 ## Features
 
+### Async IO
+
+- [ ] build client & server classes which use \*\*\*Async instead of Begin\*\*\* and End\*\*\*
+
 ### Security
 
 - [ ] start a connection with 'ssl' or 'end to end' encryption instead of 'unsecure'
@@ -14,4 +18,4 @@
 
 ## Bugs
 
-
+- [ ] wrong disconnect messages
