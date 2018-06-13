@@ -82,7 +82,8 @@ namespace Exomia.Network.UDP
                     state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
                     ReceiveDataCallback, state);
             }
-            catch { InvokeClientDisconnected(state.EndPoint); }
+            catch (ObjectDisposedException) { InvokeClientDisconnected(state.EndPoint, DisconnectReason.Aborted); }
+            catch { InvokeClientDisconnected(state.EndPoint, DisconnectReason.Error); }
         }
 
         /// <inheritdoc />
@@ -96,11 +97,12 @@ namespace Exomia.Network.UDP
             try
             {
                 _listener.BeginSendTo(send, offset, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
+                return;
             }
-            catch
-            {
-                ByteArrayPool.Return(send);
-            }
+            catch (ObjectDisposedException) { InvokeClientDisconnected(arg0, DisconnectReason.Aborted); }
+            catch { InvokeClientDisconnected(arg0, DisconnectReason.Error); }
+
+            ByteArrayPool.Return(send);
         }
 
         /// <inheritdoc />
@@ -112,12 +114,11 @@ namespace Exomia.Network.UDP
             try
             {
                 _listener.EndSendTo(iar);
+            }
+            finally
+            {
                 byte[] send = (byte[])iar.AsyncState;
                 ByteArrayPool.Return(send);
-            }
-            catch
-            {
-                /* IGNORE */
             }
         }
 
@@ -130,13 +131,18 @@ namespace Exomia.Network.UDP
             {
                 if ((length = _listener.EndReceiveFrom(iar, ref state.EndPoint)) <= 0)
                 {
-                    InvokeClientDisconnected(state.EndPoint);
+                    InvokeClientDisconnected(state.EndPoint, DisconnectReason.Unspecified);
                     return;
                 }
             }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnected(state.EndPoint, DisconnectReason.Aborted);
+                return;
+            }
             catch
             {
-                InvokeClientDisconnected(state.EndPoint);
+                InvokeClientDisconnected(state.EndPoint, DisconnectReason.Error);
                 return;
             }
 

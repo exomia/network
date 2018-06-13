@@ -51,7 +51,8 @@ namespace Exomia.Network
     ///     DisconnectedHandler callback
     /// </summary>
     /// <param name="client">client</param>
-    public delegate void DisconnectedHandler(IClient client);
+    /// <param name="reason">reason</param>
+    public delegate void DisconnectedHandler(IClient client, DisconnectReason reason);
 
     /// <summary>
     ///     ClientActionHandler callback
@@ -59,6 +60,14 @@ namespace Exomia.Network
     /// <typeparam name="T">Socket|EndPoint</typeparam>
     /// <param name="arg0"></param>
     public delegate void ClientActionHandler<in T>(T arg0) where T : class;
+
+    /// <summary>
+    ///     ClientDisconnectHandler callback
+    /// </summary>
+    /// <typeparam name="T">Socket|EndPoint</typeparam>
+    /// <param name="arg0"></param>
+    /// <param name="reason">reason</param>
+    public delegate void ClientDisconnectHandler<in T>(T arg0, DisconnectReason reason) where T : class;
 
     /// <summary>
     ///     ClientInfoHandler callback

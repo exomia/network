@@ -54,7 +54,7 @@ namespace Exomia.Network
         /// <summary>
         ///     called than a client is disconnected
         /// </summary>
-        public event ClientActionHandler<T> ClientDisconnected;
+        public event ClientDisconnectHandler<T> ClientDisconnected;
 
         /// <summary>
         ///     Dictionary{EndPoint, TServerClient}
@@ -190,7 +190,7 @@ namespace Exomia.Network
                 }
                 case CommandID.DISCONNECT:
                 {
-                    InvokeClientDisconnected(arg0);
+                    InvokeClientDisconnected(arg0, DisconnectReason.Graceful);
                     break;
                 }
                 default:
@@ -259,7 +259,8 @@ namespace Exomia.Network
         ///     needs to be called than a client is disconnected
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
-        protected void InvokeClientDisconnected(T arg0)
+        /// <param name="reason">DisconnectReason</param>
+        protected void InvokeClientDisconnected(T arg0, DisconnectReason reason)
         {
             bool lockTaken = false;
             bool removed;
@@ -275,8 +276,8 @@ namespace Exomia.Network
 
             if (removed)
             {
-                OnClientDisconnected(arg0);
-                ClientDisconnected?.Invoke(arg0);
+                OnClientDisconnected(arg0, reason);
+                ClientDisconnected?.Invoke(arg0, reason);
             }
         }
 
@@ -284,7 +285,8 @@ namespace Exomia.Network
         ///     called then the client is connected
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
-        protected virtual void OnClientDisconnected(T arg0) { }
+        /// <param name="reason">DisconnectReason</param>
+        protected virtual void OnClientDisconnected(T arg0, DisconnectReason reason) { }
 
         internal virtual void OnDefaultCommand(T arg0, uint commandid, byte[] data, int offset, int length,
             uint responseid) { }

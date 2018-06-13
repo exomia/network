@@ -99,9 +99,12 @@
   <ItemGroup>
     <Compile Include="Buffers\ByteArrayPool.cs" />
     <Compile Include="Client.cs" />
+    <Compile Include="rem_ClientV2.cs" />
     <Compile Include="CommandID.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DELEGATES.cs" />
+    <Compile Include="DisconnectReason.cs" />
+    <Compile Include="EncryptionMode.cs" />
     <Compile Include="Extensions\ClassExt.cs" />
     <Compile Include="Extensions\SocketExt.cs" />
     <Compile Include="Extensions\StructExt.cs" />
@@ -118,6 +121,7 @@
     <Compile Include="SocketMode.cs" />
     <Compile Include="STRUCTS.cs" />
     <Compile Include="TCP\TCPServerBase.cs" />
+    <Compile Include="TCP\rem_TcpServerV2Base.cs" />
     <Compile Include="UDP\UDPServerBase.cs" />
   </ItemGroup>
   <ItemGroup>

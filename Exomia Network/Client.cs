@@ -43,7 +43,7 @@ using LZ4;
 namespace Exomia.Network
 {
     /// <inheritdoc cref="IClient" />
-    public sealed class Client : IClient, IDisposable
+    public sealed class Client : IClient
     {
         #region Variables
 
@@ -126,7 +126,10 @@ namespace Exomia.Network
 
             _manuelResetEvent = new ManualResetEvent(false);
 
-            _state = new ClientStateObject(new byte[maxPacketSize > 0 ? maxPacketSize : Constants.PACKET_SIZE_MAX]);
+            _state = new ClientStateObject(
+                new byte[(maxPacketSize > 0) & (maxPacketSize < Constants.PACKET_SIZE_MAX)
+                    ? maxPacketSize
+                    : Constants.PACKET_SIZE_MAX]);
         }
 
         /// <summary>
@@ -144,19 +147,7 @@ namespace Exomia.Network
         /// <inheritdoc />
         public bool Connect(SocketMode mode, string serverAddress, int port, int timeout = 10)
         {
-            if (_clientSocket != null)
-            {
-                try
-                {
-                    _clientSocket.Shutdown(SocketShutdown.Both);
-                    _clientSocket.Close(5000);
-                    _clientSocket = null;
-                }
-                catch
-                {
-                    /* IGNORE */
-                }
-            }
+            Disconnect();
 
             _serverAddress = serverAddress;
             _port = port;
@@ -200,6 +191,25 @@ namespace Exomia.Network
             return false;
         }
 
+        /// <inheritdoc />
+        public void Disconnect()
+        {
+            if (_clientSocket != null)
+            {
+                Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
+                try
+                {
+                    _clientSocket.Shutdown(SocketShutdown.Both);
+                    _clientSocket.Close(5000);
+                }
+                catch
+                {
+                    /* IGNORE */
+                }
+                _clientSocket = null;
+            }
+        }
+
         private void ReceiveAsync()
         {
             try
@@ -207,7 +217,14 @@ namespace Exomia.Network
                 _clientSocket.BeginReceive(
                     _state.Buffer, 0, _state.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, null);
             }
-            catch { OnDisconnected(); }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
+            }
+            catch
+            {
+                Disconnect(DisconnectReason.Error);
+            }
         }
 
         private unsafe void ReceiveAsyncCallback(IAsyncResult iar)
@@ -217,13 +234,18 @@ namespace Exomia.Network
             {
                 if ((length = _clientSocket.EndReceive(iar)) <= 0)
                 {
-                    OnDisconnected();
+                    Disconnect(DisconnectReason.Unspecified);
                     return;
                 }
             }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
+                return;
+            }
             catch
             {
-                OnDisconnected();
+                Disconnect(DisconnectReason.Error);
                 return;
             }
 
@@ -366,9 +388,9 @@ namespace Exomia.Network
             ByteArrayPool.Return(data);
         }
 
-        private void OnDisconnected()
+        private void Disconnect(DisconnectReason reason)
         {
-            Disconnected?.Invoke(this);
+            Disconnected?.Invoke(this, reason);
         }
 
         #endregion
@@ -671,11 +693,17 @@ namespace Exomia.Network
             {
                 _clientSocket.BeginSend(
                     send, 0, size, SocketFlags.None, SendDataCallback, send);
+                return;
+            }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
             }
             catch
             {
-                /* IGNORE */
+                Disconnect(DisconnectReason.Error);
             }
+            ByteArrayPool.Return(send);
         }
 
         private void SendDataCallback(IAsyncResult iar)
@@ -684,15 +712,20 @@ namespace Exomia.Network
             {
                 if (_clientSocket.EndSend(iar) <= 0)
                 {
-                    OnDisconnected();
+                    Disconnect(DisconnectReason.Error);
                 }
-                byte[] send = (byte[])iar.AsyncState;
-                ByteArrayPool.Return(send);
+            }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
             }
             catch
             {
-                /* IGNORE */
+                Disconnect(DisconnectReason.Error);
             }
+
+            byte[] send = (byte[])iar.AsyncState;
+            ByteArrayPool.Return(send);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -747,20 +780,7 @@ namespace Exomia.Network
             {
                 if (disposing)
                 {
-                    try
-                    {
-                        if (_clientSocket != null)
-                        {
-                            Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
-                            _clientSocket.Shutdown(SocketShutdown.Both);
-                            _clientSocket.Close(5000);
-                        }
-                    }
-                    catch
-                    {
-                        /* IGNORE */
-                    }
-                    _clientSocket = null;
+                    Disconnect();
                 }
                 _disposed = true;
             }

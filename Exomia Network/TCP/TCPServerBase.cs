@@ -86,6 +86,10 @@ namespace Exomia.Network.TCP
             {
                 _listener.BeginAccept(AcceptCallback, null);
             }
+            catch (ObjectDisposedException)
+            {
+                /* SOCKET CLOSED */
+            }
             catch
             {
                 /* IGNORE */
@@ -110,7 +114,7 @@ namespace Exomia.Network.TCP
                         {
                             if (arg0.EndSend(iar) <= 0)
                             {
-                                InvokeClientDisconnected(arg0);
+                                InvokeClientDisconnected(arg0, DisconnectReason.Unspecified);
                             }
                         }
                         finally
@@ -118,11 +122,12 @@ namespace Exomia.Network.TCP
                             ByteArrayPool.Return(send);
                         }
                     }, null);
+                return;
             }
-            catch
-            {
-                ByteArrayPool.Return(send);
-            }
+            catch (ObjectDisposedException) { InvokeClientDisconnected(arg0, DisconnectReason.Aborted); }
+            catch { InvokeClientDisconnected(arg0, DisconnectReason.Error); }
+
+            ByteArrayPool.Return(send);
         }
 
         private void AcceptCallback(IAsyncResult ar)
@@ -137,6 +142,11 @@ namespace Exomia.Network.TCP
                 };
 
                 ReceiveAsync(state);
+            }
+            catch (ObjectDisposedException)
+            {
+                /* SOCKET CLOSED */
+                return;
             }
             catch
             {
@@ -153,7 +163,8 @@ namespace Exomia.Network.TCP
                 state.Socket.BeginReceive(
                     state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveDataCallback, state);
             }
-            catch { InvokeClientDisconnected(state.Socket); }
+            catch (ObjectDisposedException) { InvokeClientDisconnected(state.Socket, DisconnectReason.Aborted); }
+            catch { InvokeClientDisconnected(state.Socket, DisconnectReason.Error); }
         }
 
         private unsafe void ReceiveDataCallback(IAsyncResult iar)
@@ -164,13 +175,18 @@ namespace Exomia.Network.TCP
             {
                 if ((length = state.Socket.EndReceive(iar)) <= 0)
                 {
-                    InvokeClientDisconnected(state.Socket);
+                    InvokeClientDisconnected(state.Socket, DisconnectReason.Unspecified);
                     return;
                 }
             }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnected(state.Socket, DisconnectReason.Aborted);
+                return;
+            }
             catch
             {
-                InvokeClientDisconnected(state.Socket);
+                InvokeClientDisconnected(state.Socket, DisconnectReason.Error);
                 return;
             }
 

@@ -28,26 +28,11 @@ using Exomia.Network.Serialization;
 
 namespace Exomia.Network
 {
-    /// <summary>
-    ///     CryptographyMode
-    /// </summary>
-    public enum EncryptionMode : byte
-    {
-        /// <summary>
-        ///     None
-        /// </summary>
-        None = 0,
-
-        /// <summary>
-        ///     End2End
-        /// </summary>
-        End2End = 0b10001
-    }
-
+    /// <inheritdoc />
     /// <summary>
     ///     IClient interface
     /// </summary>
-    public interface IClient
+    public interface IClient : IDisposable
     {
         #region Methods
 
@@ -60,6 +45,11 @@ namespace Exomia.Network
         /// <param name="timeout"></param>
         /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
         bool Connect(SocketMode mode, string serverAddress, int port, int timeout = 10);
+
+        /// <summary>
+        ///     call to disconnect from a server
+        /// </summary>
+        void Disconnect();
 
         /// <summary>
         ///     send data to the server
