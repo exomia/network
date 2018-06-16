@@ -47,6 +47,18 @@ namespace Exomia.Network
         private const int INITIAL_CLIENT_QUEUE_SIZE = 32;
 
         /// <summary>
+        /// </summary>
+        protected const int CLOSE_TIMEOUT = 10;
+
+        /// <summary>
+        /// </summary>
+        protected const byte RECEIVE_FLAG = 0b0000_0001;
+
+        /// <summary>
+        /// </summary>
+        protected const byte SEND_FLAG = 0b0000_0010;
+
+        /// <summary>
         ///     called than a client is connected
         /// </summary>
         public event ClientActionHandler<T> ClientConnected;
@@ -77,6 +89,11 @@ namespace Exomia.Network
         ///     port
         /// </summary>
         protected int _port;
+
+        /// <summary>
+        ///     state
+        /// </summary>
+        protected byte _state;
 
         #endregion
 
@@ -127,6 +144,7 @@ namespace Exomia.Network
 
             if (OnRun(port, out _listener))
             {
+                _state = RECEIVE_FLAG | SEND_FLAG;
                 ListenAsync();
                 return true;
             }
@@ -162,83 +180,53 @@ namespace Exomia.Network
                 case CommandID.PING:
                 {
                     SendTo(arg0, CommandID.PING, data, offset, length, responseid);
-                    break;
                 }
-                case CommandID.CLIENTINFO:
-                {
-                    bool lockTaken = false;
-                    try
-                    {
-                        _clientsLock.Enter(ref lockTaken);
-                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
-                        {
-                            data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
-                            sClient.SetClientInfo(clientinfoStruct);
-                        }
-                    }
-                    finally
-                    {
-                        if (lockTaken) { _clientsLock.Exit(false); }
-                    }
                     break;
-                }
                 case CommandID.CONNECT:
                 {
                     InvokeClientConnected(arg0);
                     SendTo(arg0, CommandID.CONNECT, data, offset, length, responseid);
-                    break;
                 }
+                    break;
+                case CommandID.CLIENTINFO:
+                {
+                    if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                    {
+                        data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
+                        sClient.SetClientInfo(clientinfoStruct);
+                    }
+                }
+                    break;
                 case CommandID.DISCONNECT:
                 {
-                    InvokeClientDisconnected(arg0, DisconnectReason.Graceful);
-                    break;
+                    InvokeClientDisconnect(arg0, DisconnectReason.Graceful);
                 }
+                    break;
                 default:
-                    if (commandid > Constants.USER_COMMAND_LIMIT)
+                {
+                    if (_clients.TryGetValue(arg0, out TServerClient sClient))
                     {
-                        OnDefaultCommand(arg0, commandid, data, offset, length, responseid);
-                    }
-                    else if (_dataReceivedCallbacks.TryGetValue(
-                        commandid, out ServerClientEventEntry<T, TServerClient> scee))
-                    {
-                        Packet packet = new Packet(data, offset, length);
-                        scee._deserialize.BeginInvoke(
-                            in packet, iar =>
-                            {
-                                object res = scee._deserialize.EndInvoke(in packet, iar);
-                                ByteArrayPool.Return(data);
+                        if (commandid <= Constants.USER_COMMAND_LIMIT && _dataReceivedCallbacks.TryGetValue(
+                                commandid, out ServerClientEventEntry<T, TServerClient> scee))
+                        {
+                            sClient.SetLastReceivedPacketTimeStamp();
 
-                                if (res != null) { scee.RaiseAsync(this, arg0, res, responseid); }
-                            }, null);
-                        return;
+                            Packet packet = new Packet(data, offset, length);
+                            scee._deserialize.BeginInvoke(
+                                in packet, iar =>
+                                {
+                                    object res = scee._deserialize.EndInvoke(in packet, iar);
+                                    ByteArrayPool.Return(data);
+
+                                    if (res != null) { scee.RaiseAsync(this, arg0, res, responseid, sClient); }
+                                }, null);
+                            return;
+                        }
                     }
+                }
                     break;
             }
             ByteArrayPool.Return(data);
-        }
-
-        /// <summary>
-        ///     needs to be called than a new client is connected
-        /// </summary>
-        /// <param name="arg0">Socket|EndPoint</param>
-        protected void InvokeClientConnected(T arg0)
-        {
-            if (CreateServerClient(arg0, out TServerClient serverClient))
-            {
-                bool lockTaken = false;
-                try
-                {
-                    _clientsLock.Enter(ref lockTaken);
-                    _clients.Add(arg0, serverClient);
-                }
-                finally
-                {
-                    if (lockTaken) { _clientsLock.Exit(false); }
-                }
-            }
-
-            OnClientConnected(arg0);
-            ClientConnected?.Invoke(arg0);
         }
 
         /// <summary>
@@ -260,7 +248,7 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="reason">DisconnectReason</param>
-        protected void InvokeClientDisconnected(T arg0, DisconnectReason reason)
+        protected void InvokeClientDisconnect(T arg0, DisconnectReason reason)
         {
             bool lockTaken = false;
             bool removed;
@@ -279,6 +267,8 @@ namespace Exomia.Network
                 OnClientDisconnected(arg0, reason);
                 ClientDisconnected?.Invoke(arg0, reason);
             }
+
+            OnAfterClientDisconnect(arg0);
         }
 
         /// <summary>
@@ -288,8 +278,31 @@ namespace Exomia.Network
         /// <param name="reason">DisconnectReason</param>
         protected virtual void OnClientDisconnected(T arg0, DisconnectReason reason) { }
 
-        internal virtual void OnDefaultCommand(T arg0, uint commandid, byte[] data, int offset, int length,
-            uint responseid) { }
+        /// <summary>
+        ///     called after <see cref="InvokeClientDisconnect" />.
+        /// </summary>
+        /// <param name="arg0">Socket|EndPoint</param>
+        protected virtual void OnAfterClientDisconnect(T arg0) { }
+
+        private void InvokeClientConnected(T arg0)
+        {
+            if (CreateServerClient(arg0, out TServerClient serverClient))
+            {
+                bool lockTaken = false;
+                try
+                {
+                    _clientsLock.Enter(ref lockTaken);
+                    _clients.Add(arg0, serverClient);
+                }
+                finally
+                {
+                    if (lockTaken) { _clientsLock.Exit(false); }
+                }
+
+                OnClientConnected(arg0);
+                ClientConnected?.Invoke(arg0);
+            }
+        }
 
         #endregion
 
@@ -432,13 +445,17 @@ namespace Exomia.Network
         private void BeginSendDataTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid)
         {
             if (_listener == null) { return; }
-            Serialization.Serialization.Serialize(
-                commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
-            BeginSendDataTo(arg0, send, 0, size);
+            if ((_state & SEND_FLAG) == SEND_FLAG)
+            {
+                Serialization.Serialization.Serialize(
+                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
+                BeginSendDataTo(arg0, send, 0, size);
+            }
         }
 
         /// <summary>
         ///     send the data to the client
+        ///     its only called if the SEND_FLAG is set in the _state variable
         /// </summary>
         /// <param name="arg0">Socket|EndPoint</param>
         /// <param name="send">data to send</param>
@@ -502,7 +519,7 @@ namespace Exomia.Network
                     try
                     {
                         _listener?.Shutdown(SocketShutdown.Both);
-                        _listener?.Close(5000);
+                        _listener?.Close(CLOSE_TIMEOUT);
                     }
                     catch
                     {
@@ -510,6 +527,9 @@ namespace Exomia.Network
                     }
                     _listener = null;
                 }
+
+                _state = 0;
+
                 _disposed = true;
             }
         }

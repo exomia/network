@@ -92,14 +92,6 @@ namespace Exomia.Network
             _arg0 = arg0;
         }
 
-        /// <summary>
-        ///     ServerClientBase destructor
-        /// </summary>
-        ~ServerClientBase()
-        {
-            Dispose(false);
-        }
-
         #endregion
 
         #region Methods
@@ -117,39 +109,6 @@ namespace Exomia.Network
         internal void SetLastReceivedPacketTimeStamp()
         {
             _lastReceivedPacketTimeStamp = DateTime.Now;
-        }
-
-        #endregion
-
-        #region IDisposable Support
-
-        private bool _disposed;
-
-        private void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    /* USER CODE */
-                    if (_arg0 is IDisposable disposable)
-                    {
-                        disposable.Dispose();
-                    }
-                    _arg0 = null;
-                    ClientInfoChanged = null;
-                }
-                _disposed = true;
-            }
-        }
-
-        /// <summary>
-        ///     Dispose
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         #endregion

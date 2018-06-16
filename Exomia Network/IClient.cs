@@ -28,6 +28,37 @@ using Exomia.Network.Serialization;
 
 namespace Exomia.Network
 {
+    /// <summary>
+    ///     SendError enum
+    /// </summary>
+    public enum SendError
+    {
+        /// <summary>
+        ///     No error, all good
+        /// </summary>
+        None,
+
+        /// <summary>
+        ///     A socket exception is occured
+        /// </summary>
+        Socket,
+
+        /// <summary>
+        ///     The socket was disposed
+        /// </summary>
+        Disposed,
+
+        /// <summary>
+        ///     The SEND_FLAG is not set
+        /// </summary>
+        Invalid,
+
+        /// <summary>
+        ///     Unknown error occured
+        /// </summary>
+        Unknown
+    }
+
     /// <inheritdoc />
     /// <summary>
     ///     IClient interface
@@ -58,14 +89,14 @@ namespace Exomia.Network
         /// <param name="data">data</param>
         /// <param name="offset">offset</param>
         /// <param name="lenght">lenght of data</param>
-        void Send(uint commandid, byte[] data, int offset, int lenght);
+        SendError Send(uint commandid, byte[] data, int offset, int lenght);
 
         /// <summary>
         ///     send data to the server
         /// </summary>
         /// <param name="commandid">command id</param>
         /// <param name="serializable">ISerializable</param>
-        void Send(uint commandid, ISerializable serializable);
+        SendError Send(uint commandid, ISerializable serializable);
 
         /// <summary>
         ///     send data to the server
@@ -73,7 +104,7 @@ namespace Exomia.Network
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="commandid">command id</param>
         /// <param name="data">struct data</param>
-        void Send<T>(uint commandid, in T data) where T : struct;
+        SendError Send<T>(uint commandid, in T data) where T : struct;
 
         /// <summary>
         ///     send data to the server
@@ -225,7 +256,7 @@ namespace Exomia.Network
         /// <summary>
         ///     send a ping command to the server
         /// </summary>
-        void SendPing();
+        SendError SendPing();
 
         /// <summary>
         ///     send a ping command to the server
@@ -237,7 +268,7 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="clientID">client id</param>
         /// <param name="clientName">client name</param>
-        void SendClientInfo(long clientID, string clientName);
+        SendError SendClientInfo(long clientID, string clientName);
 
         #endregion
     }

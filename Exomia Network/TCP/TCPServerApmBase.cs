@@ -32,7 +32,11 @@ using LZ4;
 namespace Exomia.Network.TCP
 {
     /// <inheritdoc />
-    public abstract class TcpServerBase<TServerClient> : ServerBase<Socket, TServerClient>
+    /// <summary>
+    ///     A TCP-Server build with the "Asynchronous Programming Model" (APM)
+    /// </summary>
+    /// <typeparam name="TServerClient">TServerClient</typeparam>
+    public abstract class TcpServerApmBase<TServerClient> : ServerBase<Socket, TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
         #region Variables
@@ -47,7 +51,7 @@ namespace Exomia.Network.TCP
         #region Constructors
 
         /// <inheritdoc />
-        protected TcpServerBase(int maxPacketSize = 0)
+        protected TcpServerApmBase(int maxPacketSize = 0)
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
                 ? maxPacketSize
@@ -99,12 +103,6 @@ namespace Exomia.Network.TCP
         /// <inheritdoc />
         protected override void BeginSendDataTo(Socket arg0, byte[] send, int offset, int lenght)
         {
-            if (arg0 == null)
-            {
-                ByteArrayPool.Return(send);
-                return;
-            }
-
             try
             {
                 arg0.BeginSend(
@@ -114,7 +112,7 @@ namespace Exomia.Network.TCP
                         {
                             if (arg0.EndSend(iar) <= 0)
                             {
-                                InvokeClientDisconnected(arg0, DisconnectReason.Unspecified);
+                                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
                             }
                         }
                         finally
@@ -124,10 +122,25 @@ namespace Exomia.Network.TCP
                     }, null);
                 return;
             }
-            catch (ObjectDisposedException) { InvokeClientDisconnected(arg0, DisconnectReason.Aborted); }
-            catch { InvokeClientDisconnected(arg0, DisconnectReason.Error); }
+            catch (ObjectDisposedException) { InvokeClientDisconnect(arg0, DisconnectReason.Aborted); }
+            catch (SocketException) { InvokeClientDisconnect(arg0, DisconnectReason.Error); }
+            catch { InvokeClientDisconnect(arg0, DisconnectReason.Unspecified); }
 
             ByteArrayPool.Return(send);
+        }
+
+        /// <inheritdoc />
+        protected override void OnAfterClientDisconnect(Socket arg0)
+        {
+            try
+            {
+                arg0?.Shutdown(SocketShutdown.Both);
+                arg0?.Close(CLOSE_TIMEOUT);
+            }
+            catch
+            {
+                /* IGNORE */
+            }
         }
 
         private void AcceptCallback(IAsyncResult ar)
@@ -158,13 +171,17 @@ namespace Exomia.Network.TCP
 
         private void ReceiveAsync(ServerClientStateObject state)
         {
-            try
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
-                state.Socket.BeginReceive(
-                    state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveDataCallback, state);
+                try
+                {
+                    state.Socket.BeginReceive(
+                        state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveDataCallback, state);
+                }
+                catch (ObjectDisposedException) { InvokeClientDisconnect(state.Socket, DisconnectReason.Aborted); }
+                catch (SocketException) { InvokeClientDisconnect(state.Socket, DisconnectReason.Error); }
+                catch { InvokeClientDisconnect(state.Socket, DisconnectReason.Unspecified); }
             }
-            catch (ObjectDisposedException) { InvokeClientDisconnected(state.Socket, DisconnectReason.Aborted); }
-            catch { InvokeClientDisconnected(state.Socket, DisconnectReason.Error); }
         }
 
         private unsafe void ReceiveDataCallback(IAsyncResult iar)
@@ -175,18 +192,23 @@ namespace Exomia.Network.TCP
             {
                 if ((length = state.Socket.EndReceive(iar)) <= 0)
                 {
-                    InvokeClientDisconnected(state.Socket, DisconnectReason.Unspecified);
+                    InvokeClientDisconnect(state.Socket, DisconnectReason.Graceful);
                     return;
                 }
             }
             catch (ObjectDisposedException)
             {
-                InvokeClientDisconnected(state.Socket, DisconnectReason.Aborted);
+                InvokeClientDisconnect(state.Socket, DisconnectReason.Aborted);
+                return;
+            }
+            catch (SocketException)
+            {
+                InvokeClientDisconnect(state.Socket, DisconnectReason.Error);
                 return;
             }
             catch
             {
-                InvokeClientDisconnected(state.Socket, DisconnectReason.Error);
+                InvokeClientDisconnect(state.Socket, DisconnectReason.Unspecified);
                 return;
             }
 
@@ -194,6 +216,8 @@ namespace Exomia.Network.TCP
 
             if (dataLength == length - Constants.HEADER_SIZE)
             {
+                Socket socket = state.Socket;
+
                 uint responseID = 0;
                 byte[] data;
                 if ((h1 & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
@@ -225,7 +249,8 @@ namespace Exomia.Network.TCP
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
-                    DeserializeData(state.Socket, commandID, data, 0, l, responseID);
+                    ReceiveAsync(state);
+                    DeserializeData(socket, commandID, data, 0, l, responseID);
                 }
                 else
                 {
@@ -245,8 +270,10 @@ namespace Exomia.Network.TCP
                         Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
                     }
 
-                    DeserializeData(state.Socket, commandID, data, 0, dataLength, responseID);
+                    ReceiveAsync(state);
+                    DeserializeData(socket, commandID, data, 0, dataLength, responseID);
                 }
+                return;
             }
 
             ReceiveAsync(state);

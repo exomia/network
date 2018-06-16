@@ -35,17 +35,23 @@ namespace Exomia.Network
         public readonly TResult Result;
 
         /// <summary>
-        ///     <c>true</c> if a valid result; <c>false</c> otherwise
+        ///     SendError
         /// </summary>
-        public readonly bool Success;
+        public readonly SendError SendError;
 
-        /// <summary>
-        /// </summary>
-        /// <param name="result"></param>
-        public Response(in TResult result)
+        internal Response(in TResult result, SendError sendError)
         {
             Result = result;
-            Success = true;
+            SendError = sendError;
+        }
+
+        /// <summary>
+        ///     <c>true</c> if no SendError occured; <c>false</c> otherwise
+        /// </summary>
+        /// <param name="r">instance of Response{TResult}</param>
+        public static implicit operator bool(in Response<TResult> r)
+        {
+            return r.SendError == SendError.None;
         }
     }
 }

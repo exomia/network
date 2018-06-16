@@ -60,7 +60,8 @@ namespace Exomia.Network.Lib
             _dataReceived -= callback;
         }
 
-        public void RaiseAsync(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid)
+        public void RaiseAsync(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid,
+            TServerClient client)
         {
             if (_dataReceived != null)
             {
@@ -68,7 +69,7 @@ namespace Exomia.Network.Lib
                 for (int i = 0; i < delegates.Length; ++i)
                 {
                     ((ClientDataReceivedHandler<T, TServerClient>)delegates[i]).BeginInvoke(
-                        server, arg0, data, responseid, EndRaiseEventAsync, null);
+                        server, arg0, data, responseid, client, EndRaiseEventAsync, null);
                 }
             }
         }

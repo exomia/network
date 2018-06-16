@@ -43,12 +43,20 @@ using LZ4;
 namespace Exomia.Network
 {
     /// <inheritdoc cref="IClient" />
-    public sealed class Client : IClient
+    /// <summary>
+    ///     A TCP/UDP-Client build with the "Event-based Asynchronous Pattern" (EAP)
+    /// </summary>
+    public sealed class ClientEap : IClient
     {
         #region Variables
 
         private const int INITIAL_QUEUE_SIZE = 16;
         private const int INITIAL_TASKCOMPLETION_QUEUE_SIZE = 128;
+
+        private const int CLOSE_TIMEOUT = 10;
+
+        private const byte RECEIVE_FLAG = 0b0000_0001;
+        private const byte SEND_FLAG = 0b0000_0010;
 
         private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(10);
 
@@ -68,20 +76,21 @@ namespace Exomia.Network
 
         private readonly ManualResetEvent _manuelResetEvent;
 
-        private readonly ClientStateObject _state;
-
+        private readonly SocketAsyncEventArgs _receiveEventArgs;
+        private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
         private readonly Dictionary<uint, TaskCompletionSource<Packet>> _taskCompletionSources;
 
         private Socket _clientSocket;
 
         private SpinLock _dataReceivedCallbacksLock;
 
-        private SpinLock _lock;
+        private SpinLock _lockTaskCompletionSources;
 
         private int _port;
-
         private uint _responseID;
         private string _serverAddress;
+
+        private byte _state;
 
         #endregion
 
@@ -110,14 +119,14 @@ namespace Exomia.Network
         /// <summary>
         ///     ClientBase constructor
         /// </summary>
-        public Client(ushort maxPacketSize = 0)
+        public ClientEap(ushort maxPacketSize = 0)
         {
             _clientSocket = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
             _taskCompletionSources =
                 new Dictionary<uint, TaskCompletionSource<Packet>>(INITIAL_TASKCOMPLETION_QUEUE_SIZE);
 
-            _lock = new SpinLock(Debugger.IsAttached);
+            _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
             _responseID = 1;
 
@@ -126,16 +135,21 @@ namespace Exomia.Network
 
             _manuelResetEvent = new ManualResetEvent(false);
 
-            _state = new ClientStateObject(
-                new byte[(maxPacketSize > 0) & (maxPacketSize < Constants.PACKET_SIZE_MAX)
-                    ? maxPacketSize
-                    : Constants.PACKET_SIZE_MAX]);
+            int mps = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+                ? maxPacketSize
+                : Constants.PACKET_SIZE_MAX;
+
+            _receiveEventArgs = new SocketAsyncEventArgs();
+            _receiveEventArgs.Completed += ReceiveAsyncCompleted;
+            _receiveEventArgs.SetBuffer(new byte[mps], 0, mps);
+
+            _sendEventArgsPool = new SocketAsyncEventArgsPool(32);
         }
 
         /// <summary>
         ///     ClientBase destructor
         /// </summary>
-        ~Client()
+        ~ClientEap()
         {
             Dispose(false);
         }
@@ -147,7 +161,7 @@ namespace Exomia.Network
         /// <inheritdoc />
         public bool Connect(SocketMode mode, string serverAddress, int port, int timeout = 10)
         {
-            Disconnect();
+            Disconnect(DisconnectReason.Graceful);
 
             _serverAddress = serverAddress;
             _port = port;
@@ -179,14 +193,19 @@ namespace Exomia.Network
 
                 if (result)
                 {
+                    _state = RECEIVE_FLAG | SEND_FLAG;
                     ReceiveAsync();
-                    SendConnect();
-                    return _manuelResetEvent.WaitOne(timeout * 1000);
+                    if (SendConnect() == SendError.None)
+                    {
+                        return _manuelResetEvent.WaitOne(timeout * 1000);
+                    }
                 }
             }
             catch
             {
-                /* IGNORE */
+                _state = 0;
+                _clientSocket.Close();
+                _clientSocket = null;
             }
             return false;
         }
@@ -194,64 +213,67 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void Disconnect()
         {
-            if (_clientSocket != null)
+            Disconnect(DisconnectReason.Graceful);
+        }
+
+        private void Disconnect(DisconnectReason reason)
+        {
+            if (_clientSocket != null && _state != 0)
             {
-                Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
+                if (reason != DisconnectReason.Aborted && reason != DisconnectReason.Error)
+                {
+                    Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
+                }
+
+                _state = 0;
                 try
                 {
                     _clientSocket.Shutdown(SocketShutdown.Both);
-                    _clientSocket.Close(5000);
+                    _clientSocket.Close(CLOSE_TIMEOUT);
                 }
                 catch
                 {
                     /* IGNORE */
                 }
                 _clientSocket = null;
+
+                Disconnected?.Invoke(this, reason);
             }
         }
 
         private void ReceiveAsync()
         {
-            try
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
-                _clientSocket.BeginReceive(
-                    _state.Buffer, 0, _state.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, null);
-            }
-            catch (ObjectDisposedException)
-            {
-                Disconnect(DisconnectReason.Aborted);
-            }
-            catch
-            {
-                Disconnect(DisconnectReason.Error);
+                try
+                {
+                    if (!_clientSocket.ReceiveAsync(_receiveEventArgs))
+                    {
+                        ReceiveAsyncCompleted(_receiveEventArgs.AcceptSocket, _receiveEventArgs);
+                    }
+                }
+                catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
+                catch (SocketException) { Disconnect(DisconnectReason.Error); }
+                catch { Disconnect(DisconnectReason.Unspecified); }
             }
         }
 
-        private unsafe void ReceiveAsyncCallback(IAsyncResult iar)
+        private unsafe void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
-            int length;
-            try
-            {
-                if ((length = _clientSocket.EndReceive(iar)) <= 0)
-                {
-                    Disconnect(DisconnectReason.Unspecified);
-                    return;
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-                Disconnect(DisconnectReason.Aborted);
-                return;
-            }
-            catch
+            if (e.SocketError != SocketError.Success)
             {
                 Disconnect(DisconnectReason.Error);
                 return;
             }
+            if (e.BytesTransferred <= 0)
+            {
+                Disconnect(DisconnectReason.Graceful);
+                return;
+            }
 
-            _state.Buffer.GetHeader(out uint commandID, out int dataLength, out byte h1);
+            e.Buffer.GetHeader(out uint commandID, out int dataLength, out byte h1);
 
-            if (dataLength == length - Constants.HEADER_SIZE)
+            if (dataLength == e.BytesTransferred - Constants.HEADER_SIZE)
             {
                 uint responseID = 0;
                 byte[] data;
@@ -260,7 +282,7 @@ namespace Exomia.Network
                     int l;
                     if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                     {
-                        fixed (byte* ptr = _state.Buffer)
+                        fixed (byte* ptr = e.Buffer)
                         {
                             responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
                             l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
@@ -268,46 +290,44 @@ namespace Exomia.Network
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
-                            _state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                            e.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
                     else
                     {
-                        fixed (byte* ptr = _state.Buffer)
+                        fixed (byte* ptr = e.Buffer)
                         {
                             l = *(int*)(ptr + Constants.HEADER_SIZE);
                         }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
-                            _state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                            e.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
                     ReceiveAsync();
-
                     DeserializeData(commandID, data, 0, l, responseID);
                 }
                 else
                 {
                     if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                     {
-                        fixed (byte* ptr = _state.Buffer)
+                        fixed (byte* ptr = e.Buffer)
                         {
                             responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
                         }
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                        Buffer.BlockCopy(e.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
                     }
                     else
                     {
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(_state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                        Buffer.BlockCopy(e.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
                     }
 
                     ReceiveAsync();
-
                     DeserializeData(commandID, data, 0, dataLength, responseID);
                 }
                 return;
@@ -324,7 +344,7 @@ namespace Exomia.Network
                 bool lockTaken = false;
                 try
                 {
-                    _lock.Enter(ref lockTaken);
+                    _lockTaskCompletionSources.Enter(ref lockTaken);
                     if (_taskCompletionSources.TryGetValue(responseid, out cs))
                     {
                         _taskCompletionSources.Remove(responseid);
@@ -332,7 +352,7 @@ namespace Exomia.Network
                 }
                 finally
                 {
-                    if (lockTaken) { _lock.Exit(false); }
+                    if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
                 }
                 if (cs != null && !cs.TrySetResult(
                         new Packet(data, offset, length)))
@@ -386,25 +406,6 @@ namespace Exomia.Network
                 }
             }
             ByteArrayPool.Return(data);
-        }
-
-        private void Disconnect(DisconnectReason reason)
-        {
-            Disconnected?.Invoke(this, reason);
-        }
-
-        #endregion
-
-        #region Nested
-
-        private struct ClientStateObject
-        {
-            public readonly byte[] Buffer;
-
-            public ClientStateObject(byte[] buffer)
-            {
-                Buffer = buffer;
-            }
         }
 
         #endregion
@@ -525,9 +526,9 @@ namespace Exomia.Network
         #region Send
 
         /// <inheritdoc />
-        public void Send(uint commandid, byte[] data, int offset, int lenght)
+        public SendError Send(uint commandid, byte[] data, int offset, int lenght)
         {
-            BeginSendData(commandid, data, offset, lenght, 0);
+            return BeginSendData(commandid, data, offset, lenght, 0);
         }
 
         /// <inheritdoc />
@@ -564,14 +565,14 @@ namespace Exomia.Network
                 bool lockTaken = false;
                 try
                 {
-                    _lock.Enter(ref lockTaken);
+                    _lockTaskCompletionSources.Enter(ref lockTaken);
                     responseID = _responseID++;
                     if (responseID == 0) { responseID++; }
                     _taskCompletionSources.Add(responseID, tcs);
                 }
                 finally
                 {
-                    if (lockTaken) { _lock.Exit(false); }
+                    if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
                 }
 
                 cts.Token.Register(
@@ -580,33 +581,47 @@ namespace Exomia.Network
                         bool lockTaken1 = false;
                         try
                         {
-                            _lock.Enter(ref lockTaken1);
+                            _lockTaskCompletionSources.Enter(ref lockTaken1);
                             _taskCompletionSources.Remove(_responseID);
                         }
                         finally
                         {
-                            if (lockTaken1) { _lock.Exit(false); }
+                            if (lockTaken1) { _lockTaskCompletionSources.Exit(false); }
                         }
-                        tcs.TrySetResult(new Packet());
+                        tcs.TrySetResult(default);
                     }, false);
-                BeginSendData(commandid, data, offset, lenght, responseID);
 
-                Packet packet = await tcs.Task;
-                if (packet.Buffer != null && deserialize != null)
+                SendError sendError = BeginSendData(commandid, data, offset, lenght, responseID);
+                if (sendError == SendError.None)
                 {
-                    TResult result = deserialize(in packet);
-                    ByteArrayPool.Return(packet.Buffer);
-                    return new Response<TResult>(result);
+                    Packet packet = await tcs.Task;
+                    if (packet.Buffer != null && deserialize != null)
+                    {
+                        TResult result = deserialize(in packet);
+                        ByteArrayPool.Return(packet.Buffer);
+                        return new Response<TResult>(result, SendError.None);
+                    }
                 }
-                return new Response<TResult>();
+
+                lockTaken = false;
+                try
+                {
+                    _lockTaskCompletionSources.Enter(ref lockTaken);
+                    _taskCompletionSources.Remove(_responseID);
+                }
+                finally
+                {
+                    if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
+                }
+                return new Response<TResult>(default, sendError);
             }
         }
 
         /// <inheritdoc />
-        public void Send(uint commandid, ISerializable serializable)
+        public SendError Send(uint commandid, ISerializable serializable)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            BeginSendData(commandid, dataB, 0, length, 0);
+            return BeginSendData(commandid, dataB, 0, length, 0);
         }
 
         /// <inheritdoc />
@@ -642,10 +657,10 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public void Send<T>(uint commandid, in T data) where T : struct
+        public SendError Send<T>(uint commandid, in T data) where T : struct
         {
             data.ToBytesUnsafe(out byte[] dataB, out int lenght);
-            BeginSendData(commandid, dataB, 0, lenght, 0);
+            return BeginSendData(commandid, dataB, 0, lenght, 0);
         }
 
         /// <inheritdoc />
@@ -682,50 +697,60 @@ namespace Exomia.Network
             return SendR(commandid, dataB, 0, lenght, deserialize, timeout);
         }
 
-        private void BeginSendData(uint commandid, byte[] data, int offset, int lenght, uint responseID)
+        private SendError BeginSendData(uint commandid, byte[] data, int offset, int lenght, uint responseID)
         {
-            if (_clientSocket == null) { return; }
+            if ((_state & SEND_FLAG) == SEND_FLAG)
+            {
+                Serialization.Serialization.Serialize(
+                    commandid, data, offset, lenght, responseID, EncryptionMode.None, out byte[] send, out int size);
 
-            Serialization.Serialization.Serialize(
-                commandid, data, offset, lenght, responseID, EncryptionMode.None, out byte[] send, out int size);
-
-            try
-            {
-                _clientSocket.BeginSend(
-                    send, 0, size, SocketFlags.None, SendDataCallback, send);
-                return;
-            }
-            catch (ObjectDisposedException)
-            {
-                Disconnect(DisconnectReason.Aborted);
-            }
-            catch
-            {
-                Disconnect(DisconnectReason.Error);
-            }
-            ByteArrayPool.Return(send);
-        }
-
-        private void SendDataCallback(IAsyncResult iar)
-        {
-            try
-            {
-                if (_clientSocket.EndSend(iar) <= 0)
+                SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
+                if (sendEventArgs == null)
                 {
+                    sendEventArgs = new SocketAsyncEventArgs();
+                    sendEventArgs.Completed += SendAsyncCompleted;
+                }
+
+                sendEventArgs.SetBuffer(send, 0, size);
+
+                try
+                {
+                    if (!_clientSocket.SendAsync(sendEventArgs))
+                    {
+                        SendAsyncCompleted(_clientSocket, sendEventArgs);
+                    }
+                    return SendError.None;
+                }
+                catch (ObjectDisposedException)
+                {
+                    ByteArrayPool.Return(send);
+                    Disconnect(DisconnectReason.Aborted);
+                    return SendError.Disposed;
+                }
+                catch (SocketException)
+                {
+                    ByteArrayPool.Return(send);
                     Disconnect(DisconnectReason.Error);
+                    return SendError.Socket;
+                }
+                catch
+                {
+                    ByteArrayPool.Return(send);
+                    Disconnect(DisconnectReason.Unspecified);
+                    return SendError.Unknown;
                 }
             }
-            catch (ObjectDisposedException)
-            {
-                Disconnect(DisconnectReason.Aborted);
-            }
-            catch
+            return SendError.Invalid;
+        }
+
+        private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
             {
                 Disconnect(DisconnectReason.Error);
             }
-
-            byte[] send = (byte[])iar.AsyncState;
-            ByteArrayPool.Return(send);
+            ByteArrayPool.Return(e.Buffer);
+            _sendEventArgsPool.Return(e);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -736,9 +761,9 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public void SendPing()
+        public SendError SendPing()
         {
-            Send(CommandID.PING, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
+            return Send(CommandID.PING, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
         }
 
         /// <inheritdoc />
@@ -749,16 +774,16 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public void SendClientInfo(long clientID, string clientName)
+        public SendError SendClientInfo(long clientID, string clientName)
         {
-            Send(
+            return Send(
                 CommandID.CLIENTINFO,
                 new CLIENTINFO_STRUCT { ClientID = clientID, ClientName = clientName });
         }
 
-        private void SendConnect()
+        private SendError SendConnect()
         {
-            Send(CommandID.CONNECT, new CONNECT_STRUCT { Checksum = _connectChecksum });
+            return Send(CommandID.CONNECT, new CONNECT_STRUCT { Checksum = _connectChecksum });
         }
 
         #endregion
@@ -780,7 +805,7 @@ namespace Exomia.Network
             {
                 if (disposing)
                 {
-                    Disconnect();
+                    Disconnect(DisconnectReason.Graceful);
                 }
                 _disposed = true;
             }

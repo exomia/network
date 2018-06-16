@@ -98,8 +98,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Buffers\ByteArrayPool.cs" />
-    <Compile Include="Client.cs" />
-    <Compile Include="rem_ClientV2.cs" />
+    <Compile Include="ClientApm.cs" />
+    <Compile Include="ClientEap.cs" />
     <Compile Include="CommandID.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DELEGATES.cs" />
@@ -120,8 +120,9 @@
     <Compile Include="ServerClientBase.cs" />
     <Compile Include="SocketMode.cs" />
     <Compile Include="STRUCTS.cs" />
-    <Compile Include="TCP\TCPServerBase.cs" />
-    <Compile Include="TCP\rem_TcpServerV2Base.cs" />
+    <Compile Include="SocketAsyncEventArgsPool.cs" />
+    <Compile Include="TCP\TCPServerApmBase.cs" />
+    <Compile Include="TCP\TcpServerEapBase.cs" />
     <Compile Include="UDP\UDPServerBase.cs" />
   </ItemGroup>
   <ItemGroup>
