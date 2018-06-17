@@ -304,7 +304,7 @@ void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : 
 	- server only accepts requests from connected clients
 	- better abstraction and cleaner code
 	- impl. SendError to handle send failures
-	- 
+	- ...
 
 ## License
 
