@@ -29,8 +29,6 @@ namespace Exomia.Network
     /// </summary>
     public static class CommandID
     {
-        #region Variables
-
         /// <summary>
         ///     RESPONSE_ID
         /// </summary>
@@ -55,7 +53,5 @@ namespace Exomia.Network
         ///     PING_ID
         /// </summary>
         public const uint PING = 16379;
-
-        #endregion
     }
 }

@@ -31,17 +31,12 @@ namespace Exomia.Network.Buffers
 {
     internal static class ByteArrayPool
     {
-        #region Variables
-
         private static SpinLock s_lock;
+
         private static readonly byte[][][] s_buffers;
         private static readonly uint[] s_index;
         private static readonly int[] s_bufferLength;
         private static readonly int[] s_bufferCount;
-
-        #endregion
-
-        #region Constructors
 
         static ByteArrayPool()
         {
@@ -64,10 +59,6 @@ namespace Exomia.Network.Buffers
             s_index = new uint[s_bufferLength.Length];
             s_buffers = new byte[s_bufferLength.Length][][];
         }
-
-        #endregion
-
-        #region Methods
 
         internal static byte[] Rent(int size)
         {
@@ -157,7 +148,5 @@ namespace Exomia.Network.Buffers
 
             return index + (int)br;
         }
-
-        #endregion
     }
 }

@@ -41,11 +41,6 @@ namespace Exomia.Network
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        #region Variables
-
-        private const int INITIAL_QUEUE_SIZE = 16;
-        private const int INITIAL_CLIENT_QUEUE_SIZE = 32;
-
         /// <summary>
         /// </summary>
         protected const int CLOSE_TIMEOUT = 10;
@@ -57,6 +52,9 @@ namespace Exomia.Network
         /// <summary>
         /// </summary>
         protected const byte SEND_FLAG = 0b0000_0010;
+
+        private const int INITIAL_QUEUE_SIZE = 16;
+        private const int INITIAL_CLIENT_QUEUE_SIZE = 32;
 
         /// <summary>
         ///     called than a client is connected
@@ -73,13 +71,6 @@ namespace Exomia.Network
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
 
-        private readonly Dictionary<uint, ServerClientEventEntry<T, TServerClient>> _dataReceivedCallbacks;
-
-        private SpinLock _clientsLock;
-        private SpinLock _dataReceivedCallbacksLock;
-
-        private bool _isRunning;
-
         /// <summary>
         ///     Socket
         /// </summary>
@@ -95,9 +86,12 @@ namespace Exomia.Network
         /// </summary>
         protected byte _state;
 
-        #endregion
+        private readonly Dictionary<uint, ServerClientEventEntry<T, TServerClient>> _dataReceivedCallbacks;
 
-        #region Properties
+        private SpinLock _clientsLock;
+        private SpinLock _dataReceivedCallbacksLock;
+
+        private bool _isRunning;
 
         /// <summary>
         ///     Port
@@ -106,10 +100,6 @@ namespace Exomia.Network
         {
             get { return _port; }
         }
-
-        #endregion
-
-        #region Constructors
 
         /// <summary>
         ///     ServerBase constructor
@@ -130,10 +120,6 @@ namespace Exomia.Network
         {
             Dispose(false);
         }
-
-        #endregion
-
-        #region Methods
 
         /// <inheritdoc />
         public bool Run(int port)
@@ -180,14 +166,14 @@ namespace Exomia.Network
                 case CommandID.PING:
                 {
                     SendTo(arg0, CommandID.PING, data, offset, length, responseid);
-                }
                     break;
+                }
                 case CommandID.CONNECT:
                 {
                     InvokeClientConnected(arg0);
                     SendTo(arg0, CommandID.CONNECT, data, offset, length, responseid);
-                }
                     break;
+                }
                 case CommandID.CLIENTINFO:
                 {
                     if (_clients.TryGetValue(arg0, out TServerClient sClient))
@@ -195,13 +181,13 @@ namespace Exomia.Network
                         data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
                         sClient.SetClientInfo(clientinfoStruct);
                     }
-                }
                     break;
+                }
                 case CommandID.DISCONNECT:
                 {
                     InvokeClientDisconnect(arg0, DisconnectReason.Graceful);
-                }
                     break;
+                }
                 default:
                 {
                     if (_clients.TryGetValue(arg0, out TServerClient sClient))
@@ -223,8 +209,8 @@ namespace Exomia.Network
                             return;
                         }
                     }
-                }
                     break;
+                }
             }
             ByteArrayPool.Return(data);
         }
@@ -303,8 +289,6 @@ namespace Exomia.Network
                 ClientConnected?.Invoke(arg0);
             }
         }
-
-        #endregion
 
         #region Add & Remove
 
@@ -423,45 +407,32 @@ namespace Exomia.Network
         #region Send
 
         /// <inheritdoc />
-        public void SendTo(T arg0, uint commandid, byte[] data, int offset, int lenght, uint responseid)
-        {
-            BeginSendDataTo(arg0, commandid, data, offset, lenght, responseid);
-        }
+        public abstract SendError SendTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid);
+
+        //{
+        //    if (_listener == null) { return SendError.Invalid; }
+        //    if ((_state & SEND_FLAG) == SEND_FLAG)
+        //    {
+        //        Serialization.Serialization.Serialize(
+        //            commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
+        //        return BeginSendDataTo(arg0, send, 0, size);
+        //    }
+        //    return SendError.Invalid;
+        //}
 
         /// <inheritdoc />
-        public void SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid)
+        public SendError SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            BeginSendDataTo(arg0, commandid, dataB, 0, length, responseid);
+            return SendTo(arg0, commandid, dataB, 0, length, responseid);
         }
 
         /// <inheritdoc />
-        public void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : struct
+        public SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : struct
         {
             byte[] dataB = data.ToBytesUnsafe(out int length);
-            BeginSendDataTo(arg0, commandid, dataB, 0, length, responseid);
+            return SendTo(arg0, commandid, dataB, 0, length, responseid);
         }
-
-        private void BeginSendDataTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid)
-        {
-            if (_listener == null) { return; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
-            {
-                Serialization.Serialization.Serialize(
-                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
-                BeginSendDataTo(arg0, send, 0, size);
-            }
-        }
-
-        /// <summary>
-        ///     send the data to the client
-        ///     its only called if the SEND_FLAG is set in the _state variable
-        /// </summary>
-        /// <param name="arg0">Socket|EndPoint</param>
-        /// <param name="send">data to send</param>
-        /// <param name="offset">offset</param>
-        /// <param name="length">data length</param>
-        protected abstract void BeginSendDataTo(T arg0, byte[] send, int offset, int length);
 
         /// <inheritdoc />
         public void SendToAll(uint commandid, byte[] data, int offset, int length)
@@ -512,6 +483,8 @@ namespace Exomia.Network
         {
             if (!_disposed)
             {
+                _state = 0;
+
                 OnDispose(disposing);
                 if (disposing)
                 {
@@ -527,9 +500,6 @@ namespace Exomia.Network
                     }
                     _listener = null;
                 }
-
-                _state = 0;
-
                 _disposed = true;
             }
         }

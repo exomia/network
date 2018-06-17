@@ -32,8 +32,6 @@ namespace Exomia.Network.Extensions.Class
     /// </summary>
     public static class ClassExt
     {
-        #region Methods
-
         /// <summary>
         ///     returns a new deserialized object from a byte array
         /// </summary>
@@ -62,7 +60,5 @@ namespace Exomia.Network.Extensions.Class
             obj.Deserialize(arr);
             return obj;
         }
-
-        #endregion
     }
 }

@@ -24,12 +24,34 @@
 
 namespace Exomia.Network
 {
-    internal static class Constants
+    /// <summary>
+    ///     SendError enum
+    /// </summary>
+    public enum SendError
     {
-        internal const int HEADER_SIZE = 5;
+        /// <summary>
+        ///     No error, all good
+        /// </summary>
+        None,
 
-        internal const int PACKET_SIZE_MAX = 65535 - HEADER_SIZE - 8;
+        /// <summary>
+        ///     A socket exception is occured
+        /// </summary>
+        Socket,
 
-        internal const uint USER_COMMAND_LIMIT = 16350;
+        /// <summary>
+        ///     The socket was disposed
+        /// </summary>
+        Disposed,
+
+        /// <summary>
+        ///     The SEND_FLAG is not set
+        /// </summary>
+        Invalid,
+
+        /// <summary>
+        ///     Unknown error occured
+        /// </summary>
+        Unknown
     }
 }

@@ -31,8 +31,6 @@ namespace Exomia.Network.Extensions.Socket
     /// </summary>
     internal static class SocketExt
     {
-        #region Methods
-
         /// <summary>
         ///     checks if a socket is connected
         /// </summary>
@@ -75,7 +73,5 @@ namespace Exomia.Network.Extensions.Socket
             }
             return false;
         }
-
-        #endregion
     }
 }

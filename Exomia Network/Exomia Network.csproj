@@ -99,6 +99,7 @@
   <ItemGroup>
     <Compile Include="Buffers\ByteArrayPool.cs" />
     <Compile Include="ClientApm.cs" />
+    <Compile Include="ClientBase.cs" />
     <Compile Include="ClientEap.cs" />
     <Compile Include="CommandID.cs" />
     <Compile Include="Constants.cs" />
@@ -114,6 +115,7 @@
     <Compile Include="Packet.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Response.cs" />
+    <Compile Include="SendError.cs" />
     <Compile Include="Serialization\ISerializable.cs" />
     <Compile Include="Serialization\Serialisation.cs" />
     <Compile Include="ServerBase.cs" />
@@ -121,9 +123,10 @@
     <Compile Include="SocketMode.cs" />
     <Compile Include="STRUCTS.cs" />
     <Compile Include="SocketAsyncEventArgsPool.cs" />
-    <Compile Include="TCP\TCPServerApmBase.cs" />
+    <Compile Include="TCP\TcpServerApmBase.cs" />
     <Compile Include="TCP\TcpServerEapBase.cs" />
-    <Compile Include="UDP\UDPServerBase.cs" />
+    <Compile Include="UDP\UdpServerApmBase.cs" />
+    <Compile Include="UDP\UdpServerEapBase.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

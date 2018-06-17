@@ -31,24 +31,14 @@ namespace Exomia.Network.Lib
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        #region Variables
-
         private event ClientDataReceivedHandler<T, TServerClient> _dataReceived;
 
         internal readonly DeserializePacket<object> _deserialize;
-
-        #endregion
-
-        #region Constructors
 
         public ServerClientEventEntry(DeserializePacket<object> deserialize)
         {
             _deserialize = deserialize;
         }
-
-        #endregion
-
-        #region Methods
 
         public void Add(ClientDataReceivedHandler<T, TServerClient> callback)
         {
@@ -84,30 +74,18 @@ namespace Exomia.Network.Lib
                 Remove(caller);
             }
         }
-
-        #endregion
     }
 
     internal sealed class ClientEventEntry
     {
-        #region Variables
-
         private event DataReceivedHandler _dataReceived;
 
         internal readonly DeserializePacket<object> _deserialize;
-
-        #endregion
-
-        #region Constructors
 
         public ClientEventEntry(DeserializePacket<object> deserialize)
         {
             _deserialize = deserialize;
         }
-
-        #endregion
-
-        #region Methods
 
         public void Add(DataReceivedHandler callback)
         {
@@ -140,7 +118,5 @@ namespace Exomia.Network.Lib
                 Remove(caller);
             }
         }
-
-        #endregion
     }
 }

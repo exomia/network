@@ -29,60 +29,55 @@ using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
 using LZ4;
 
-namespace Exomia.Network.TCP
+namespace Exomia.Network.UDP
 {
     /// <inheritdoc />
-    /// <summary>
-    ///     A TCP-Server build with the "Event-based Asynchronous Pattern" (EAP)
-    /// </summary>
-    /// <typeparam name="TServerClient">TServerClient</typeparam>
-    public abstract class TcpServerEapBase<TServerClient> : ServerBase<Socket, TServerClient>
-        where TServerClient : ServerClientBase<Socket>
+    public abstract class UdpServerEapBase<TServerClient> : ServerBase<EndPoint, TServerClient>
+        where TServerClient : ServerClientBase<EndPoint>
     {
         /// <summary>
         ///     _maxPacketSize
         /// </summary>
         protected readonly int _maxPacketSize;
 
+        private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <inheritdoc />
-        protected TcpServerEapBase(int maxPacketSize = Constants.PACKET_SIZE_MAX)
+        protected UdpServerEapBase(uint maxClients, int maxPacketSize = Constants.PACKET_SIZE_MAX)
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.PACKET_SIZE_MAX;
-
-            _sendEventArgsPool = new SocketAsyncEventArgsPool(128);
+            _receiveEventArgsPool = new SocketAsyncEventArgsPool(maxClients + 5);
+            _sendEventArgsPool = new SocketAsyncEventArgsPool(maxClients + 5);
         }
 
         /// <inheritdoc />
-        public override SendError SendTo(Socket arg0, uint commandid, byte[] data, int offset, int length,
+        public override SendError SendTo(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
             uint responseid)
         {
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
             {
                 SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
-
                 if (sendEventArgs == null)
                 {
                     sendEventArgs = new SocketAsyncEventArgs();
-                    sendEventArgs.Completed += SendAsyncCompleted;
+                    sendEventArgs.Completed += SendToAsyncCompleted;
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
-
                 Serialization.Serialization.Serialize(
                     commandid, data, offset, length, responseid, EncryptionMode.None, sendEventArgs.Buffer,
                     out int size);
                 sendEventArgs.SetBuffer(0, size);
-                sendEventArgs.AcceptSocket = arg0;
+                sendEventArgs.RemoteEndPoint = arg0;
 
                 try
                 {
-                    if (!arg0.SendAsync(sendEventArgs))
+                    if (!_listener.SendToAsync(sendEventArgs))
                     {
-                        SendAsyncCompleted(arg0, sendEventArgs);
+                        SendToAsyncCompleted(arg0, sendEventArgs);
                     }
                     return SendError.None;
                 }
@@ -115,24 +110,16 @@ namespace Exomia.Network.TCP
             {
                 if (Socket.OSSupportsIPv6)
                 {
-                    listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
-                    {
-                        NoDelay = true,
-                        Blocking = false,
-                        DualMode = true
-                    };
+                    listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
+                        { Blocking = false, DualMode = true };
                     listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
                 }
                 else
                 {
-                    listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-                    {
-                        NoDelay = true,
-                        Blocking = false
-                    };
+                    listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
+                        { Blocking = false };
                     listener.Bind(new IPEndPoint(IPAddress.Any, port));
                 }
-                listener.Listen(100);
                 return true;
             }
             catch
@@ -145,108 +132,67 @@ namespace Exomia.Network.TCP
         /// <inheritdoc />
         protected override void ListenAsync()
         {
-            SocketAsyncEventArgs acceptArgs = new SocketAsyncEventArgs();
-            acceptArgs.Completed += AcceptAsyncCompleted;
-            ListenAsync(acceptArgs);
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                SocketAsyncEventArgs receiveEventArgs = _receiveEventArgsPool.Rent();
+                if (receiveEventArgs == null)
+                {
+                    receiveEventArgs = new SocketAsyncEventArgs();
+                    receiveEventArgs.Completed += ReceiveFromAsyncCompleted;
+                    receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                }
+
+                receiveEventArgs.RemoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
+
+                try
+                {
+                    if (!_listener.ReceiveFromAsync(receiveEventArgs))
+                    {
+                        ReceiveFromAsyncCompleted(receiveEventArgs.AcceptSocket, receiveEventArgs);
+                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                    InvokeClientDisconnect(receiveEventArgs.RemoteEndPoint, DisconnectReason.Aborted);
+                }
+                catch (SocketException)
+                {
+                    InvokeClientDisconnect(receiveEventArgs.RemoteEndPoint, DisconnectReason.Error);
+                }
+                catch { InvokeClientDisconnect(receiveEventArgs.RemoteEndPoint, DisconnectReason.Unspecified); }
+            }
         }
 
         /// <inheritdoc />
-        protected override void OnAfterClientDisconnect(Socket arg0)
+        protected override void OnDispose(bool disposing)
         {
-            try
+            if (disposing)
             {
-                arg0?.Shutdown(SocketShutdown.Both);
-                arg0?.Close(CLOSE_TIMEOUT);
-            }
-            catch
-            {
-                /* IGNORE */
+                _receiveEventArgsPool?.Dispose();
+                _sendEventArgsPool?.Dispose();
             }
         }
 
-        private void ListenAsync(SocketAsyncEventArgs acceptArgs)
-        {
-            acceptArgs.AcceptSocket = null;
-            try
-            {
-                if (!_listener.AcceptAsync(acceptArgs))
-                {
-                    AcceptAsyncCompleted(_listener, acceptArgs);
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-                /* SOCKET CLOSED */
-            }
-            catch
-            {
-                /* IGNORE */
-            }
-        }
-
-        private void AcceptAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private unsafe void ReceiveFromAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
-                try
-                {
-                    e.AcceptSocket?.Shutdown(SocketShutdown.Both);
-                    e.AcceptSocket?.Close(CLOSE_TIMEOUT);
-                }
-                catch
-                {
-                    /* IGNORE */
-                }
-                ListenAsync(e);
-                return;
-            }
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                SocketAsyncEventArgs receiveArgs = new SocketAsyncEventArgs { AcceptSocket = e.AcceptSocket };
-                receiveArgs.Completed += ReceiveAsyncCompleted;
-                receiveArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
-
-                ListenAsync(e);
-
-                ReceiveAsync(receiveArgs);
-            }
-        }
-
-        private void ReceiveAsync(SocketAsyncEventArgs args)
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                try
-                {
-                    if (!args.AcceptSocket.ReceiveAsync(args))
-                    {
-                        ReceiveAsyncCompleted(args.AcceptSocket, args);
-                    }
-                }
-                catch (ObjectDisposedException) { InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Aborted); }
-                catch (SocketException) { InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Error); }
-                catch { InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Unspecified); }
-            }
-        }
-
-        private unsafe void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
+                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Error);
                 return;
             }
             if (e.BytesTransferred <= 0)
             {
-                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Graceful);
+                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Graceful);
                 return;
             }
+
+            ListenAsync();
 
             e.Buffer.GetHeader(out uint commandID, out int dataLength, out byte h1);
 
             if (dataLength == e.BytesTransferred - Constants.HEADER_SIZE)
             {
-                Socket socket = e.AcceptSocket;
+                EndPoint endPoint = e.RemoteEndPoint;
 
                 uint responseID = 0;
                 byte[] data;
@@ -279,8 +225,7 @@ namespace Exomia.Network.TCP
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
-                    ReceiveAsync(e);
-                    DeserializeData(socket, commandID, data, 0, l, responseID);
+                    DeserializeData(endPoint, commandID, data, 0, l, responseID);
                 }
                 else
                 {
@@ -300,20 +245,17 @@ namespace Exomia.Network.TCP
                         Buffer.BlockCopy(e.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
                     }
 
-                    ReceiveAsync(e);
-                    DeserializeData(socket, commandID, data, 0, dataLength, responseID);
+                    DeserializeData(endPoint, commandID, data, 0, dataLength, responseID);
                 }
-                return;
             }
-
-            ReceiveAsync(e);
+            _receiveEventArgsPool.Return(e);
         }
 
-        private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void SendToAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
-                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
+                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Error);
             }
             _sendEventArgsPool.Return(e);
         }

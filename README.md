@@ -9,7 +9,7 @@ exomia/network is a wrapper library around System.Socket for easy TCP/UDP client
 -Client-UDP
 
 ```csharp
-using (Client client = new Client())
+using (ClientEap client = new ClientEap())
 {
     client.Disconnected += (c) => { Console.WriteLine("Disconnected"); };
     if (client.Connect(SocketMode.Udp, "127.0.0.1", 3001)) { Console.WriteLine("CONNECTED"); }
@@ -18,7 +18,7 @@ using (Client client = new Client())
     for (int i = 0; i < 10; i++)
     {
         Response<PING_STRUCT> res = await client.SendRPing();
-        if (res.Success)
+        if (res)
         {
             Console.WriteLine(i +
                 "ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
@@ -35,7 +35,7 @@ using (Client client = new Client())
 -Server-UDP
 
 ```csharp
-class UdpServer : UdpServerBase<UdpServerClient>
+class UdpServer : UdpServerEapBase<UdpServerClient>
 {
     protected override bool CreateServerClient(EndPoint arg0, out UdpServerClient serverClient)
     {
@@ -80,7 +80,7 @@ static void Main(string[] args)
 -Client-TCP
 
 ```csharp
-using (Client client = new Client())
+using (ClientEap client = new ClientEap())
 {
 	client.Disconnected += (c) => { Console.WriteLine("Disconnected"); };
 	client.AddCommand(45, (in Packet packet) =>
@@ -113,7 +113,7 @@ using (Client client = new Client())
 			return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
 		});
 
-		if (res2.Success)
+		if (res2)
 		{
 			Console.WriteLine(res2.Result);
 		}
@@ -128,7 +128,7 @@ using (Client client = new Client())
 -Server-TCP
 
 ```csharp
-class TcpServer : TcpServerBase<TcpServerClient>
+class TcpServer : TcpServerEapBase<TcpServerClient>
 {
     protected override bool CreateServerClient(Socket arg0, out TcpServerClient serverClient)
     {
@@ -296,6 +296,15 @@ void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : 
 ```
 
 ## Changelog
+
+### v1.1.1.1
+
+	- added eap and apm versions of client aswell tcp/udp-server
+	- bug fixes (disconnect reason, ...)
+	- server only accepts requests from connected clients
+	- better abstraction and cleaner code
+	- impl. SendError to handle send failures
+	- 
 
 ## License
 

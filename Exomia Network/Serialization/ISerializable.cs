@@ -29,8 +29,6 @@ namespace Exomia.Network.Serialization
     /// </summary>
     public interface ISerializable
     {
-        #region Methods
-
         /// <summary>
         ///     serialize the object to a byte array
         /// </summary>
@@ -43,7 +41,5 @@ namespace Exomia.Network.Serialization
         /// </summary>
         /// <param name="data"></param>
         void Deserialize(byte[] data);
-
-        #endregion
     }
 }

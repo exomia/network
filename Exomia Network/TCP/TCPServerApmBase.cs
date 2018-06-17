@@ -39,16 +39,10 @@ namespace Exomia.Network.TCP
     public abstract class TcpServerApmBase<TServerClient> : ServerBase<Socket, TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
-        #region Variables
-
         /// <summary>
         ///     _maxPacketSize
         /// </summary>
         protected readonly int _maxPacketSize;
-
-        #endregion
-
-        #region Constructors
 
         /// <inheritdoc />
         protected TcpServerApmBase(int maxPacketSize = 0)
@@ -58,21 +52,81 @@ namespace Exomia.Network.TCP
                 : Constants.PACKET_SIZE_MAX;
         }
 
-        #endregion
-
-        #region Methods
+        /// <inheritdoc />
+        public override SendError SendTo(Socket arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid)
+        {
+            if (_listener == null) { return SendError.Invalid; }
+            if ((_state & SEND_FLAG) == SEND_FLAG)
+            {
+                Serialization.Serialization.Serialize(
+                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
+                try
+                {
+                    arg0.BeginSend(
+                        send, 0, size, SocketFlags.None, iar =>
+                        {
+                            try
+                            {
+                                if (arg0.EndSend(iar) <= 0)
+                                {
+                                    InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
+                                }
+                            }
+                            finally
+                            {
+                                ByteArrayPool.Return(send);
+                            }
+                        }, null);
+                    return SendError.None;
+                }
+                catch (ObjectDisposedException)
+                {
+                    InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
+                    ByteArrayPool.Return(send);
+                    return SendError.Disposed;
+                }
+                catch (SocketException)
+                {
+                    InvokeClientDisconnect(arg0, DisconnectReason.Error);
+                    ByteArrayPool.Return(send);
+                    return SendError.Socket;
+                }
+                catch
+                {
+                    InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
+                    ByteArrayPool.Return(send);
+                    return SendError.Unknown;
+                }
+            }
+            return SendError.Invalid;
+        }
 
         /// <inheritdoc />
         protected override bool OnRun(int port, out Socket listener)
         {
             try
             {
-                listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                if (Socket.OSSupportsIPv6)
                 {
-                    NoDelay = true,
-                    Blocking = false
-                };
-                listener.Bind(new IPEndPoint(IPAddress.Any, port));
+                    listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
+                    {
+                        NoDelay = true,
+                        Blocking = false,
+                        DualMode = true
+                    };
+                    listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
+                }
+                else
+                {
+                    listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                    {
+                        NoDelay = true,
+                        Blocking = false
+                    };
+                    listener.Bind(new IPEndPoint(IPAddress.Any, port));
+                }
+
                 listener.Listen(100);
                 return true;
             }
@@ -98,35 +152,6 @@ namespace Exomia.Network.TCP
             {
                 /* IGNORE */
             }
-        }
-
-        /// <inheritdoc />
-        protected override void BeginSendDataTo(Socket arg0, byte[] send, int offset, int lenght)
-        {
-            try
-            {
-                arg0.BeginSend(
-                    send, offset, lenght, SocketFlags.None, iar =>
-                    {
-                        try
-                        {
-                            if (arg0.EndSend(iar) <= 0)
-                            {
-                                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
-                            }
-                        }
-                        finally
-                        {
-                            ByteArrayPool.Return(send);
-                        }
-                    }, null);
-                return;
-            }
-            catch (ObjectDisposedException) { InvokeClientDisconnect(arg0, DisconnectReason.Aborted); }
-            catch (SocketException) { InvokeClientDisconnect(arg0, DisconnectReason.Error); }
-            catch { InvokeClientDisconnect(arg0, DisconnectReason.Unspecified); }
-
-            ByteArrayPool.Return(send);
         }
 
         /// <inheritdoc />
@@ -279,20 +304,10 @@ namespace Exomia.Network.TCP
             ReceiveAsync(state);
         }
 
-        #endregion
-
-        #region Nested
-
         private sealed class ServerClientStateObject
         {
-            #region Variables
-
             public byte[] Buffer;
             public Socket Socket;
-
-            #endregion
         }
-
-        #endregion
     }
 }

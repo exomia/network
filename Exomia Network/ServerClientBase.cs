@@ -33,8 +33,6 @@ namespace Exomia.Network
     /// <typeparam name="T">Socket|EndPoint</typeparam>
     public abstract class ServerClientBase<T> where T : class
     {
-        #region Variables
-
         /// <summary>
         ///     called than the client info is changed
         /// </summary>
@@ -48,10 +46,6 @@ namespace Exomia.Network
         private object _clientInfo;
 
         private DateTime _lastReceivedPacketTimeStamp = DateTime.Now;
-
-        #endregion
-
-        #region Properties
 
         /// <summary>
         ///     ClientInfo
@@ -79,10 +73,6 @@ namespace Exomia.Network
         /// </summary>
         public abstract EndPoint EndPoint { get; }
 
-        #endregion
-
-        #region Constructors
-
         /// <summary>
         ///     ServerClientBase constructor
         /// </summary>
@@ -91,10 +81,6 @@ namespace Exomia.Network
         {
             _arg0 = arg0;
         }
-
-        #endregion
-
-        #region Methods
 
         internal void SetClientInfo(object info)
         {
@@ -110,7 +96,5 @@ namespace Exomia.Network
         {
             _lastReceivedPacketTimeStamp = DateTime.Now;
         }
-
-        #endregion
     }
 }

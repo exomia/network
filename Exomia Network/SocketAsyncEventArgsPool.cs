@@ -29,30 +29,21 @@ using System.Threading;
 
 namespace Exomia.Network
 {
-    internal class SocketAsyncEventArgsPool
+    internal class SocketAsyncEventArgsPool : IDisposable
     {
-        #region Variables
+        private readonly SocketAsyncEventArgs[] _buffer;
 
-        private readonly SocketAsyncEventArgs[] _buffers;
         private int _index;
 
         private SpinLock _lock;
 
-        #endregion
-
-        #region Constructors
-
-        public SocketAsyncEventArgsPool(int numberOfBuffers = 32)
+        public SocketAsyncEventArgsPool(uint numberOfBuffers = 32)
         {
             if (numberOfBuffers <= 0) { throw new ArgumentOutOfRangeException(nameof(numberOfBuffers)); }
 
             _lock = new SpinLock(Debugger.IsAttached);
-            _buffers = new SocketAsyncEventArgs[numberOfBuffers];
+            _buffer = new SocketAsyncEventArgs[numberOfBuffers];
         }
-
-        #endregion
-
-        #region Methods
 
         public SocketAsyncEventArgs Rent()
         {
@@ -63,10 +54,10 @@ namespace Exomia.Network
             {
                 _lock.Enter(ref lockTaken);
 
-                if (_index < _buffers.Length)
+                if (_index < _buffer.Length)
                 {
-                    buffer = _buffers[_index];
-                    _buffers[_index++] = null;
+                    buffer = _buffer[_index];
+                    _buffer[_index++] = null;
                 }
             }
             finally
@@ -89,7 +80,7 @@ namespace Exomia.Network
 
                 if (_index != 0)
                 {
-                    _buffers[--_index] = args;
+                    _buffer[--_index] = args;
                 }
             }
             finally
@@ -99,6 +90,31 @@ namespace Exomia.Network
                     _lock.Exit(false);
                 }
             }
+        }
+
+        #region IDisposable Support
+
+        private bool _disposedValue;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    for (int i = 0; i < _index; ++i)
+                    {
+                        _buffer[i]?.Dispose();
+                    }
+                }
+
+                _disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
         }
 
         #endregion

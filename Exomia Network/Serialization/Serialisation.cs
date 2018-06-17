@@ -31,19 +31,18 @@ namespace Exomia.Network.Serialization
 {
     internal static unsafe class Serialization
     {
-        #region Variables
-
         internal const uint UNUSED_BIT_MASK = 0b10000000;
-        private const byte UNUSED_1_BIT = 1 << 7;
 
         internal const uint RESPONSE_BIT_MASK = 0b01000000;
-        private const byte RESPONSE_1_BIT = 1 << 6;
 
         internal const uint COMPRESSED_BIT_MASK = 0b00100000;
-        private const byte COMPRESSED_1_BIT = 1 << 5;
 
         internal const uint ENCRYPT_BIT_MASK = 0b00010000;
         internal const uint ENCRYPT_MODE_MASK = 0b00001111;
+
+        private const byte UNUSED_1_BIT = 1 << 7;
+        private const byte RESPONSE_1_BIT = 1 << 6;
+        private const byte COMPRESSED_1_BIT = 1 << 5;
 
         private const uint COMMANDID_MASK = 0xFFFF0000;
         private const int COMMANDID_SHIFT = 16;
@@ -51,14 +50,18 @@ namespace Exomia.Network.Serialization
 
         private const int LENGTH_THRESHOLD = 1 << 12; //4096
 
-        #endregion
-
-        #region Methods
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void Serialize(uint commandID, byte[] data, int offset, int length, uint responseID,
             EncryptionMode encryptionMode,
             out byte[] send, out int size)
+        {
+            send = ByteArrayPool.Rent(Constants.HEADER_SIZE + 8 + length);
+            Serialize(commandID, data, offset, length, responseID, encryptionMode, send, out size);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void Serialize(uint commandID, byte[] data, int offset, int length, uint responseID,
+            EncryptionMode encryptionMode, byte[] send, out int size)
         {
             // 8bit
             // 
@@ -81,7 +84,6 @@ namespace Exomia.Network.Serialization
             // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0xFFFF
             // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
 
-            send = ByteArrayPool.Rent(Constants.HEADER_SIZE + 8 + length);
             if (responseID != 0)
             {
                 if (length >= LENGTH_THRESHOLD)
@@ -161,7 +163,7 @@ namespace Exomia.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeader(this byte[] header, out uint commandID, out int dataLenght, out byte h1)
+        internal static void GetHeader(this byte[] header, out uint commandID, out int datalength, out byte h1)
         {
             // 8bit
             // 
@@ -189,10 +191,8 @@ namespace Exomia.Network.Serialization
                 h1 = *ptr;
                 uint h2 = *(uint*)(ptr + 1);
                 commandID = (h2 & COMMANDID_MASK) >> COMMANDID_SHIFT;
-                dataLenght = (int)(h2 & DATA_LENGTH_MASK);
+                datalength = (int)(h2 & DATA_LENGTH_MASK);
             }
         }
-
-        #endregion
     }
 }

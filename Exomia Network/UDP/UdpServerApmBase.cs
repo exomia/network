@@ -34,35 +34,70 @@ using LZ4;
 namespace Exomia.Network.UDP
 {
     /// <inheritdoc />
-    public abstract class UdpServerBase<TServerClient> : ServerBase<EndPoint, TServerClient>
+    public abstract class UdpServerApmBase<TServerClient> : ServerBase<EndPoint, TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
-        #region Variables
-
         private readonly ServerClientStateObjectPool _pool;
 
-        #endregion
-
-        #region Constructors
-
         /// <inheritdoc />
-        protected UdpServerBase(uint maxClients, int maxPacketSize = Constants.PACKET_SIZE_MAX)
+        protected UdpServerApmBase(uint maxClients, int maxPacketSize = Constants.PACKET_SIZE_MAX)
         {
             _pool = new ServerClientStateObjectPool(maxClients, maxPacketSize);
         }
 
-        #endregion
-
-        #region Methods
+        /// <inheritdoc />
+        public override SendError SendTo(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
+            uint responseid)
+        {
+            if (_listener == null) { return SendError.Invalid; }
+            if ((_state & SEND_FLAG) == SEND_FLAG)
+            {
+                Serialization.Serialization.Serialize(
+                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
+                try
+                {
+                    _listener.BeginSendTo(send, 0, size, SocketFlags.None, arg0, SendDataToCallback, send);
+                    return SendError.None;
+                }
+                catch (ObjectDisposedException)
+                {
+                    InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
+                    ByteArrayPool.Return(send);
+                    return SendError.Disposed;
+                }
+                catch (SocketException)
+                {
+                    InvokeClientDisconnect(arg0, DisconnectReason.Error);
+                    ByteArrayPool.Return(send);
+                    return SendError.Socket;
+                }
+                catch
+                {
+                    InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
+                    ByteArrayPool.Return(send);
+                    return SendError.Unknown;
+                }
+            }
+            return SendError.Invalid;
+        }
 
         /// <inheritdoc />
         protected override bool OnRun(int port, out Socket listener)
         {
             try
             {
-                listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
-                    { Blocking = false };
-                listener.Bind(new IPEndPoint(IPAddress.Any, port));
+                if (Socket.OSSupportsIPv6)
+                {
+                    listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
+                        { Blocking = false, DualMode = true };
+                    listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
+                }
+                else
+                {
+                    listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
+                        { Blocking = false };
+                    listener.Bind(new IPEndPoint(IPAddress.Any, port));
+                }
                 return true;
             }
             catch
@@ -82,27 +117,15 @@ namespace Exomia.Network.UDP
                     state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
                     ReceiveDataCallback, state);
             }
-            catch (ObjectDisposedException) { InvokeClientDisconnect(state.EndPoint, DisconnectReason.Aborted); }
-            catch { InvokeClientDisconnect(state.EndPoint, DisconnectReason.Error); }
-        }
-
-        /// <inheritdoc />
-        protected override void BeginSendDataTo(EndPoint arg0, byte[] send, int offset, int lenght)
-        {
-            if (_listener == null)
+            catch (ObjectDisposedException)
             {
-                ByteArrayPool.Return(send);
-                return;
+                InvokeClientDisconnect(state.EndPoint, DisconnectReason.Aborted);
             }
-            try
+            catch (SocketException)
             {
-                _listener.BeginSendTo(send, offset, lenght, SocketFlags.None, arg0, SendDataToCallback, send);
-                return;
+                InvokeClientDisconnect(state.EndPoint, DisconnectReason.Error);
             }
-            catch (ObjectDisposedException) { InvokeClientDisconnect(arg0, DisconnectReason.Aborted); }
-            catch { InvokeClientDisconnect(arg0, DisconnectReason.Error); }
-
-            ByteArrayPool.Return(send);
+            catch { InvokeClientDisconnect(state.EndPoint, DisconnectReason.Unspecified); }
         }
 
         private void SendDataToCallback(IAsyncResult iar)
@@ -127,7 +150,7 @@ namespace Exomia.Network.UDP
             {
                 if ((length = _listener.EndReceiveFrom(iar, ref state.EndPoint)) <= 0)
                 {
-                    InvokeClientDisconnect(state.EndPoint, DisconnectReason.Unspecified);
+                    InvokeClientDisconnect(state.EndPoint, DisconnectReason.Graceful);
                     return;
                 }
             }
@@ -136,9 +159,14 @@ namespace Exomia.Network.UDP
                 InvokeClientDisconnect(state.EndPoint, DisconnectReason.Aborted);
                 return;
             }
-            catch
+            catch (SocketException)
             {
                 InvokeClientDisconnect(state.EndPoint, DisconnectReason.Error);
+                return;
+            }
+            catch
+            {
+                InvokeClientDisconnect(state.EndPoint, DisconnectReason.Unspecified);
                 return;
             }
 
@@ -205,32 +233,19 @@ namespace Exomia.Network.UDP
             _pool.Return(state);
         }
 
-        #endregion
-
-        #region Nested
-
         private sealed class ServerClientStateObject
         {
-            #region Variables
-
             public byte[] Buffer;
             public EndPoint EndPoint;
-
-            #endregion
         }
 
         private class ServerClientStateObjectPool
         {
-            #region Variables
-
             private readonly ServerClientStateObject[] _buffers;
             private readonly int _maxPacketSize;
+
             private int _index;
             private SpinLock _lock;
-
-            #endregion
-
-            #region Constructors
 
             public ServerClientStateObjectPool(uint maxClients, int maxPacketSize)
             {
@@ -240,10 +255,6 @@ namespace Exomia.Network.UDP
                 _lock = new SpinLock(Debugger.IsAttached);
                 _buffers = new ServerClientStateObject[maxClients != 0 ? maxClients + 1u : 33];
             }
-
-            #endregion
-
-            #region Methods
 
             internal ServerClientStateObject Rent()
             {
@@ -295,10 +306,6 @@ namespace Exomia.Network.UDP
                     }
                 }
             }
-
-            #endregion
         }
-
-        #endregion
     }
 }
