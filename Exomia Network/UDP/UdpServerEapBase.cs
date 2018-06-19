@@ -32,6 +32,10 @@ using LZ4;
 namespace Exomia.Network.UDP
 {
     /// <inheritdoc />
+    /// <summary>
+    ///     A UDP-Server build with the "Event-based Asynchronous Pattern" (EAP)
+    /// </summary>
+    /// <typeparam name="TServerClient">TServerClient</typeparam>
     public abstract class UdpServerEapBase<TServerClient> : ServerBase<EndPoint, TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {

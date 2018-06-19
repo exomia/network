@@ -67,7 +67,7 @@ namespace Exomia.Network
         public event ClientDisconnectHandler<T> ClientDisconnected;
 
         /// <summary>
-        ///     Dictionary{EndPoint, TServerClient}
+        ///     Dictionary{T, TServerClient}
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
 

@@ -34,6 +34,10 @@ using LZ4;
 namespace Exomia.Network.UDP
 {
     /// <inheritdoc />
+    /// <summary>
+    ///     A UDP-Server build with the "Asynchronous Programming Model" (APM)
+    /// </summary>
+    /// <typeparam name="TServerClient">TServerClient</typeparam>
     public abstract class UdpServerApmBase<TServerClient> : ServerBase<EndPoint, TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {

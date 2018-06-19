@@ -29,7 +29,7 @@ using System.Net.Sockets;
 
 namespace Exomia.Network
 {
-    /// <inheritdoc cref="IClient" />
+    /// <inheritdoc cref="ClientBase" />
     /// <summary>
     ///     A TCP/UDP-Client build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>

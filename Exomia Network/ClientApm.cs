@@ -30,7 +30,7 @@ using Exomia.Network.Buffers;
 
 namespace Exomia.Network
 {
-    /// <inheritdoc cref="IClient" />
+    /// <inheritdoc cref="ClientBase" />
     /// <summary>
     ///     A TCP/UDP-Client build with the "Asynchronous Programming Model" (APM)
     /// </summary>
