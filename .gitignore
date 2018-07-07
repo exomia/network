@@ -1,5 +1,6 @@
 ## Custom
 nuget-push.sh
+create-wiki.sh
 merge-development.sh
 rem_*.*
 
