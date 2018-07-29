@@ -68,7 +68,7 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
         /// <param name="responseid"></param>
-        SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : struct;
+        SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : unmanaged;
 
         /// <summary>
         ///     send data to all clients
@@ -91,6 +91,6 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
-        void SendToAll<T1>(uint commandid, in T1 data) where T1 : struct;
+        void SendToAll<T1>(uint commandid, in T1 data) where T1 : unmanaged;
     }
 }

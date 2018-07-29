@@ -42,7 +42,7 @@ namespace Exomia.Network
     ///     CLIENTINFO_STRUCT
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Size = 72)]
-    public struct CLIENTINFO_STRUCT
+    public unsafe struct CLIENTINFO_STRUCT
     {
         /// <summary>
         ///     ClientID
@@ -52,20 +52,18 @@ namespace Exomia.Network
         /// <summary>
         ///     ClientName (64)
         /// </summary>
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-        public string ClientName;
+        public fixed char ClientName[64];
     }
 
     /// <summary>
     ///     CONNECT_STRUCT
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Size = 16)]
-    public struct CONNECT_STRUCT
+    public unsafe struct CONNECT_STRUCT
     {
         /// <summary>
         ///     Checksum(16)
         /// </summary>
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] Checksum;
+        public fixed byte Checksum[16];
     }
 }

@@ -409,17 +409,6 @@ namespace Exomia.Network
         /// <inheritdoc />
         public abstract SendError SendTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid);
 
-        //{
-        //    if (_listener == null) { return SendError.Invalid; }
-        //    if ((_state & SEND_FLAG) == SEND_FLAG)
-        //    {
-        //        Serialization.Serialization.Serialize(
-        //            commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
-        //        return BeginSendDataTo(arg0, send, 0, size);
-        //    }
-        //    return SendError.Invalid;
-        //}
-
         /// <inheritdoc />
         public SendError SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid)
         {
@@ -428,9 +417,9 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : struct
+        public SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : unmanaged
         {
-            byte[] dataB = data.ToBytesUnsafe(out int length);
+            byte[] dataB = data.ToBytesUnsafe2(out int length);
             return SendTo(arg0, commandid, dataB, 0, length, responseid);
         }
 
@@ -453,9 +442,9 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public void SendToAll<T1>(uint commandid, in T1 data) where T1 : struct
+        public void SendToAll<T1>(uint commandid, in T1 data) where T1 : unmanaged
         {
-            byte[] dataB = data.ToBytesUnsafe(out int length);
+            byte[] dataB = data.ToBytesUnsafe2(out int length);
             SendToAll(commandid, dataB, 0, length);
         }
 

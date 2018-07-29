@@ -173,6 +173,62 @@ namespace Exomia.Network.Extensions.Struct
         /// <param name="length">out the size of T</param>
         /// <returns>byte array</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe byte[] ToBytesUnsafe2<T>(this T data, out int length) where T : unmanaged
+        {
+            length = sizeof(T);
+            byte[] arr = new byte[length];
+            fixed (byte* ptr = arr)
+            {
+                *(T*)ptr = data;
+            }
+            return arr;
+        }
+
+        /// <summary>
+        ///     converts a struct into a byte array
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <param name="data">data</param>
+        /// <param name="arr">out byte array</param>
+        /// <param name="length">out the size of T</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void ToBytesUnsafe2<T>(this T data, out byte[] arr, out int length) where T : unmanaged
+        {
+            length = Marshal.SizeOf(typeof(T));
+            arr = new byte[length];
+            fixed (byte* ptr = arr)
+            {
+                Marshal.StructureToPtr(data, new IntPtr(ptr), true);
+            }
+        }
+
+        /// <summary>
+        ///     converts a struct into a byte array
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <param name="data">data</param>
+        /// <param name="arr">out byte array</param>
+        /// <param name="offset">offset</param>
+        /// <param name="length">out the size of T</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void ToBytesUnsafe2<T>(this T data, ref byte[] arr, int offset, out int length)
+            where T : unmanaged
+        {
+            length = Marshal.SizeOf(typeof(T));
+            fixed (byte* ptr = arr)
+            {
+                Marshal.StructureToPtr(data, new IntPtr(ptr + offset), true);
+            }
+        }
+
+        /// <summary>
+        ///     converts a struct into a byte array
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <param name="data">data</param>
+        /// <param name="length">out the size of T</param>
+        /// <returns>byte array</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte[] ToBytes2<T>(this T data, out int length) where T : struct
         {
             length = Marshal.SizeOf(typeof(T));
@@ -388,6 +444,68 @@ namespace Exomia.Network.Extensions.Struct
             fixed (byte* ptr = arr)
             {
                 return Marshal.PtrToStructure<T>(new IntPtr(ptr + offset));
+            }
+        }
+
+        /// <summary>
+        ///     converts a byte array into a struct
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <param name="arr">byte array</param>
+        /// <param name="obj">out struct</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void FromBytesUnsafe2<T>(this byte[] arr, out T obj) where T : unmanaged
+        {
+            fixed (byte* ptr = arr)
+            {
+                obj = *(T*)(ptr);
+            }
+        }
+
+        /// <summary>
+        ///     converts a byte array into a struct
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <param name="arr">byte array</param>
+        /// <param name="offset">offset</param>
+        /// <param name="obj">out struct</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void FromBytesUnsafe2<T>(this byte[] arr, int offset, out T obj) where T : unmanaged
+        {
+            fixed (byte* ptr = arr)
+            {
+                obj = *(T*)(ptr + offset);
+            }
+        }
+
+        /// <summary>
+        ///     converts a byte array into a struct
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <param name="arr">byte array</param>
+        /// <returns>struct</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe T FromBytesUnsafe2<T>(this byte[] arr) where T : unmanaged
+        {
+            fixed (byte* ptr = arr)
+            {
+                return *(T*)(ptr);
+            }
+        }
+
+        /// <summary>
+        ///     converts a byte array into a struct
+        /// </summary>
+        /// <typeparam name="T">struct type</typeparam>
+        /// <param name="arr">byte array</param>
+        /// <param name="offset">offset</param>
+        /// <returns>struct</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe T FromBytesUnsafe2<T>(this byte[] arr, int offset) where T : unmanaged
+        {
+            fixed (byte* ptr = arr)
+            {
+                return *(T*)(ptr + offset);
             }
         }
 

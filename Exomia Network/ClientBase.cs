@@ -37,6 +37,7 @@ using System.Threading.Tasks;
 using Exomia.Network.Buffers;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
+using Exomia.Network.Native;
 using Exomia.Network.Serialization;
 using LZ4;
 
@@ -183,7 +184,7 @@ namespace Exomia.Network
                     else
                     {
                         _clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
-                            { Blocking = false };
+                        { Blocking = false };
                     }
                     break;
                 default:
@@ -333,7 +334,7 @@ namespace Exomia.Network
             ReceiveAsync();
         }
 
-        private void DeserializeData(uint commandid, byte[] data, int offset, int length, uint responseid)
+        private unsafe void DeserializeData(uint commandid, byte[] data, int offset, int length, uint responseid)
         {
             if (responseid != 0)
             {
@@ -362,47 +363,61 @@ namespace Exomia.Network
             switch (commandid)
             {
                 case CommandID.PING:
-                {
-                    PING_STRUCT pingStruct;
-                    unsafe
                     {
+                        PING_STRUCT pingStruct;
+
                         fixed (byte* ptr = data)
                         {
                             pingStruct = *(PING_STRUCT*)(ptr + offset);
                         }
-                    }
-                    Ping?.Invoke(pingStruct);
-                    break;
-                }
-                case CommandID.CONNECT:
-                {
-                    data.FromBytesUnsafe(offset, out CONNECT_STRUCT connectStruct);
-                    if (connectStruct.Checksum.SequenceEqual(_connectChecksum))
-                    {
-                        _manuelResetEvent.Set();
-                    }
-                    break;
-                }
-                default:
-                {
-                    if (commandid <= Constants.USER_COMMAND_LIMIT &&
-                        _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
-                    {
-                        Packet packet = new Packet(data, offset, length);
-                        cee._deserialize.BeginInvoke(
-                            in packet, iar =>
-                            {
-                                object res = cee._deserialize.EndInvoke(in packet, iar);
-                                ByteArrayPool.Return(data);
 
-                                if (res != null) { cee.RaiseAsync(this, res); }
-                            }, null);
-                        return;
+                        Ping?.Invoke(pingStruct);
+                        break;
                     }
-                    break;
-                }
+                case CommandID.CONNECT:
+                    {
+                        data.FromBytesUnsafe(offset, out CONNECT_STRUCT connectStruct);
+                        fixed (byte* ptr = _connectChecksum)
+                        {
+                            if (SequenceEqual(connectStruct.Checksum, ptr, 16))
+                            {
+                                _manuelResetEvent.Set();
+                            }
+                        }
+                        break;
+                    }
+                default:
+                    {
+                        if (commandid <= Constants.USER_COMMAND_LIMIT &&
+                            _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
+                        {
+                            Packet packet = new Packet(data, offset, length);
+                            cee._deserialize.BeginInvoke(
+                                in packet, iar =>
+                                {
+                                    object res = cee._deserialize.EndInvoke(in packet, iar);
+                                    ByteArrayPool.Return(data);
+
+                                    if (res != null) { cee.RaiseAsync(this, res); }
+                                }, null);
+                            return;
+                        }
+                        break;
+                    }
             }
             ByteArrayPool.Return(data);
+        }
+
+        private static unsafe bool SequenceEqual(byte* left, byte* right, int length)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                if (*(left + i) != *(right + i))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         #region Add & Remove
@@ -539,7 +554,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length)
-            where TResult : struct
+            where TResult : unmanaged
         {
             return SendR(commandid, data, offset, length, DeserializeResponse<TResult>, s_defaultTimeout);
         }
@@ -554,7 +569,7 @@ namespace Exomia.Network
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length,
             TimeSpan timeout)
-            where TResult : struct
+            where TResult : unmanaged
         {
             return SendR(commandid, data, offset, length, DeserializeResponse<TResult>, timeout);
         }
@@ -632,7 +647,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable)
-            where TResult : struct
+            where TResult : unmanaged
         {
             byte[] dataB = serializable.Serialize(out int length);
             return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout);
@@ -648,7 +663,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable, TimeSpan timeout)
-            where TResult : struct
+            where TResult : unmanaged
         {
             byte[] dataB = serializable.Serialize(out int length);
             return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, timeout);
@@ -663,51 +678,51 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public SendError Send<T>(uint commandid, in T data) where T : struct
+        public SendError Send<T>(uint commandid, in T data) where T : unmanaged
         {
-            data.ToBytesUnsafe(out byte[] dataB, out int length);
+            data.ToBytesUnsafe2(out byte[] dataB, out int length);
             return BeginSendData(commandid, dataB, 0, length, 0);
         }
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data)
-            where T : struct
-            where TResult : struct
+            where T : unmanaged
+            where TResult : unmanaged
         {
-            data.ToBytesUnsafe(out byte[] dataB, out int length);
+            data.ToBytesUnsafe2(out byte[] dataB, out int length);
             return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout);
         }
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data,
-            DeserializePacket<TResult> deserialize) where T : struct
+            DeserializePacket<TResult> deserialize) where T : unmanaged
         {
-            data.ToBytesUnsafe(out byte[] dataB, out int length);
+            data.ToBytesUnsafe2(out byte[] dataB, out int length);
             return SendR(commandid, dataB, 0, length, deserialize, s_defaultTimeout);
         }
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, TimeSpan timeout)
-            where T : struct
-            where TResult : struct
+            where T : unmanaged
+            where TResult : unmanaged
         {
-            data.ToBytesUnsafe(out byte[] dataB, out int length);
+            data.ToBytesUnsafe2(out byte[] dataB, out int length);
             return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, timeout);
         }
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data,
-            DeserializePacket<TResult> deserialize, TimeSpan timeout) where T : struct
+            DeserializePacket<TResult> deserialize, TimeSpan timeout) where T : unmanaged
         {
-            data.ToBytesUnsafe(out byte[] dataB, out int length);
+            data.ToBytesUnsafe2(out byte[] dataB, out int length);
             return SendR(commandid, dataB, 0, length, deserialize, timeout);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static TResult DeserializeResponse<TResult>(in Packet packet)
-            where TResult : struct
+            where TResult : unmanaged
         {
-            return packet.Buffer.FromBytesUnsafe<TResult>(packet.Offset);
+            return packet.Buffer.FromBytesUnsafe2<TResult>(packet.Offset);
         }
 
         /// <inheritdoc />
@@ -724,16 +739,25 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public SendError SendClientInfo(long clientID, string clientName)
+        public unsafe SendError SendClientInfo(long clientID, string clientName)
         {
-            return Send(
-                CommandID.CLIENTINFO,
-                new CLIENTINFO_STRUCT { ClientID = clientID, ClientName = clientName });
+            CLIENTINFO_STRUCT packet = new CLIENTINFO_STRUCT { ClientID = clientID };
+            fixed (char* ptr = clientName)
+            {
+                Mem.Cpy(packet.ClientName, ptr, sizeof(char) * 64);
+
+            }
+            return Send(CommandID.CLIENTINFO, packet);
         }
 
-        private SendError SendConnect()
+        private unsafe SendError SendConnect()
         {
-            return Send(CommandID.CONNECT, new CONNECT_STRUCT { Checksum = _connectChecksum });
+            CONNECT_STRUCT packet = new CONNECT_STRUCT();
+            fixed (byte* ptr = _connectChecksum)
+            {
+                Mem.Cpy(packet.Checksum, ptr, sizeof(char) * 64);
+            }
+            return Send(CommandID.CONNECT, packet);
         }
 
         #endregion
