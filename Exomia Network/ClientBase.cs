@@ -744,7 +744,7 @@ namespace Exomia.Network
             CLIENTINFO_STRUCT packet = new CLIENTINFO_STRUCT { ClientID = clientID };
             fixed (char* ptr = clientName)
             {
-                Mem.Cpy(packet.ClientName, ptr, sizeof(char) * 64);
+                Mem.Cpy(packet.ClientName, ptr, sizeof(char) * Math.Max(0, Math.Min(clientName.Length, 64)));
 
             }
             return Send(CommandID.CLIENTINFO, packet);
@@ -755,7 +755,7 @@ namespace Exomia.Network
             CONNECT_STRUCT packet = new CONNECT_STRUCT();
             fixed (byte* ptr = _connectChecksum)
             {
-                Mem.Cpy(packet.Checksum, ptr, sizeof(char) * 64);
+                Mem.Cpy(packet.Checksum, ptr, sizeof(byte) * 16);
             }
             return Send(CommandID.CONNECT, packet);
         }
