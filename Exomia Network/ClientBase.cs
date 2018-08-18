@@ -26,20 +26,18 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network.Buffers;
+using Exomia.Network.DefaultPackets;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Native;
 using Exomia.Network.Serialization;
-using LZ4;
 
 namespace Exomia.Network
 {
@@ -72,7 +70,7 @@ namespace Exomia.Network
         /// <summary>
         ///     called than a ping is received
         /// </summary>
-        public event Action<PING_STRUCT> Ping;
+        public event Action<PingPacket> Ping;
 
         /// <summary>
         /// </summary>
@@ -143,7 +141,7 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public bool Connect(SocketMode mode, IPAddress[] ipAddresses, int port, int timeout = 10)
+        public bool Connect(IPAddress[] ipAddresses, int port, int timeout = 10)
         {
             Disconnect(DisconnectReason.Graceful);
 
@@ -151,77 +149,41 @@ namespace Exomia.Network
 
             _manuelResetEvent.Reset();
 
-            switch (mode)
+            if (TryCreateSocket(out _clientSocket))
             {
-                case SocketMode.Tcp:
-                    if (Socket.OSSupportsIPv6)
-                    {
-                        _clientSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
-                        {
-                            NoDelay = true,
-                            Blocking = false,
-                            DualMode = true
-                        };
-                    }
-                    else
-                    {
-                        _clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-                        {
-                            NoDelay = true,
-                            Blocking = false
-                        };
-                    }
-                    break;
-                case SocketMode.Udp:
-                    if (Socket.OSSupportsIPv6)
-                    {
-                        _clientSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
-                        {
-                            Blocking = false,
-                            DualMode = true
-                        };
-                    }
-                    else
-                    {
-                        _clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
-                        { Blocking = false };
-                    }
-                    break;
-                default:
-                    throw new InvalidEnumArgumentException(nameof(mode), (int)mode, typeof(SocketMode));
-            }
-
-            try
-            {
-                IAsyncResult iar = _clientSocket.BeginConnect(ipAddresses, port, null, null);
-                bool result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
-                _clientSocket.EndConnect(iar);
-
-                _serverAddress = _clientSocket.RemoteEndPoint.ToString();
-
-                if (result)
+                try
                 {
-                    _state = RECEIVE_FLAG | SEND_FLAG;
-                    ReceiveAsync();
-                    if (SendConnect() == SendError.None)
+                    IAsyncResult iar = _clientSocket.BeginConnect(ipAddresses, port, null, null);
+                    bool result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
+                    _clientSocket.EndConnect(iar);
+
+                    _serverAddress = _clientSocket.RemoteEndPoint.ToString();
+
+                    if (result)
                     {
-                        return _manuelResetEvent.WaitOne(timeout * 1000);
+                        _state = RECEIVE_FLAG | SEND_FLAG;
+                        ReceiveAsync();
+                        if (SendConnect() == SendError.None)
+                        {
+                            return _manuelResetEvent.WaitOne(timeout * 1000);
+                        }
                     }
                 }
+                catch
+                {
+                    _state = 0;
+                    _clientSocket.Close();
+                    _clientSocket = null;
+                }
             }
-            catch
-            {
-                _state = 0;
-                _clientSocket.Close();
-                _clientSocket = null;
-            }
+
             return false;
         }
 
         /// <inheritdoc />
-        public bool Connect(SocketMode mode, string serverAddress, int port, int timeout = 10)
+        public bool Connect(string serverAddress, int port, int timeout = 10)
         {
-            return Connect(mode, Dns.GetHostAddresses(serverAddress), port, timeout);
+            return Connect(Dns.GetHostAddresses(serverAddress), port, timeout);
         }
 
         /// <inheritdoc />
@@ -229,6 +191,25 @@ namespace Exomia.Network
         {
             Disconnect(DisconnectReason.Graceful);
         }
+
+        private static unsafe bool SequenceEqual(byte* left, byte* right, int length)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                if (*(left + i) != *(right + i))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        ///     tries to create a socket
+        /// </summary>
+        /// <param name="socket">the socket which was generated</param>
+        /// <returns><c>true</c> if socket was successfully created; <c>false otherwise</c></returns>
+        protected abstract bool TryCreateSocket(out Socket socket);
 
         /// <summary>
         /// </summary>
@@ -241,7 +222,6 @@ namespace Exomia.Network
                 {
                     Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
                 }
-
                 _state = 0;
                 try
                 {
@@ -253,7 +233,6 @@ namespace Exomia.Network
                     /* IGNORE */
                 }
                 _clientSocket = null;
-
                 Disconnected?.Invoke(this, reason);
             }
         }
@@ -262,79 +241,8 @@ namespace Exomia.Network
         /// </summary>
         protected abstract void ReceiveAsync();
 
-        /// <summary>
-        ///     call to handle a incomming request
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="bytesTransferred"></param>
-        protected unsafe void HandleReceive(byte[] buffer, int bytesTransferred)
-        {
-            buffer.GetHeader(out uint commandID, out int dataLength, out byte h1);
-
-            if (dataLength == bytesTransferred - Constants.HEADER_SIZE)
-            {
-                uint responseID = 0;
-                byte[] data;
-                if ((h1 & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
-                {
-                    int l;
-                    if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                    {
-                        fixed (byte* ptr = buffer)
-                        {
-                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
-                            l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
-                        }
-                        data = ByteArrayPool.Rent(l);
-
-                        int s = LZ4Codec.Decode(
-                            buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
-                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-                    }
-                    else
-                    {
-                        fixed (byte* ptr = buffer)
-                        {
-                            l = *(int*)(ptr + Constants.HEADER_SIZE);
-                        }
-                        data = ByteArrayPool.Rent(l);
-
-                        int s = LZ4Codec.Decode(
-                            buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
-                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-                    }
-
-                    ReceiveAsync();
-                    DeserializeData(commandID, data, 0, l, responseID);
-                }
-                else
-                {
-                    if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                    {
-                        fixed (byte* ptr = buffer)
-                        {
-                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
-                        }
-                        dataLength -= 4;
-                        data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
-                    }
-                    else
-                    {
-                        data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(buffer, Constants.HEADER_SIZE, data, 0, dataLength);
-                    }
-
-                    ReceiveAsync();
-                    DeserializeData(commandID, data, 0, dataLength, responseID);
-                }
-                return;
-            }
-
-            ReceiveAsync();
-        }
-
-        private unsafe void DeserializeData(uint commandid, byte[] data, int offset, int length, uint responseid)
+        private protected unsafe void DeserializeData(uint commandid, byte[] data, int offset, int length,
+            uint responseid)
         {
             if (responseid != 0)
             {
@@ -359,65 +267,63 @@ namespace Exomia.Network
                 }
                 return;
             }
-
             switch (commandid)
             {
                 case CommandID.PING:
-                    {
-                        PING_STRUCT pingStruct;
-
-                        fixed (byte* ptr = data)
-                        {
-                            pingStruct = *(PING_STRUCT*)(ptr + offset);
-                        }
-
-                        Ping?.Invoke(pingStruct);
-                        break;
-                    }
-                case CommandID.CONNECT:
-                    {
-                        data.FromBytesUnsafe(offset, out CONNECT_STRUCT connectStruct);
-                        fixed (byte* ptr = _connectChecksum)
-                        {
-                            if (SequenceEqual(connectStruct.Checksum, ptr, 16))
-                            {
-                                _manuelResetEvent.Set();
-                            }
-                        }
-                        break;
-                    }
-                default:
-                    {
-                        if (commandid <= Constants.USER_COMMAND_LIMIT &&
-                            _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
-                        {
-                            Packet packet = new Packet(data, offset, length);
-                            cee._deserialize.BeginInvoke(
-                                in packet, iar =>
-                                {
-                                    object res = cee._deserialize.EndInvoke(in packet, iar);
-                                    ByteArrayPool.Return(data);
-
-                                    if (res != null) { cee.RaiseAsync(this, res); }
-                                }, null);
-                            return;
-                        }
-                        break;
-                    }
-            }
-            ByteArrayPool.Return(data);
-        }
-
-        private static unsafe bool SequenceEqual(byte* left, byte* right, int length)
-        {
-            for (int i = 0; i < length; i++)
-            {
-                if (*(left + i) != *(right + i))
                 {
-                    return false;
+                    PingPacket pingStruct;
+                    fixed (byte* ptr = data)
+                    {
+                        pingStruct = *(PingPacket*)(ptr + offset);
+                    }
+                    Ping?.Invoke(pingStruct);
+                    break;
+                }
+                case CommandID.CONNECT:
+                {
+                    data.FromBytesUnsafe(offset, out ConnectPacket connectPacket);
+                    fixed (byte* ptr = _connectChecksum)
+                    {
+                        if (SequenceEqual(connectPacket.Checksum, ptr, 16))
+                        {
+                            _manuelResetEvent.Set();
+                        }
+                    }
+                    break;
+                }
+                default:
+                {
+                    if (commandid <= Constants.USER_COMMAND_LIMIT &&
+                        _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
+                    {
+                        Packet packet = new Packet(data, offset, length);
+                        ThreadPool.QueueUserWorkItem(
+                            x =>
+                            {
+                                object res = cee._deserialize(in packet);
+                                ByteArrayPool.Return(data);
+                                if (res != null) { cee.RaiseAsync(this, res); }
+                            });
+
+                        /*Task.Factory.StartNew(() => {
+                            object res = cee._deserialize(in packet);
+                            ByteArrayPool.Return(data);
+                            if (res != null) { cee.RaiseAsync(this, res); }
+                        });*/
+
+                        /*cee._deserialize.BeginInvoke(
+                        in packet, iar =>
+                        {
+                            object res = cee._deserialize.EndInvoke(in packet, iar);
+                            ByteArrayPool.Return(data);
+                            if (res != null) { cee.RaiseAsync(this, res); }
+                        }, null);*/
+                        return;
+                    }
+                    break;
                 }
             }
-            return true;
+            ByteArrayPool.Return(data);
         }
 
         #region Add & Remove
@@ -434,9 +340,7 @@ namespace Exomia.Network
                 throw new ArgumentOutOfRangeException(
                     $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
-
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
-
             bool lockTaken = false;
             try
             {
@@ -464,7 +368,6 @@ namespace Exomia.Network
                 throw new ArgumentOutOfRangeException(
                     $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
-
             bool lockTaken = false;
             try
             {
@@ -489,9 +392,7 @@ namespace Exomia.Network
                 throw new ArgumentOutOfRangeException(
                     $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
-
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
-
             ClientEventEntry buffer;
             bool lockTaken = false;
             try
@@ -500,7 +401,7 @@ namespace Exomia.Network
                 if (!_dataReceivedCallbacks.TryGetValue(commandid, out buffer))
                 {
                     throw new Exception(
-                        $"Invalid paramater '{nameof(commandid)}'! Use 'AddCommand(uint, DeserializeData)' first.");
+                        $"Invalid parameter '{nameof(commandid)}'! Use 'AddCommand(uint, DeserializeData)' first.");
                 }
             }
             finally
@@ -522,9 +423,7 @@ namespace Exomia.Network
                 throw new ArgumentOutOfRangeException(
                     $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
-
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
-
             if (_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
             {
                 buffer.Remove(callback);
@@ -595,7 +494,6 @@ namespace Exomia.Network
                 {
                     if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
                 }
-
                 cts.Token.Register(
                     delegate
                     {
@@ -611,7 +509,6 @@ namespace Exomia.Network
                         }
                         tcs.TrySetResult(default);
                     }, false);
-
                 SendError sendError = BeginSendData(commandid, data, offset, length, responseID);
                 if (sendError == SendError.None)
                 {
@@ -623,7 +520,6 @@ namespace Exomia.Network
                         return new Response<TResult>(result, SendError.None);
                     }
                 }
-
                 lockTaken = false;
                 try
                 {
@@ -728,31 +624,31 @@ namespace Exomia.Network
         /// <inheritdoc />
         public SendError SendPing()
         {
-            return Send(CommandID.PING, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
+            return Send(CommandID.PING, new PingPacket { TimeStamp = DateTime.Now.Ticks });
         }
 
         /// <inheritdoc />
-        public Task<Response<PING_STRUCT>> SendRPing()
+        public Task<Response<PingPacket>> SendRPing()
         {
-            return SendR<PING_STRUCT, PING_STRUCT>(
-                CommandID.PING, new PING_STRUCT { TimeStamp = DateTime.Now.Ticks });
+            return SendR<PingPacket, PingPacket>(
+                CommandID.PING, new PingPacket(DateTime.Now.Ticks));
         }
 
         /// <inheritdoc />
         public unsafe SendError SendClientInfo(long clientID, string clientName)
         {
-            CLIENTINFO_STRUCT packet = new CLIENTINFO_STRUCT { ClientID = clientID };
+            ClientinfoPacket packet;
+            packet.ClientID = clientID;
             fixed (char* ptr = clientName)
             {
                 Mem.Cpy(packet.ClientName, ptr, sizeof(char) * Math.Max(0, Math.Min(clientName.Length, 64)));
-
             }
             return Send(CommandID.CLIENTINFO, packet);
         }
 
         private unsafe SendError SendConnect()
         {
-            CONNECT_STRUCT packet = new CONNECT_STRUCT();
+            ConnectPacket packet;
             fixed (byte* ptr = _connectChecksum)
             {
                 Mem.Cpy(packet.Checksum, ptr, sizeof(byte) * 16);

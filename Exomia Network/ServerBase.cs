@@ -30,6 +30,7 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using Exomia.Network.Buffers;
+using Exomia.Network.DefaultPackets;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
@@ -152,7 +153,7 @@ namespace Exomia.Network
         /// <summary>
         ///     call to deserialize the data async
         /// </summary>
-        /// <param name="arg0">Soicket|Endpoint</param>
+        /// <param name="arg0">Socket|Endpoint</param>
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
         /// <param name="offset">offset</param>
@@ -178,8 +179,8 @@ namespace Exomia.Network
                 {
                     if (_clients.TryGetValue(arg0, out TServerClient sClient))
                     {
-                        data.FromBytesUnsafe(out CLIENTINFO_STRUCT clientinfoStruct);
-                        sClient.SetClientInfo(clientinfoStruct);
+                        data.FromBytesUnsafe(out ClientinfoPacket clientinfoPacket);
+                        sClient.SetClientInfo(clientinfoPacket);
                     }
                     break;
                 }
@@ -198,14 +199,31 @@ namespace Exomia.Network
                             sClient.SetLastReceivedPacketTimeStamp();
 
                             Packet packet = new Packet(data, offset, length);
-                            scee._deserialize.BeginInvoke(
+                            ThreadPool.QueueUserWorkItem(
+                                x =>
+                                {
+                                    object res = scee._deserialize(in packet);
+                                    ByteArrayPool.Return(data);
+
+                                    //TODO: why call RaiseAsync its async already!?
+                                    if (res != null) { scee.RaiseAsync(this, arg0, res, responseid, sClient); }
+                                });
+
+                            /*Task.Factory.StartNew(() =>
+                            {
+                                object res = scee._deserialize(in packet);
+                                ByteArrayPool.Return(data);
+                                if (res != null) { scee.RaiseAsync(this, arg0, res, responseid, sClient); }
+                            });*/
+
+                            /*scee._deserialize.BeginInvoke(
                                 in packet, iar =>
                                 {
                                     object res = scee._deserialize.EndInvoke(in packet, iar);
                                     ByteArrayPool.Return(data);
 
                                     if (res != null) { scee.RaiseAsync(this, arg0, res, responseid, sClient); }
-                                }, null);
+                                }, null);*/
                             return;
                         }
                     }

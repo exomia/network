@@ -44,7 +44,7 @@ namespace Exomia.Network.UDP
         private readonly ServerClientStateObjectPool _pool;
 
         /// <inheritdoc />
-        protected UdpServerApmBase(uint maxClients, int maxPacketSize = Constants.PACKET_SIZE_MAX)
+        protected UdpServerApmBase(uint maxClients, int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
         {
             _pool = new ServerClientStateObjectPool(maxClients, maxPacketSize);
         }
@@ -56,7 +56,7 @@ namespace Exomia.Network.UDP
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
             {
-                Serialization.Serialization.Serialize(
+                Serialization.Serialization.SerializeUdp(
                     commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
                 try
                 {
@@ -93,13 +93,17 @@ namespace Exomia.Network.UDP
                 if (Socket.OSSupportsIPv6)
                 {
                     listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
-                        { Blocking = false, DualMode = true };
+                    {
+                        Blocking = false, DualMode = true
+                    };
                     listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
                 }
                 else
                 {
                     listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
-                        { Blocking = false };
+                    {
+                        Blocking = false
+                    };
                     listener.Bind(new IPEndPoint(IPAddress.Any, port));
                 }
                 return true;
@@ -176,8 +180,8 @@ namespace Exomia.Network.UDP
 
             ListenAsync();
 
-            state.Buffer.GetHeader(out uint commandID, out int dataLength, out byte h1);
-            if (dataLength == length - Constants.HEADER_SIZE)
+            state.Buffer.GetHeaderUdp(out uint commandID, out int dataLength, out byte h1);
+            if (dataLength == length - Constants.UDP_HEADER_SIZE)
             {
                 uint responseID = 0;
                 byte[] data;
@@ -188,25 +192,25 @@ namespace Exomia.Network.UDP
                     {
                         fixed (byte* ptr = state.Buffer)
                         {
-                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
-                            l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
+                            responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.UDP_HEADER_SIZE + 4);
                         }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
-                            state.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                            state.Buffer, Constants.UDP_HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
                     else
                     {
                         fixed (byte* ptr = state.Buffer)
                         {
-                            l = *(int*)(ptr + Constants.HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.UDP_HEADER_SIZE);
                         }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
-                            state.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                            state.Buffer, Constants.UDP_HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
@@ -218,16 +222,16 @@ namespace Exomia.Network.UDP
                     {
                         fixed (byte* ptr = state.Buffer)
                         {
-                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                            responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
                         }
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.UDP_HEADER_SIZE + 4, data, 0, dataLength);
                     }
                     else
                     {
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                        Buffer.BlockCopy(state.Buffer, Constants.UDP_HEADER_SIZE, data, 0, dataLength);
                     }
 
                     DeserializeData(state.EndPoint, commandID, data, 0, dataLength, responseID);
@@ -253,9 +257,9 @@ namespace Exomia.Network.UDP
 
             public ServerClientStateObjectPool(uint maxClients, int maxPacketSize)
             {
-                _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+                _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
                     ? maxPacketSize
-                    : Constants.PACKET_SIZE_MAX;
+                    : Constants.UDP_PACKET_SIZE_MAX;
                 _lock = new SpinLock(Debugger.IsAttached);
                 _buffers = new ServerClientStateObject[maxClients != 0 ? maxClients + 1u : 33];
             }
@@ -284,8 +288,7 @@ namespace Exomia.Network.UDP
 
                 return buffer ?? new ServerClientStateObject
                 {
-                    Buffer = new byte[_maxPacketSize],
-                    EndPoint = new IPEndPoint(IPAddress.Any, 0)
+                    Buffer = new byte[_maxPacketSize], EndPoint = new IPEndPoint(IPAddress.Any, 0)
                 };
             }
 

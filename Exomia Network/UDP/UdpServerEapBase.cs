@@ -48,11 +48,11 @@ namespace Exomia.Network.UDP
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <inheritdoc />
-        protected UdpServerEapBase(uint maxClients, int maxPacketSize = Constants.PACKET_SIZE_MAX)
+        protected UdpServerEapBase(uint maxClients, int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
         {
-            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
                 ? maxPacketSize
-                : Constants.PACKET_SIZE_MAX;
+                : Constants.UDP_PACKET_SIZE_MAX;
             _receiveEventArgsPool = new SocketAsyncEventArgsPool(maxClients + 5);
             _sendEventArgsPool = new SocketAsyncEventArgsPool(maxClients + 5);
         }
@@ -71,7 +71,7 @@ namespace Exomia.Network.UDP
                     sendEventArgs.Completed += SendToAsyncCompleted;
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
-                Serialization.Serialization.Serialize(
+                Serialization.Serialization.SerializeUdp(
                     commandid, data, offset, length, responseid, EncryptionMode.None, sendEventArgs.Buffer,
                     out int size);
                 sendEventArgs.SetBuffer(0, size);
@@ -115,13 +115,17 @@ namespace Exomia.Network.UDP
                 if (Socket.OSSupportsIPv6)
                 {
                     listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
-                        { Blocking = false, DualMode = true };
+                    {
+                        Blocking = false, DualMode = true
+                    };
                     listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
                 }
                 else
                 {
                     listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
-                        { Blocking = false };
+                    {
+                        Blocking = false
+                    };
                     listener.Bind(new IPEndPoint(IPAddress.Any, port));
                 }
                 return true;
@@ -192,9 +196,9 @@ namespace Exomia.Network.UDP
 
             ListenAsync();
 
-            e.Buffer.GetHeader(out uint commandID, out int dataLength, out byte h1);
+            e.Buffer.GetHeaderUdp(out uint commandID, out int dataLength, out byte h1);
 
-            if (dataLength == e.BytesTransferred - Constants.HEADER_SIZE)
+            if (dataLength == e.BytesTransferred - Constants.UDP_HEADER_SIZE)
             {
                 EndPoint endPoint = e.RemoteEndPoint;
 
@@ -207,25 +211,25 @@ namespace Exomia.Network.UDP
                     {
                         fixed (byte* ptr = e.Buffer)
                         {
-                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
-                            l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
+                            responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.UDP_HEADER_SIZE + 4);
                         }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
-                            e.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                            e.Buffer, Constants.UDP_HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
                     else
                     {
                         fixed (byte* ptr = e.Buffer)
                         {
-                            l = *(int*)(ptr + Constants.HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.UDP_HEADER_SIZE);
                         }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
-                            e.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                            e.Buffer, Constants.UDP_HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
@@ -237,16 +241,16 @@ namespace Exomia.Network.UDP
                     {
                         fixed (byte* ptr = e.Buffer)
                         {
-                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                            responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
                         }
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(e.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                        Buffer.BlockCopy(e.Buffer, Constants.UDP_HEADER_SIZE + 4, data, 0, dataLength);
                     }
                     else
                     {
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(e.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                        Buffer.BlockCopy(e.Buffer, Constants.UDP_HEADER_SIZE, data, 0, dataLength);
                     }
 
                     DeserializeData(endPoint, commandID, data, 0, dataLength, responseID);

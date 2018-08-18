@@ -22,16 +22,28 @@
 
 #endregion
 
-namespace Exomia.Network
+using System.Runtime.InteropServices;
+
+namespace Exomia.Network.DefaultPackets
 {
-    static class Constants
+    /// <summary>
+    ///     PingPacket
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, Size = 8)]
+    public struct PingPacket
     {
-        internal const int TCP_HEADER_SIZE = 7;
-        internal const int TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_SIZE - 8;
+        /// <summary>
+        ///     TimeStamp
+        /// </summary>
+        public long TimeStamp;
 
-        internal const int UDP_HEADER_SIZE = 5;
-        internal const int UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_SIZE - 8;
-
-        internal const uint USER_COMMAND_LIMIT = 65500;
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="PingPacket" /> struct.
+        /// </summary>
+        /// <param name="timeStamp"></param>
+        public PingPacket(long timeStamp)
+        {
+            TimeStamp = timeStamp;
+        }
     }
 }

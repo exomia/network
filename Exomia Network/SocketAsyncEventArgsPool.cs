@@ -29,7 +29,7 @@ using System.Threading;
 
 namespace Exomia.Network
 {
-    internal class SocketAsyncEventArgsPool : IDisposable
+    class SocketAsyncEventArgsPool : IDisposable
     {
         private readonly SocketAsyncEventArgs[] _buffer;
 

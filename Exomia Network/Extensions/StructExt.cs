@@ -194,11 +194,11 @@ namespace Exomia.Network.Extensions.Struct
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void ToBytesUnsafe2<T>(this T data, out byte[] arr, out int length) where T : unmanaged
         {
-            length = Marshal.SizeOf(typeof(T));
+            length = sizeof(T);
             arr = new byte[length];
             fixed (byte* ptr = arr)
             {
-                Marshal.StructureToPtr(data, new IntPtr(ptr), true);
+                *(T*)ptr = data;
             }
         }
 
@@ -458,7 +458,7 @@ namespace Exomia.Network.Extensions.Struct
         {
             fixed (byte* ptr = arr)
             {
-                obj = *(T*)(ptr);
+                obj = *(T*)ptr;
             }
         }
 
@@ -489,7 +489,7 @@ namespace Exomia.Network.Extensions.Struct
         {
             fixed (byte* ptr = arr)
             {
-                return *(T*)(ptr);
+                return *(T*)ptr;
             }
         }
 

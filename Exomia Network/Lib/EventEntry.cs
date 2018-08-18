@@ -27,7 +27,7 @@ using System.Runtime.Remoting.Messaging;
 
 namespace Exomia.Network.Lib
 {
-    internal sealed class ServerClientEventEntry<T, TServerClient>
+    sealed class ServerClientEventEntry<T, TServerClient>
         where T : class
         where TServerClient : ServerClientBase<T>
     {
@@ -76,7 +76,7 @@ namespace Exomia.Network.Lib
         }
     }
 
-    internal sealed class ClientEventEntry
+    sealed class ClientEventEntry
     {
         private event DataReceivedHandler _dataReceived;
 

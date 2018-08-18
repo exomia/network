@@ -22,21 +22,24 @@
 
 #endregion
 
-namespace Exomia.Network
+using System.Runtime.InteropServices;
+
+namespace Exomia.Network.DefaultPackets
 {
     /// <summary>
-    ///     SocketMode
+    ///     ClientinfoPacket
     /// </summary>
-    public enum SocketMode
+    [StructLayout(LayoutKind.Sequential, Size = 72)]
+    public unsafe struct ClientinfoPacket
     {
         /// <summary>
-        ///     TCP
+        ///     ClientID
         /// </summary>
-        Tcp,
+        public long ClientID;
 
         /// <summary>
-        ///     UDP
+        ///     ClientName (64)
         /// </summary>
-        Udp
+        public fixed char ClientName[64];
     }
 }

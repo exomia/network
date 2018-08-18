@@ -22,48 +22,27 @@
 
 #endregion
 
-using System.Runtime.InteropServices;
-
-namespace Exomia.Network
+namespace Exomia.Network.Serialization
 {
-    /// <summary>
-    ///     PING_STRUCT
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 8)]
-    public struct PING_STRUCT
+    static partial class Serialization
     {
-        /// <summary>
-        ///     TimeStamp
-        /// </summary>
-        public long TimeStamp;
-    }
+        internal const uint UNUSED_BIT_MASK = 0b10000000;
 
-    /// <summary>
-    ///     CLIENTINFO_STRUCT
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 72)]
-    public unsafe struct CLIENTINFO_STRUCT
-    {
-        /// <summary>
-        ///     ClientID
-        /// </summary>
-        public long ClientID;
+        internal const uint RESPONSE_BIT_MASK = 0b01000000;
 
-        /// <summary>
-        ///     ClientName (64)
-        /// </summary>
-        public fixed char ClientName[64];
-    }
+        internal const uint COMPRESSED_BIT_MASK = 0b00100000;
 
-    /// <summary>
-    ///     CONNECT_STRUCT
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 16)]
-    public unsafe struct CONNECT_STRUCT
-    {
-        /// <summary>
-        ///     Checksum(16)
-        /// </summary>
-        public fixed byte Checksum[16];
+        internal const uint ENCRYPT_BIT_MASK = 0b00010000;
+        internal const uint ENCRYPT_MODE_MASK = 0b00001111;
+
+        private const byte UNUSED_1_BIT = 1 << 7;
+        private const byte RESPONSE_1_BIT = 1 << 6;
+        private const byte COMPRESSED_1_BIT = 1 << 5;
+
+        private const uint COMMANDID_MASK = 0xFFFF0000;
+        private const int COMMANDID_SHIFT = 16;
+        private const uint DATA_LENGTH_MASK = 0xFFFF;
+
+        private const int LENGTH_THRESHOLD = 1 << 12; //4096
     }
 }

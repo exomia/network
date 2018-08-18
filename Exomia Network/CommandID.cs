@@ -32,26 +32,26 @@ namespace Exomia.Network
         /// <summary>
         ///     RESPONSE_ID
         /// </summary>
-        public const uint RESPONSE = 16383;
+        public const uint RESPONSE = 65534;
 
         /// <summary>
         ///     CLIENTINFO_ID
         /// </summary>
-        public const uint CLIENTINFO = 16382;
+        public const uint CLIENTINFO = 65533;
 
         /// <summary>
         ///     CONNECT_ID
         /// </summary>
-        public const uint CONNECT = 16381;
+        public const uint CONNECT = 65532;
 
         /// <summary>
         ///     DISCONNECT_ID
         /// </summary>
-        public const uint DISCONNECT = 16380;
+        public const uint DISCONNECT = 65531;
 
         /// <summary>
         ///     PING_ID
         /// </summary>
-        public const uint PING = 16379;
+        public const uint PING = 65530;
     }
 }

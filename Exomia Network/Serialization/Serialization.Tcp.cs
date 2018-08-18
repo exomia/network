@@ -29,38 +29,31 @@ using LZ4;
 
 namespace Exomia.Network.Serialization
 {
-    internal static unsafe class Serialization
+    static unsafe partial class Serialization
     {
-        internal const uint UNUSED_BIT_MASK = 0b10000000;
+        private const ushort CONE = 0b0000_0000_0000_0001;
+        private const long L_OFFSET_MAX = int.MaxValue + 1L;
 
-        internal const uint RESPONSE_BIT_MASK = 0b01000000;
+        private const uint C0 = 0x214EE939;
+        private const uint C1 = 0x117DFA89;
 
-        internal const uint COMPRESSED_BIT_MASK = 0b00100000;
+        private const byte ONE = 0b1000_0000;
+        private const byte MASK1 = 0b0111_1111;
+        private const byte MASK2 = 0b0100_0000;
 
-        internal const uint ENCRYPT_BIT_MASK = 0b00010000;
-        internal const uint ENCRYPT_MODE_MASK = 0b00001111;
-
-        private const byte UNUSED_1_BIT = 1 << 7;
-        private const byte RESPONSE_1_BIT = 1 << 6;
-        private const byte COMPRESSED_1_BIT = 1 << 5;
-
-        private const uint COMMANDID_MASK = 0xFFFF0000;
-        private const int COMMANDID_SHIFT = 16;
-        private const uint DATA_LENGTH_MASK = 0xFFFF;
-
-        private const int LENGTH_THRESHOLD = 1 << 12; //4096
+        private const uint H0 = 0x209536F9;
+        private static readonly uint s_h0 = H0 ^ R1(H0, 12);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void Serialize(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode,
-            out byte[] send, out int size)
+        internal static void SerializeTcp(uint commandID, byte[] data, int offset, int length, uint responseID,
+            EncryptionMode encryptionMode, out byte[] send, out int size)
         {
-            send = ByteArrayPool.Rent(Constants.HEADER_SIZE + 8 + length);
-            Serialize(commandID, data, offset, length, responseID, encryptionMode, send, out size);
+            send = ByteArrayPool.Rent(Constants.TCP_HEADER_SIZE + 8 + length);
+            SerializeTcp(commandID, data, offset, length, responseID, encryptionMode, send, out size);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void Serialize(uint commandID, byte[] data, int offset, int length, uint responseID,
+        internal static void SerializeTcp(uint commandID, byte[] data, int offset, int length, uint responseID,
             EncryptionMode encryptionMode, byte[] send, out int size)
         {
             // 8bit
@@ -77,7 +70,7 @@ namespace Exomia.Network.Serialization
 
             // 32bit
             // 
-            // | COMMANDID 31-16 (16)bit                          | DATALENGTH 15-0 (16)bit                         |
+            // | COMMANDID 31-16 (16)bit                          | DATA LENGTH 15-0 (16)bit                        |
             // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
             // | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE RANGE
             // --------------------------------------------------------------------------------------------------------------------------------
@@ -89,17 +82,17 @@ namespace Exomia.Network.Serialization
                 if (length >= LENGTH_THRESHOLD)
                 {
                     int s = LZ4Codec.Encode(
-                        data, offset, length, send, Constants.HEADER_SIZE + 8, length);
+                        data, offset, length, send, Constants.TCP_HEADER_SIZE + 8, length);
 
-                    if (s > Constants.PACKET_SIZE_MAX)
+                    if (s > Constants.TCP_PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(
-                            $"packet size of {Constants.PACKET_SIZE_MAX} exceeded (s: {s})");
+                            $"packet size of {Constants.TCP_PACKET_SIZE_MAX} exceeded (s: {s})");
                     }
 
                     if (s > 0)
                     {
-                        size = Constants.HEADER_SIZE + 8 + s;
+                        size = Constants.TCP_HEADER_SIZE + 8 + s;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)(RESPONSE_1_BIT | COMPRESSED_1_BIT | (byte)encryptionMode);
@@ -113,7 +106,7 @@ namespace Exomia.Network.Serialization
                     }
                 }
 
-                size = Constants.HEADER_SIZE + 4 + length;
+                size = Constants.TCP_HEADER_SIZE + 4 + length;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
@@ -122,22 +115,22 @@ namespace Exomia.Network.Serialization
                         ((commandID << COMMANDID_SHIFT) & COMMANDID_MASK);
                     *(uint*)(ptr + 5) = responseID;
                 }
-                Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE + 4, length);
+                Buffer.BlockCopy(data, offset, send, Constants.TCP_HEADER_SIZE + 4, length);
             }
             else
             {
                 if (length >= LENGTH_THRESHOLD)
                 {
                     int s = LZ4Codec.Encode(
-                        data, offset, length, send, Constants.HEADER_SIZE + 4, length);
-                    if (s > Constants.PACKET_SIZE_MAX)
+                        data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, length);
+                    if (s > Constants.TCP_PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(
-                            $"packet size of {Constants.PACKET_SIZE_MAX} exceeded (s: {s})");
+                            $"packet size of {Constants.TCP_PACKET_SIZE_MAX} exceeded (s: {s})");
                     }
                     if (s > 0)
                     {
-                        size = Constants.HEADER_SIZE + 4 + s;
+                        size = Constants.TCP_HEADER_SIZE + 4 + s;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)(COMPRESSED_1_BIT | (byte)encryptionMode);
@@ -150,7 +143,7 @@ namespace Exomia.Network.Serialization
                     }
                 }
 
-                size = Constants.HEADER_SIZE + length;
+                size = Constants.TCP_HEADER_SIZE + length;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)encryptionMode;
@@ -158,41 +151,89 @@ namespace Exomia.Network.Serialization
                         ((uint)length & DATA_LENGTH_MASK) |
                         ((commandID << COMMANDID_SHIFT) & COMMANDID_MASK);
                 }
-                Buffer.BlockCopy(data, offset, send, Constants.HEADER_SIZE, length);
+                Buffer.BlockCopy(data, offset, send, Constants.TCP_HEADER_SIZE, length);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeader(this byte[] header, out uint commandID, out int datalength, out byte h1)
+        private static uint R1(uint a, int b)
         {
-            // 8bit
-            // 
-            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED BIT | ENCRYPT BIT | ENCRYPT MODE |
-            // | 7            | 6            | 5              | 4           | 3  2  1  0   |
-            // | VR: 0/1      | VR: 0/1      | VR: 0/1        | VR: 0/1     | VR: 0-15     | VR = VALUE RANGE
-            // -------------------------------------------------------------------------------------------------------------
-            // | 0            | 0            | 0              | 0           | 1  1  1  1   | ENCRYPT_MODE_MASK    0b00001111
-            // | 0            | 0            | 0              | 1           | 0  0  0  0   | ENCRYPT_BIT_MASK     0b00010000
-            // | 0            | 0            | 1              | 0           | 0  0  0  0   | COMPRESSED_BIT_MASK  0b00100000
-            // | 0            | 1            | 0              | 0           | 0  0  0  0   | RESPONSE_BIT_MASK    0b01000000
-            // | 1            | 0            | 0              | 0           | 0  0  0  0   | UNUSED_BIT_MASK      0b10000000
+            return (a << b) | (a >> (32 - b));
+        }
 
-            // 32bit
-            // 
-            // | COMMANDID 31-16 (16)bit                          | DATALENGTH 15-0 (16)bit                         |
-            // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
-            // | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE RANGE
-            // --------------------------------------------------------------------------------------------------------------------------------
-            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0xFFFF
-            // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
+        /// <summary>
+        ///     Returns the smallest integer greater than or equal to the specified floating-point number.
+        /// </summary>
+        /// <param name="f">A floating-point number with single precision</param>
+        /// <returns>The smallest integer, which is greater than or equal to f.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int Ceiling(double f)
+        {
+            return (int)(L_OFFSET_MAX - (long)(L_OFFSET_MAX - f));
+        }
 
-            fixed (byte* ptr = header)
+        private static ushort Serialize(byte[] data, out byte[] buffer)
+        {
+            buffer = new byte[data.Length + Ceiling(data.Length / 7.0f)];
+            uint checksum = s_h0;
+            int o1 = 0;
+            int o2 = 0;
+            int dl = data.Length;
+            while (o2 + 7 < dl)
             {
-                h1 = *ptr;
-                uint h2 = *(uint*)(ptr + 1);
-                commandID = (h2 & COMMANDID_MASK) >> COMMANDID_SHIFT;
-                datalength = (int)(h2 & DATA_LENGTH_MASK);
+                Serialize(&checksum, buffer, o1, data, o2, 7);
+                o1 += 8;
+                o2 += 7;
             }
+            Serialize(&checksum, buffer, o1, data, o2, dl - o2);
+
+            return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
+        }
+
+        private static void Serialize(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)
+        {
+            byte b = ONE;
+            for (int i = 0; i < size; i++)
+            {
+                uint d = data[o2 + i];
+                byte s = (byte)(d >> 7);
+                b = (byte)(b | (s << (6 - i)));
+                buffer[o1 + i] = (byte)(ONE | d);
+                *checksum ^= d + C0;
+            }
+            buffer[o1 + size] = b;
+            *checksum += R1(b, 23) + C1;
+        }
+
+        private static ushort Deserialize(byte[] data, out byte[] buffer)
+        {
+            buffer = new byte[data.Length - Ceiling(data.Length / 8.0f)];
+
+            uint checksum = s_h0;
+            int o1 = 0;
+            int o2 = 0;
+            int dl = data.Length;
+            while (o2 + 8 < dl)
+            {
+                Deserialize(&checksum, buffer, o1, data, o2, 8);
+                o1 += 7;
+                o2 += 8;
+            }
+            Deserialize(&checksum, buffer, o1, data, o2, dl - o2);
+
+            return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
+        }
+
+        private static void Deserialize(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)
+        {
+            byte b = data[o2 + size - 1];
+            for (int i = 0; i < size - 1; i++)
+            {
+                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (data[o2 + i] & MASK1));
+                buffer[o1 + i] = d;
+                *checksum ^= d + C0;
+            }
+            *checksum += R1(b, 23) + C1;
         }
     }
 }

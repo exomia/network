@@ -98,9 +98,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Buffers\ByteArrayPool.cs" />
-    <Compile Include="ClientApm.cs" />
+    <Compile Include="DefaultPackets\ClientinfoPacket.cs" />
+    <Compile Include="DefaultPackets\PingPacket.cs" />
+    <Compile Include="Serialization\Serialization.cs" />
+    <Compile Include="TCP\TcpClientApm.cs" />
+    <Compile Include="UDP\UdpClientApm.cs" />
     <Compile Include="ClientBase.cs" />
-    <Compile Include="ClientEap.cs" />
+    <Compile Include="UDP\UdpClientEap.cs" />
     <Compile Include="CommandID.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DELEGATES.cs" />
@@ -112,17 +116,19 @@
     <Compile Include="IClient.cs" />
     <Compile Include="IServer.cs" />
     <Compile Include="Lib\EventEntry.cs" />
+    <Compile Include="Native\ByteArrayAllocator.cs" />
     <Compile Include="Native\Mem.cs" />
+    <Compile Include="Native\CircularBuffer.cs" />
+    <Compile Include="Native\String.cs" />
     <Compile Include="Packet.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Response.cs" />
     <Compile Include="SendError.cs" />
     <Compile Include="Serialization\ISerializable.cs" />
-    <Compile Include="Serialization\Serialisation.cs" />
+    <Compile Include="Serialization\Serialization.Udp.cs" />
     <Compile Include="ServerBase.cs" />
     <Compile Include="ServerClientBase.cs" />
-    <Compile Include="SocketMode.cs" />
-    <Compile Include="STRUCTS.cs" />
+    <Compile Include="DefaultPackets\ConnectPacket.cs" />
     <Compile Include="SocketAsyncEventArgsPool.cs" />
     <Compile Include="TCP\TcpServerApmBase.cs" />
     <Compile Include="TCP\TcpServerEapBase.cs" />
@@ -131,7 +137,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <Compile Include="Serialization\Serialization.Tcp.cs" />
     <None Include="todo.md" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -30,7 +30,7 @@ namespace Exomia.Network
     ///     IServer{T} interface
     /// </summary>
     /// <typeparam name="T">Socket|Endpoint</typeparam>
-    internal interface IServer<in T>
+    interface IServer<in T>
         where T : class
     {
         /// <summary>

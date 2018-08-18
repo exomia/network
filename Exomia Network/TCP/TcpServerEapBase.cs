@@ -47,11 +47,11 @@ namespace Exomia.Network.TCP
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <inheritdoc />
-        protected TcpServerEapBase(int maxPacketSize = Constants.PACKET_SIZE_MAX)
+        protected TcpServerEapBase(int maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
         {
-            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
-                : Constants.PACKET_SIZE_MAX;
+                : Constants.TCP_PACKET_SIZE_MAX;
 
             _sendEventArgsPool = new SocketAsyncEventArgsPool(128);
         }
@@ -72,7 +72,7 @@ namespace Exomia.Network.TCP
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
 
-                Serialization.Serialization.Serialize(
+                Serialization.Serialization.SerializeTcp(
                     commandid, data, offset, length, responseid, EncryptionMode.None, sendEventArgs.Buffer,
                     out int size);
                 sendEventArgs.SetBuffer(0, size);
@@ -117,9 +117,7 @@ namespace Exomia.Network.TCP
                 {
                     listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
                     {
-                        NoDelay = true,
-                        Blocking = false,
-                        DualMode = true
+                        NoDelay = true, Blocking = false, DualMode = true
                     };
                     listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
                 }
@@ -127,8 +125,7 @@ namespace Exomia.Network.TCP
                 {
                     listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                     {
-                        NoDelay = true,
-                        Blocking = false
+                        NoDelay = true, Blocking = false
                     };
                     listener.Bind(new IPEndPoint(IPAddress.Any, port));
                 }
@@ -242,9 +239,10 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            e.Buffer.GetHeader(out uint commandID, out int dataLength, out byte h1);
+            //TODO: circular buffer
+            e.Buffer.GetHeaderUdp(out uint commandID, out int dataLength, out byte h1);
 
-            if (dataLength == e.BytesTransferred - Constants.HEADER_SIZE)
+            if (dataLength == e.BytesTransferred - Constants.TCP_HEADER_SIZE)
             {
                 Socket socket = e.AcceptSocket;
 
@@ -257,25 +255,25 @@ namespace Exomia.Network.TCP
                     {
                         fixed (byte* ptr = e.Buffer)
                         {
-                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
-                            l = *(int*)(ptr + Constants.HEADER_SIZE + 4);
+                            responseID = *(uint*)(ptr + Constants.TCP_HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.TCP_HEADER_SIZE + 4);
                         }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
-                            e.Buffer, Constants.HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                            e.Buffer, Constants.TCP_HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
                     else
                     {
                         fixed (byte* ptr = e.Buffer)
                         {
-                            l = *(int*)(ptr + Constants.HEADER_SIZE);
+                            l = *(int*)(ptr + Constants.TCP_HEADER_SIZE);
                         }
                         data = ByteArrayPool.Rent(l);
 
                         int s = LZ4Codec.Decode(
-                            e.Buffer, Constants.HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                            e.Buffer, Constants.TCP_HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                     }
 
@@ -288,16 +286,16 @@ namespace Exomia.Network.TCP
                     {
                         fixed (byte* ptr = e.Buffer)
                         {
-                            responseID = *(uint*)(ptr + Constants.HEADER_SIZE);
+                            responseID = *(uint*)(ptr + Constants.TCP_HEADER_SIZE);
                         }
                         dataLength -= 4;
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(e.Buffer, Constants.HEADER_SIZE + 4, data, 0, dataLength);
+                        Buffer.BlockCopy(e.Buffer, Constants.TCP_HEADER_SIZE + 4, data, 0, dataLength);
                     }
                     else
                     {
                         data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(e.Buffer, Constants.HEADER_SIZE, data, 0, dataLength);
+                        Buffer.BlockCopy(e.Buffer, Constants.TCP_HEADER_SIZE, data, 0, dataLength);
                     }
 
                     ReceiveAsync(e);

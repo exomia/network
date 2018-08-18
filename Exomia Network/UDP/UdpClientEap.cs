@@ -26,14 +26,17 @@
 
 using System;
 using System.Net.Sockets;
+using Exomia.Network.Buffers;
+using Exomia.Network.Serialization;
+using LZ4;
 
-namespace Exomia.Network
+namespace Exomia.Network.UDP
 {
     /// <inheritdoc cref="ClientBase" />
     /// <summary>
     ///     A TCP/UDP-Client build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>
-    public sealed class ClientEap : ClientBase
+    public sealed class UdpClientEap : ClientBase
     {
         private readonly int _maxPacketSize;
 
@@ -41,17 +44,45 @@ namespace Exomia.Network
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <inheritdoc />
-        public ClientEap(ushort maxClients = 32, int maxPacketSize = 0)
+        public UdpClientEap(int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
         {
-            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.PACKET_SIZE_MAX
+            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
                 ? maxPacketSize
-                : Constants.PACKET_SIZE_MAX;
+                : Constants.UDP_PACKET_SIZE_MAX;
 
             _receiveEventArgs = new SocketAsyncEventArgs();
             _receiveEventArgs.Completed += ReceiveAsyncCompleted;
             _receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
 
-            _sendEventArgsPool = new SocketAsyncEventArgsPool(maxClients);
+            _sendEventArgsPool = new SocketAsyncEventArgsPool(32);
+        }
+
+        /// <inheritdoc />
+        protected override bool TryCreateSocket(out Socket socket)
+        {
+            try
+            {
+                if (Socket.OSSupportsIPv6)
+                {
+                    socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
+                    {
+                        Blocking = false, DualMode = true
+                    };
+                }
+                else
+                {
+                    socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
+                    {
+                        Blocking = false
+                    };
+                }
+                return true;
+            }
+            catch
+            {
+                socket = null;
+                return false;
+            }
         }
 
         /// <inheritdoc />
@@ -86,7 +117,7 @@ namespace Exomia.Network
                     sendEventArgs.Completed += SendAsyncCompleted;
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
-                Serialization.Serialization.Serialize(
+                Serialization.Serialization.SerializeUdp(
                     commandid, data, offset, length, responseID, EncryptionMode.None, sendEventArgs.Buffer,
                     out int size);
                 sendEventArgs.SetBuffer(0, size);
@@ -134,7 +165,68 @@ namespace Exomia.Network
                 return;
             }
 
-            HandleReceive(e.Buffer, e.BytesTransferred);
+            e.Buffer.GetHeaderUdp(out uint commandID, out int dataLength, out byte h1);
+
+            if (e.BytesTransferred == dataLength + Constants.UDP_HEADER_SIZE)
+            {
+                HandleReceive(e.Buffer, commandID, dataLength, h1);
+            }
+            ReceiveAsync();
+        }
+
+        private unsafe void HandleReceive(byte[] buffer, uint commandID, int dataLength, byte h1)
+        {
+            uint responseID = 0;
+            byte[] data;
+            if ((h1 & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+            {
+                int l;
+                if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
+                {
+                    fixed (byte* ptr = buffer)
+                    {
+                        responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
+                        l = *(int*)(ptr + Constants.UDP_HEADER_SIZE + 4);
+                    }
+                    data = ByteArrayPool.Rent(l);
+                    int s = LZ4Codec.Decode(
+                        buffer, Constants.UDP_HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                }
+                else
+                {
+                    fixed (byte* ptr = buffer)
+                    {
+                        l = *(int*)(ptr + Constants.UDP_HEADER_SIZE);
+                    }
+                    data = ByteArrayPool.Rent(l);
+                    int s = LZ4Codec.Decode(
+                        buffer, Constants.UDP_HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
+                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                }
+                ReceiveAsync();
+                DeserializeData(commandID, data, 0, l, responseID);
+            }
+            else
+            {
+                if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
+                {
+                    fixed (byte* ptr = buffer)
+                    {
+                        responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
+                    }
+                    dataLength -= 4;
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(buffer, Constants.UDP_HEADER_SIZE + 4, data, 0, dataLength);
+                }
+                else
+                {
+                    data = ByteArrayPool.Rent(dataLength);
+                    Buffer.BlockCopy(buffer, Constants.UDP_HEADER_SIZE, data, 0, dataLength);
+                }
+                ReceiveAsync();
+                DeserializeData(commandID, data, 0, dataLength, responseID);
+            }
         }
 
         private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)

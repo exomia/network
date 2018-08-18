@@ -25,6 +25,7 @@
 using System;
 using System.Net;
 using System.Threading.Tasks;
+using Exomia.Network.DefaultPackets;
 using Exomia.Network.Serialization;
 
 namespace Exomia.Network
@@ -36,24 +37,22 @@ namespace Exomia.Network
     public interface IClient : IDisposable
     {
         /// <summary>
-        ///     trys to connect the client to a server
+        ///     try's to connect the client to a server
         /// </summary>
-        /// <param name="mode"></param>
         /// <param name="serverAddress"></param>
         /// <param name="port"></param>
         /// <param name="timeout"></param>
         /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
-        bool Connect(SocketMode mode, string serverAddress, int port, int timeout = 10);
+        bool Connect(string serverAddress, int port, int timeout = 10);
 
         /// <summary>
-        ///     trys to connect the client to a server
+        ///     try's to connect the client to a server
         /// </summary>
-        /// <param name="mode"></param>
         /// <param name="ipAddresses"></param>
         /// <param name="port"></param>
         /// <param name="timeout"></param>
         /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
-        bool Connect(SocketMode mode, IPAddress[] ipAddresses, int port, int timeout = 10);
+        bool Connect(IPAddress[] ipAddresses, int port, int timeout = 10);
 
         /// <summary>
         ///     call to disconnect from a server
@@ -239,7 +238,7 @@ namespace Exomia.Network
         /// <summary>
         ///     send a ping command to the server
         /// </summary>
-        Task<Response<PING_STRUCT>> SendRPing();
+        Task<Response<PingPacket>> SendRPing();
 
         /// <summary>
         ///     send a client info command to the server
