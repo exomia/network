@@ -1,7 +1,7 @@
 ﻿# Todo
 
 - [x] add a disconnect reason [graceful, aborted, error, unspecified] to all disconnect handlers
-- [ ] use a flag system (Interlocked/atomic to set states of the socket like sending or disconnected that you cant send anymore instead of null check of socket)
+- [x] use a flag system (Interlocked/atomic to set states of the socket like sending or disconnected that you cant send anymore instead of null check of socket)
 
 ## Features
 

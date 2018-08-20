@@ -63,7 +63,7 @@ namespace Exomia.Network.Native
             _ptr = (byte*)_mPtr;
 
             *(int*)_ptr = _head = 8;
-            *(int*)(_ptr + 4) = capacity;
+            *(int*)(_ptr + 4) = capacity - 8;
 
             _lock = new SpinLock(Debugger.IsAttached);
         }

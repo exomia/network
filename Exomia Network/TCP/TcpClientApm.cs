@@ -42,7 +42,6 @@ namespace Exomia.Network.TCP
 
         private readonly CircularBuffer _circularBuffer;
         private readonly byte[] _buffer;
-        private readonly byte[] _header;
 
         /// <inheritdoc />
         public TcpClientApm(ushort maxPacketSize = 0)
@@ -50,7 +49,6 @@ namespace Exomia.Network.TCP
             _buffer = new byte[maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.TCP_PACKET_SIZE_MAX];
-            _header = new byte[Constants.TCP_HEADER_SIZE];
             _circularBuffer = new CircularBuffer(_buffer.Length * 2);
         }
 
@@ -186,7 +184,9 @@ namespace Exomia.Network.TCP
                 {
                     if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength) == ZERO_BYTE)
                     {
-                        _circularBuffer.Read(_buffer, Constants.TCP_HEADER_SIZE, dataLength);
+                        _circularBuffer.Read(_buffer, 0, dataLength, Constants.TCP_HEADER_SIZE);
+
+                        //TODO: deserialize & checksum compare
                         HandleReceive(_buffer, commandID, dataLength, packetHeader);
                         return true;
                     }
