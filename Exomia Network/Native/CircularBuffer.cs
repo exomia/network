@@ -151,18 +151,13 @@ namespace Exomia.Network.Native
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_count == 0 || _count < length)
+                if (_count == 0 || _count < skip + length)
                 {
                     throw new InvalidOperationException("empty circular buffer or overflow");
                 }
 
                 fixed (byte* d = dest)
                 {
-                    if (_count == 0 || _count < skip + length)
-                    {
-                        throw new InvalidOperationException("empty circular buffer or overflow");
-                    }
-
                     if (_tail + skip + length < _capacity)
                     {
                         Mem.Cpy(d + offset, _ptr + _tail + skip, length);
@@ -344,21 +339,21 @@ namespace Exomia.Network.Native
         /// <summary>
         ///     peek a single byte from the buffer
         /// </summary>
-        /// <param name="offset">offset</param>
+        /// <param name="skip">skip bytes</param>
         /// <param name="packetHeader">packetHeader</param>
         /// <param name="commandID">command id</param>
         /// <param name="dataLength">data length</param>
         /// <param name="checksum"></param>
         /// <returns>a byte array</returns>
         /// <exception cref="InvalidOperationException">if the buffer is empty</exception>
-        public bool PeekHeader(int offset, out byte packetHeader, out uint commandID, out int dataLength,
+        public bool PeekHeader(int skip, out byte packetHeader, out uint commandID, out int dataLength,
             out ushort checksum)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_count == 0 || _count < Constants.TCP_HEADER_SIZE)
+                if (_count == 0 || _count < skip + Constants.TCP_HEADER_SIZE)
                 {
                     commandID = 0;
                     dataLength = 0;
@@ -390,38 +385,37 @@ namespace Exomia.Network.Native
 
                 // 16bit   -    CHECKSUM
 
-                if (_tail + offset + Constants.TCP_HEADER_SIZE < _capacity)
+                if (_tail + skip + Constants.TCP_HEADER_SIZE < _capacity)
                 {
-                    packetHeader = *(_ptr + _tail + offset);
-                    uint h2 = *(uint*)(_ptr + _tail + offset + 1);
-
+                    packetHeader = *(_ptr + (_tail + skip));
+                    uint h2 = *(uint*)(_ptr + (_tail + skip + 1));
                     commandID = (h2 & COMMANDID_MASK) >> COMMANDID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
-                    checksum = *(ushort*)(_ptr + _tail + offset + 5);
+                    checksum = *(ushort*)(_ptr + (_tail + skip + 5));
                 }
-                else if (_tail + offset < _capacity)
+                else if (_tail + skip < _capacity)
                 {
-                    packetHeader = *(_ptr + _tail + offset);
+                    packetHeader = *(_ptr + ((_tail + skip) & _mask));
                     uint h2 = (uint)(
-                        *(_ptr + ((_tail + offset + 1) & _mask))
-                        | (*(_ptr + ((_tail + offset + 2) & _mask)) << 8)
-                        | (*(_ptr + ((_tail + offset + 3) & _mask)) << 16)
-                        | (*(_ptr + ((_tail + offset + 4) & _mask)) << 24));
+                        (*(_ptr + ((_tail + skip + 4) & _mask)) << 24)
+                        | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
+                        | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
+                        | *(_ptr + ((_tail + skip + 1) & _mask)));
                     commandID = (h2 & COMMANDID_MASK) >> COMMANDID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
 
                     checksum = (ushort)(
-                        *(_ptr + ((_tail + offset + 1) & _mask))
-                        | (*(_ptr + ((_tail + offset + 2) & _mask)) << 8));
+                        (*(_ptr + ((_tail + skip + 6) & _mask)) << 8)
+                        | *(_ptr + ((_tail + skip + 5) & _mask)));
                 }
                 else
                 {
-                    packetHeader = *(_ptr + ((_tail + offset) & _mask));
-                    uint h2 = *(uint*)(_ptr + ((_tail + offset + 1) & _mask));
+                    packetHeader = *(_ptr + ((_tail + skip) & _mask));
+                    uint h2 = *(uint*)(_ptr + ((_tail + skip + 1) & _mask));
                     commandID = (h2 & COMMANDID_MASK) >> COMMANDID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
 
-                    checksum = *(ushort*)(_ptr + ((_tail + offset + 5) & _mask));
+                    checksum = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
                 }
 
                 return true;
@@ -449,8 +443,8 @@ namespace Exomia.Network.Native
                     {
                         if (*(_ptr + ((_tail + i) & _mask)) == value)
                         {
-                            _tail = (_tail + i) & _mask;
-                            _count -= i;
+                            _tail = (_tail + i + 1) & _mask;
+                            _count -= i + 1;
                             return true;
                         }
                     }

@@ -30,7 +30,7 @@ namespace Exomia.Network.Extensions.Class
     /// <summary>
     ///     ClassExt class
     /// </summary>
-    public static class ClassExt
+    public static class ClassExtensions
     {
         /// <summary>
         ///     returns a new deserialized object from a byte array

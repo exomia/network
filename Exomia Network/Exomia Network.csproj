@@ -115,9 +115,9 @@
     <Compile Include="DELEGATES.cs" />
     <Compile Include="DisconnectReason.cs" />
     <Compile Include="EncryptionMode.cs" />
-    <Compile Include="Extensions\ClassExt.cs" />
-    <Compile Include="Extensions\SocketExt.cs" />
-    <Compile Include="Extensions\StructExt.cs" />
+    <Compile Include="Extensions\ClassExtension.cs" />
+    <Compile Include="Extensions\SocketExtensions.cs" />
+    <Compile Include="Extensions\StructExtensions.cs" />
     <Compile Include="IClient.cs" />
     <Compile Include="IServer.cs" />
     <Compile Include="Lib\EventEntry.cs" />

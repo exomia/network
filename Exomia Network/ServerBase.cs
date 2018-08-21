@@ -179,7 +179,7 @@ namespace Exomia.Network
                 {
                     if (_clients.TryGetValue(arg0, out TServerClient sClient))
                     {
-                        data.FromBytesUnsafe(out ClientinfoPacket clientinfoPacket);
+                        data.FromBytesUnsafe2(out ClientinfoPacket clientinfoPacket);
                         sClient.SetClientInfo(clientinfoPacket);
                     }
                     break;

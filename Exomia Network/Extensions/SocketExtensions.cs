@@ -29,7 +29,7 @@ namespace Exomia.Network.Extensions.Socket
     /// <summary>
     ///     SocketExt class
     /// </summary>
-    static class SocketExt
+    static class SocketExtensions
     {
         /// <summary>
         ///     checks if a socket is connected

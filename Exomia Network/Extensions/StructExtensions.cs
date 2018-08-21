@@ -31,7 +31,7 @@ namespace Exomia.Network.Extensions.Struct
     /// <summary>
     ///     StructExt class
     /// </summary>
-    public static class StructExt
+    public static class StructExtensions
     {
         #region ToBytes
 
