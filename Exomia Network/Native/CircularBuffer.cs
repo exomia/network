@@ -23,14 +23,14 @@
 #endregion
 
 using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Exomia.Native;
+using Debugger = System.Diagnostics.Debugger;
 
 namespace Exomia.Network.Native
 {
-    //TODO:  UNIT TESTS !!!!!!
     unsafe class CircularBuffer : IDisposable
     {
         private const uint COMMANDID_MASK = 0xFFFF0000;
