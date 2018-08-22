@@ -107,6 +107,7 @@
     <Compile Include="DefaultPackets\PingPacket.cs" />
     <Compile Include="Extensions\Struct\FromBytesExtensions.cs" />
     <Compile Include="Lib\ClientEventEntry.cs" />
+    <Compile Include="Lib\Event.cs" />
     <Compile Include="Serialization\Serialization.cs" />
     <Compile Include="TCP\TcpClientApm.cs" />
     <Compile Include="TCP\TcpClientEap.cs" />

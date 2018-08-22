@@ -22,7 +22,6 @@
 
 #endregion
 
-using System;
 
 namespace Exomia.Network.Lib
 {
@@ -30,39 +29,33 @@ namespace Exomia.Network.Lib
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        private event ClientDataReceivedHandler<T, TServerClient> _dataReceived;
-
+        private readonly Event<ClientDataReceivedHandler<T, TServerClient>> _dataReceived;
         internal readonly DeserializePacket<object> _deserialize;
 
         public ServerClientEventEntry(DeserializePacket<object> deserialize)
         {
+            _dataReceived = new Event<ClientDataReceivedHandler<T, TServerClient>>();
             _deserialize = deserialize;
         }
 
         public void Add(ClientDataReceivedHandler<T, TServerClient> callback)
         {
-            _dataReceived += callback;
+            _dataReceived.Add(callback);
         }
 
         public void Remove(ClientDataReceivedHandler<T, TServerClient> callback)
         {
-            _dataReceived -= callback;
+            _dataReceived.Remove(callback);
         }
 
         public void Raise(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid,
             TServerClient client)
         {
-            if (_dataReceived != null)
+            for (int i = 0; i < _dataReceived.Count; ++i)
             {
-                Delegate[] delegates = _dataReceived.GetInvocationList();
-                for (int i = 0; i < delegates.Length; ++i)
+                if (!_dataReceived[i].Invoke(server, arg0, data, responseid, client))
                 {
-                    ClientDataReceivedHandler<T, TServerClient> callback =
-                        (ClientDataReceivedHandler<T, TServerClient>)delegates[i];
-                    if (!callback.Invoke(server, arg0, data, responseid, client))
-                    {
-                        Remove(callback);
-                    }
+                    _dataReceived.Remove(i);
                 }
             }
         }
