@@ -39,9 +39,8 @@ namespace Exomia.Network.Serialization
         private const byte RESPONSE_1_BIT = 1 << 6;
         private const byte COMPRESSED_1_BIT = 1 << 5;
 
-        private const uint COMMANDID_MASK = 0xFFFF0000;
         private const int COMMANDID_SHIFT = 16;
-        private const uint DATA_LENGTH_MASK = 0xFFFF;
+        private const int DATA_LENGTH_MASK = 0xFFFF;
 
         private const int LENGTH_THRESHOLD = 1 << 12; //4096
     }

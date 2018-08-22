@@ -421,6 +421,97 @@ namespace Exomia.Network.UnitTest
         }
 
         [TestMethod]
+        public void SafePeekTest_With_Overflow()
+        {
+            Random rnd = new Random(1337);
+
+            CircularBuffer cb = new CircularBuffer(16);
+
+            byte[] buffer = new byte[9];
+            rnd.NextBytes(buffer);
+
+            cb.Write(buffer, 0, buffer.Length);
+            cb.Write(buffer, 0, buffer.Length);
+
+            Assert.AreEqual(cb.Count, 16);
+
+            byte[] peekBuffer2 = new byte[16];
+            cb.Peek(peekBuffer2, 0, peekBuffer2.Length, 0);
+
+            Assert.AreEqual(cb.Count, 16);
+            Assert.IsFalse(cb.IsEmpty);
+
+            Assert.IsTrue(peekBuffer2.Take(7).SequenceEqual(buffer.Skip(2)));
+
+            byte[] shouldbe = buffer.Skip(2).Concat(buffer).ToArray();
+
+            Assert.IsTrue(peekBuffer2.SequenceEqual(shouldbe));
+
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+            cb.Write(buffer, 0, buffer.Length);
+            byte[] peekBuffer3 = new byte[1];
+            cb.Peek(peekBuffer3, 0, peekBuffer3.Length, 15);
+
+            Assert.AreEqual(cb.Count, 16);
+            Assert.IsFalse(cb.IsEmpty);
+
+            Assert.IsTrue(peekBuffer3.SequenceEqual(buffer.Skip(8)));
+        }
+
+        [TestMethod]
+        public void UnsafePeekTest_With_Overflow()
+        {
+            Random rnd = new Random(1337);
+
+            CircularBuffer cb = new CircularBuffer(16);
+
+            byte[] buffer = new byte[9];
+            rnd.NextBytes(buffer);
+
+            fixed (byte* src = buffer)
+            {
+                cb.Write(src, 0, buffer.Length);
+                cb.Write(src, 0, buffer.Length);
+            }
+
+            Assert.AreEqual(cb.Count, 16);
+
+            byte[] peekBuffer = new byte[16];
+
+            fixed (byte* dest = peekBuffer)
+            {
+                cb.Peek(dest, 0, peekBuffer.Length, 0);
+
+                Assert.AreEqual(cb.Count, 16);
+                Assert.IsFalse(cb.IsEmpty);
+
+                Assert.IsTrue(peekBuffer.Take(7).SequenceEqual(buffer.Skip(2)));
+
+                byte[] shouldbe = buffer.Skip(2).Concat(buffer).ToArray();
+
+                Assert.IsTrue(peekBuffer.SequenceEqual(shouldbe));
+            }
+
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+            cb.Write(buffer, 0, buffer.Length);
+            byte[] peekBuffer3 = new byte[1];
+            fixed (byte* dest = peekBuffer3)
+            {
+                cb.Peek(dest, 0, peekBuffer3.Length, 15);
+            }
+            Assert.AreEqual(cb.Count, 16);
+            Assert.IsFalse(cb.IsEmpty);
+
+            Assert.IsTrue(peekBuffer3.SequenceEqual(buffer.Skip(8)));
+        }
+
+        [TestMethod]
         public void PeekByteTest()
         {
             CircularBuffer cb = new CircularBuffer(1024);

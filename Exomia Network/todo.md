@@ -6,6 +6,7 @@
 - [ ] renaming / move classes like ('Serilization')
 - [ ] 'DELEGATES.cs' remove
 - [ ] performance measurement / benchmarking
+- [ ] little / big endian conversion?
 
 ## Features
 

@@ -84,7 +84,7 @@ namespace Exomia.Network.Serialization
                             *ptr = (byte)(RESPONSE_1_BIT | COMPRESSED_1_BIT | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(s + 8) & DATA_LENGTH_MASK) |
-                                ((commandID << COMMANDID_SHIFT) & COMMANDID_MASK);
+                                (commandID << COMMANDID_SHIFT);
                             *(uint*)(ptr + 5) = responseID;
                             *(int*)(ptr + 9) = length;
                         }
@@ -98,7 +98,7 @@ namespace Exomia.Network.Serialization
                     *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
                     *(uint*)(ptr + 1) =
                         ((uint)(length + 4) & DATA_LENGTH_MASK) |
-                        ((commandID << COMMANDID_SHIFT) & COMMANDID_MASK);
+                        (commandID << COMMANDID_SHIFT);
                     *(uint*)(ptr + 5) = responseID;
                 }
                 Buffer.BlockCopy(data, offset, send, Constants.UDP_HEADER_SIZE + 4, length);
@@ -122,7 +122,7 @@ namespace Exomia.Network.Serialization
                             *ptr = (byte)(COMPRESSED_1_BIT | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(s + 4) & DATA_LENGTH_MASK) |
-                                ((commandID << COMMANDID_SHIFT) & COMMANDID_MASK);
+                                (commandID << COMMANDID_SHIFT);
                             *(int*)(ptr + 5) = length;
                         }
                         return;
@@ -135,7 +135,7 @@ namespace Exomia.Network.Serialization
                     *ptr = (byte)encryptionMode;
                     *(uint*)(ptr + 1) =
                         ((uint)length & DATA_LENGTH_MASK) |
-                        ((commandID << COMMANDID_SHIFT) & COMMANDID_MASK);
+                        (commandID << COMMANDID_SHIFT);
                 }
                 Buffer.BlockCopy(data, offset, send, Constants.UDP_HEADER_SIZE, length);
             }
@@ -168,9 +168,9 @@ namespace Exomia.Network.Serialization
             fixed (byte* ptr = header)
             {
                 h1 = *ptr;
-                uint h2 = *(uint*)(ptr + 1);
-                commandID = (h2 & COMMANDID_MASK) >> COMMANDID_SHIFT;
-                dataLength = (int)(h2 & DATA_LENGTH_MASK);
+                int h2 = *(int*)(ptr + 1);
+                commandID = (uint)(h2 >> COMMANDID_SHIFT);
+                dataLength = h2 & DATA_LENGTH_MASK;
             }
         }
     }
