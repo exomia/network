@@ -302,7 +302,8 @@ namespace Exomia.Network
                             {
                                 object res = cee._deserialize(in packet);
                                 ByteArrayPool.Return(data);
-                                if (res != null) { cee.RaiseAsync(this, res); }
+
+                                if (res != null) { cee.Raise(this, res); }
                             });
 
                         /*Task.Factory.StartNew(() => {

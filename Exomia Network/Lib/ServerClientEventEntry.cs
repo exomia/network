@@ -23,7 +23,6 @@
 #endregion
 
 using System;
-using System.Runtime.Remoting.Messaging;
 
 namespace Exomia.Network.Lib
 {
@@ -50,7 +49,7 @@ namespace Exomia.Network.Lib
             _dataReceived -= callback;
         }
 
-        public void RaiseAsync(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid,
+        public void Raise(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid,
             TServerClient client)
         {
             if (_dataReceived != null)
@@ -58,64 +57,13 @@ namespace Exomia.Network.Lib
                 Delegate[] delegates = _dataReceived.GetInvocationList();
                 for (int i = 0; i < delegates.Length; ++i)
                 {
-                    ((ClientDataReceivedHandler<T, TServerClient>)delegates[i]).BeginInvoke(
-                        server, arg0, data, responseid, client, EndRaiseEventAsync, null);
+                    ClientDataReceivedHandler<T, TServerClient> callback =
+                        (ClientDataReceivedHandler<T, TServerClient>)delegates[i];
+                    if (!callback.Invoke(server, arg0, data, responseid, client))
+                    {
+                        Remove(callback);
+                    }
                 }
-            }
-        }
-
-        private void EndRaiseEventAsync(IAsyncResult iar)
-        {
-            ClientDataReceivedHandler<T, TServerClient> caller =
-                (ClientDataReceivedHandler<T, TServerClient>)((AsyncResult)iar).AsyncDelegate;
-
-            if (!caller.EndInvoke(iar))
-            {
-                Remove(caller);
-            }
-        }
-    }
-
-    sealed class ClientEventEntry
-    {
-        private event DataReceivedHandler _dataReceived;
-
-        internal readonly DeserializePacket<object> _deserialize;
-
-        public ClientEventEntry(DeserializePacket<object> deserialize)
-        {
-            _deserialize = deserialize;
-        }
-
-        public void Add(DataReceivedHandler callback)
-        {
-            _dataReceived += callback;
-        }
-
-        public void Remove(DataReceivedHandler callback)
-        {
-            _dataReceived -= callback;
-        }
-
-        public void RaiseAsync(IClient client, object result)
-        {
-            if (_dataReceived != null)
-            {
-                Delegate[] delegates = _dataReceived.GetInvocationList();
-                for (int i = 0; i < delegates.Length; ++i)
-                {
-                    ((DataReceivedHandler)delegates[i]).BeginInvoke(client, result, EndRaiseEventAsync, null);
-                }
-            }
-        }
-
-        private void EndRaiseEventAsync(IAsyncResult iar)
-        {
-            DataReceivedHandler caller = (DataReceivedHandler)((AsyncResult)iar).AsyncDelegate;
-
-            if (!caller.EndInvoke(iar))
-            {
-                Remove(caller);
             }
         }
     }

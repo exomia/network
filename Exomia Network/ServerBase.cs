@@ -205,8 +205,7 @@ namespace Exomia.Network
                                     object res = scee._deserialize(in packet);
                                     ByteArrayPool.Return(data);
 
-                                    //TODO: why call RaiseAsync its async already!?
-                                    if (res != null) { scee.RaiseAsync(this, arg0, res, responseid, sClient); }
+                                    if (res != null) { scee.Raise(this, arg0, res, responseid, sClient); }
                                 });
 
                             /*Task.Factory.StartNew(() =>
