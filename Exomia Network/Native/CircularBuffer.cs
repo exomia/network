@@ -387,21 +387,20 @@ namespace Exomia.Network.Native
                 if (_tail + skip + Constants.TCP_HEADER_SIZE < _capacity)
                 {
                     packetHeader = *(_ptr + _tail + skip);
-                    int h2 = *(int*)(_ptr + _tail + skip + 1);
-                    commandID = (uint)(h2 >> COMMANDID_SHIFT);
-                    dataLength = h2 & DATA_LENGTH_MASK;
+                    uint h2 = *(uint*)(_ptr + _tail + skip + 1);
+                    commandID = h2 >> COMMANDID_SHIFT;
+                    dataLength = (int)(h2 & DATA_LENGTH_MASK);
                     checksum = *(ushort*)(_ptr + _tail + skip + 5);
                 }
                 else if (_tail + skip < _capacity)
                 {
                     packetHeader = *(_ptr + ((_tail + skip) & _mask));
-                    int h2 = (*(_ptr + ((_tail + skip + 4) & _mask)) << 24)
-                             | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
-                             | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
-                             | *(_ptr + ((_tail + skip + 1) & _mask));
-                    commandID = (uint)h2 >> COMMANDID_SHIFT;
-                    dataLength = h2 & DATA_LENGTH_MASK;
-
+                    uint h2 = (uint)((*(_ptr + ((_tail + skip + 4) & _mask)) << 24)
+                                     | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
+                                     | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
+                                     | *(_ptr + ((_tail + skip + 1) & _mask)));
+                    commandID = h2 >> COMMANDID_SHIFT;
+                    dataLength = (int)(h2 & DATA_LENGTH_MASK);
                     checksum = (ushort)(
                         (*(_ptr + ((_tail + skip + 6) & _mask)) << 8)
                         | *(_ptr + ((_tail + skip + 5) & _mask)));
@@ -409,10 +408,9 @@ namespace Exomia.Network.Native
                 else
                 {
                     packetHeader = *(_ptr + ((_tail + skip) & _mask));
-                    int h2 = *(int*)(_ptr + ((_tail + skip + 1) & _mask));
-                    commandID = (uint)(h2 >> COMMANDID_SHIFT);
-                    dataLength = h2 & DATA_LENGTH_MASK;
-
+                    uint h2 = *(uint*)(_ptr + ((_tail + skip + 1) & _mask));
+                    commandID = h2 >> COMMANDID_SHIFT;
+                    dataLength = (int)(h2 & DATA_LENGTH_MASK);
                     checksum = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
                 }
 
@@ -427,17 +425,18 @@ namespace Exomia.Network.Native
         /// <summary>
         ///     peek a single byte from the buffer
         /// </summary>
+        /// <param name="offset">offset</param>
         /// <param name="value">the value to compare with</param>
         /// <returns><c>true</c> if the value was found; <c>false otherwise</c></returns>
-        public bool SkipUntil(byte value)
+        public bool SkipUntil(int offset, byte value)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_count > 0)
+                if (_count > offset)
                 {
-                    for (int i = 0; i < _count; i++)
+                    for (int i = offset; i < _count; i++)
                     {
                         if (*(_ptr + ((_tail + i) & _mask)) == value)
                         {

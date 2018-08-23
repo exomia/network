@@ -108,6 +108,7 @@
     <Compile Include="Extensions\Struct\FromBytesExtensions.cs" />
     <Compile Include="Lib\ClientEventEntry.cs" />
     <Compile Include="Lib\Event.cs" />
+    <Compile Include="Lib\Math2.cs" />
     <Compile Include="Serialization\Serialization.cs" />
     <Compile Include="TCP\TcpClientApm.cs" />
     <Compile Include="TCP\TcpClientEap.cs" />

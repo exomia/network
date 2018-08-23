@@ -25,14 +25,15 @@
 using System;
 using System.Runtime.CompilerServices;
 using Exomia.Network.Buffers;
+using Exomia.Network.Lib;
 using LZ4;
 
 namespace Exomia.Network.Serialization
 {
+    //TODO: UNIT TEST
     static unsafe partial class Serialization
     {
-        private const ushort CONE = 0b0000_0000_0000_0001;
-        private const long L_OFFSET_MAX = int.MaxValue + 1L;
+        private const ushort CONE = 0b1000_0000_0000_0001;
 
         private const uint C0 = 0x214EE939;
         private const uint C1 = 0x117DFA89;
@@ -42,13 +43,13 @@ namespace Exomia.Network.Serialization
         private const byte MASK2 = 0b0100_0000;
 
         private const uint H0 = 0x209536F9;
-        private static readonly uint s_h0 = H0 ^ R1(H0, 12);
+        private static readonly uint s_h0 = H0 ^ Math2.R1(H0, 12);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void SerializeTcp(uint commandID, byte[] data, int offset, int length, uint responseID,
             EncryptionMode encryptionMode, out byte[] send, out int size)
         {
-            send = ByteArrayPool.Rent(Constants.TCP_HEADER_SIZE + 8 + length);
+            send = ByteArrayPool.Rent(Constants.TCP_HEADER_SIZE + 9 + length + Math2.Ceiling(length / 7.0f));
             SerializeTcp(commandID, data, offset, length, responseID, encryptionMode, send, out size);
         }
 
@@ -77,52 +78,63 @@ namespace Exomia.Network.Serialization
             // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0xFFFF
             // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
 
+            // 16bit   -    CHECKSUM
+
+            int l;
+            ushort checksum;
+
             if (responseID != 0)
             {
                 if (length >= LENGTH_THRESHOLD)
                 {
+                    byte[] buffer = ByteArrayPool.Rent(length);
                     int s = LZ4Codec.Encode(
-                        data, offset, length, send, Constants.TCP_HEADER_SIZE + 8, length);
-
+                        data, offset, length, buffer, 0, length);
                     if (s > Constants.TCP_PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(
                             $"packet size of {Constants.TCP_PACKET_SIZE_MAX} exceeded (s: {s})");
                     }
-
                     if (s > 0)
                     {
-                        size = Constants.TCP_HEADER_SIZE + 8 + s;
+                        checksum = Serialize(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 8, out l);
+                        size = Constants.TCP_HEADER_SIZE + 9 + l;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)(RESPONSE_1_BIT | COMPRESSED_1_BIT | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
-                                ((uint)(s + 8) & DATA_LENGTH_MASK) |
-                                (commandID << COMMANDID_SHIFT);
-                            *(uint*)(ptr + 5) = responseID;
-                            *(int*)(ptr + 9) = length;
+                                ((uint)(l + 9) & DATA_LENGTH_MASK)
+                                | (commandID << COMMANDID_SHIFT);
+                            *(ushort*)(ptr + 5) = checksum;
+                            *(uint*)(ptr + 7) = responseID;
+                            *(int*)(ptr + 11) = length;
+                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 8) =
+                                Constants.ZERO_BYTE; //TODO: check if +8 or +9
                         }
                         return;
                     }
                 }
 
-                size = Constants.TCP_HEADER_SIZE + 4 + length;
+                checksum = Serialize(data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, out l);
+                size = Constants.TCP_HEADER_SIZE + 4 + l;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
                     *(uint*)(ptr + 1) =
-                        ((uint)(length + 4) & DATA_LENGTH_MASK) |
-                        (commandID << COMMANDID_SHIFT);
-                    *(uint*)(ptr + 5) = responseID;
+                        ((uint)(l + 5) & DATA_LENGTH_MASK)
+                        | (commandID << COMMANDID_SHIFT);
+                    *(ushort*)(ptr + 5) = checksum;
+                    *(uint*)(ptr + 7) = responseID;
+                    *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE; //TODO: check if +4 or +5
                 }
-                Buffer.BlockCopy(data, offset, send, Constants.TCP_HEADER_SIZE + 4, length);
             }
             else
             {
                 if (length >= LENGTH_THRESHOLD)
                 {
+                    byte[] buffer = ByteArrayPool.Rent(length);
                     int s = LZ4Codec.Encode(
-                        data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, length);
+                        data, offset, length, buffer, 0, length);
                     if (s > Constants.TCP_PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(
@@ -130,62 +142,72 @@ namespace Exomia.Network.Serialization
                     }
                     if (s > 0)
                     {
-                        size = Constants.TCP_HEADER_SIZE + 4 + s;
+                        checksum = Serialize(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 4, out l);
+                        size = Constants.TCP_HEADER_SIZE + 4 + l;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)(COMPRESSED_1_BIT | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
-                                ((uint)(s + 4) & DATA_LENGTH_MASK) |
-                                (commandID << COMMANDID_SHIFT);
-                            *(int*)(ptr + 5) = length;
+                                ((uint)(l + 5) & DATA_LENGTH_MASK)
+                                | (commandID << COMMANDID_SHIFT);
+                            *(ushort*)(ptr + 5) = checksum;
+                            *(int*)(ptr + 7) = length;
+                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) =
+                                Constants.ZERO_BYTE; //TODO: check if +4 or +5
                         }
                         return;
                     }
                 }
 
-                size = Constants.TCP_HEADER_SIZE + length;
+                checksum = Serialize(data, offset, length, send, Constants.TCP_HEADER_SIZE, out l);
+                size = Constants.TCP_HEADER_SIZE + l;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)encryptionMode;
                     *(uint*)(ptr + 1) =
-                        ((uint)length & DATA_LENGTH_MASK) |
-                        (commandID << COMMANDID_SHIFT);
+                        ((uint)(l + 1) & DATA_LENGTH_MASK)
+                        | (commandID << COMMANDID_SHIFT);
+                    *(ushort*)(ptr + 5) = checksum;
+                    *(int*)(ptr + Constants.TCP_HEADER_SIZE + l) = Constants.ZERO_BYTE; //TODO: check if +0 or +1
                 }
-                Buffer.BlockCopy(data, offset, send, Constants.TCP_HEADER_SIZE, length);
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint R1(uint a, int b)
+        internal static ushort Deserialize(byte[] data, int offset, int length, byte[] buffer, out int bufferLength)
         {
-            return (a << b) | (a >> (32 - b));
-        }
+            bufferLength = length - Math2.Ceiling(length >> 3);
 
-        /// <summary>
-        ///     Returns the smallest integer greater than or equal to the specified floating-point number.
-        /// </summary>
-        /// <param name="f">A floating-point number with single precision</param>
-        /// <returns>The smallest integer, which is greater than or equal to f.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int Ceiling(double f)
-        {
-            return (int)(L_OFFSET_MAX - (long)(L_OFFSET_MAX - f));
-        }
-
-        private static ushort Serialize(byte[] data, out byte[] buffer)
-        {
-            buffer = new byte[data.Length + Ceiling(data.Length / 7.0f)];
             uint checksum = s_h0;
             int o1 = 0;
-            int o2 = 0;
-            int dl = data.Length;
-            while (o2 + 7 < dl)
+            fixed (byte* src = data)
             {
-                Serialize(&checksum, buffer, o1, data, o2, 7);
-                o1 += 8;
-                o2 += 7;
+                fixed (byte* dest = buffer)
+                {
+                    while (offset + 8 < length)
+                    {
+                        Deserialize(&checksum, dest, o1, src, offset, 8);
+                        o1 += 7;
+                        offset += 8;
+                    }
+                    Deserialize(&checksum, dest, o1, src, offset, length - offset);
+                }
             }
-            Serialize(&checksum, buffer, o1, data, o2, dl - o2);
+
+            return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
+        }
+
+        private static ushort Serialize(byte[] data, int offset, int length, byte[] buffer, int bufferOffset,
+            out int bufferLength)
+        {
+            bufferLength = length + Math2.Ceiling(length / 7.0f);
+            uint checksum = s_h0;
+            while (offset + 7 < length)
+            {
+                Serialize(&checksum, buffer, bufferOffset, data, offset, 7);
+                bufferOffset += 8;
+                offset += 7;
+            }
+            Serialize(&checksum, buffer, bufferOffset, data, offset, length - offset);
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
@@ -193,7 +215,7 @@ namespace Exomia.Network.Serialization
         private static void Serialize(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)
         {
             byte b = ONE;
-            for (int i = 0; i < size; i++)
+            for (int i = 0; i < size; ++i)
             {
                 uint d = data[o2 + i];
                 byte s = (byte)(d >> 7);
@@ -202,38 +224,19 @@ namespace Exomia.Network.Serialization
                 *checksum ^= d + C0;
             }
             buffer[o1 + size] = b;
-            *checksum += R1(b, 23) + C1;
+            *checksum += Math2.R1(b, 23) + C1;
         }
 
-        private static ushort Deserialize(byte[] data, out byte[] buffer)
+        private static void Deserialize(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
         {
-            buffer = new byte[data.Length - Ceiling(data.Length / 8.0f)];
-
-            uint checksum = s_h0;
-            int o1 = 0;
-            int o2 = 0;
-            int dl = data.Length;
-            while (o2 + 8 < dl)
+            byte b = *(src + o2 + size - 1);
+            for (int i = 0; i < size - 1; ++i)
             {
-                Deserialize(&checksum, buffer, o1, data, o2, 8);
-                o1 += 7;
-                o2 += 8;
-            }
-            Deserialize(&checksum, buffer, o1, data, o2, dl - o2);
-
-            return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
-        }
-
-        private static void Deserialize(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)
-        {
-            byte b = data[o2 + size - 1];
-            for (int i = 0; i < size - 1; i++)
-            {
-                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (data[o2 + i] & MASK1));
-                buffer[o1 + i] = d;
+                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
+                *(dest + o1 + i) = d;
                 *checksum ^= d + C0;
             }
-            *checksum += R1(b, 23) + C1;
+            *checksum += Math2.R1(b, 23) + C1;
         }
     }
 }

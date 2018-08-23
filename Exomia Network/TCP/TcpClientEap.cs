@@ -182,16 +182,21 @@ namespace Exomia.Network.TCP
                         0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
                     && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
                 {
-                    if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength) == ZERO_BYTE)
+                    if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength) == Constants.ZERO_BYTE)
                     {
                         _circularBuffer.Read(_buffer, 0, dataLength, Constants.TCP_HEADER_SIZE);
 
-                        //TODO: deserialize & checksum compare
-                        HandleReceive(_buffer, commandID, dataLength, packetHeader);
-                        return true;
+                        byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
+                        if (Serialization.Serialization.Deserialize(
+                                _buffer, 0, dataLength, deserializeBuffer, out int bufferLength) == checksum)
+                        {
+                            HandleReceive(deserializeBuffer, commandID, bufferLength, packetHeader);
+                            return true;
+                        }
+                        return false;
                     }
 
-                    if (_circularBuffer.SkipUntil(ZERO_BYTE)) { continue; }
+                    if (_circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE)) { continue; }
                 }
                 return false;
             }

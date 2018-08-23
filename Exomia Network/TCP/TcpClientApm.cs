@@ -38,8 +38,6 @@ namespace Exomia.Network.TCP
     /// </summary>
     public sealed class TcpClientApm : ClientBase
     {
-        private const byte ZERO_BYTE = 0;
-
         private readonly CircularBuffer _circularBuffer;
         private readonly byte[] _buffer;
 
@@ -182,16 +180,21 @@ namespace Exomia.Network.TCP
                         0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
                     && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
                 {
-                    if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength) == ZERO_BYTE)
+                    if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength) == Constants.ZERO_BYTE)
                     {
                         _circularBuffer.Read(_buffer, 0, dataLength, Constants.TCP_HEADER_SIZE);
 
-                        //TODO: deserialize & checksum compare
-                        HandleReceive(_buffer, commandID, dataLength, packetHeader);
-                        return true;
+                        byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
+                        if (Serialization.Serialization.Deserialize(
+                                _buffer, 0, dataLength, deserializeBuffer, out int bufferLength) == checksum)
+                        {
+                            HandleReceive(deserializeBuffer, commandID, bufferLength, packetHeader);
+                            return true;
+                        }
+                        return false;
                     }
 
-                    if (_circularBuffer.SkipUntil(ZERO_BYTE)) { continue; }
+                    if (_circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE)) { continue; }
                 }
                 return false;
             }
@@ -200,55 +203,48 @@ namespace Exomia.Network.TCP
         private unsafe void HandleReceive(byte[] buffer, uint commandID, int dataLength, byte packetHeader)
         {
             uint responseID = 0;
-            byte[] data;
             if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
             {
                 int l;
+                int offset = 4;
                 if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                 {
                     fixed (byte* ptr = buffer)
                     {
-                        responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
-                        l = *(int*)(ptr + Constants.UDP_HEADER_SIZE + 4);
+                        responseID = *(uint*)ptr;
+                        l = *(int*)(ptr + 4);
                     }
-                    data = ByteArrayPool.Rent(l);
-                    int s = LZ4Codec.Decode(
-                        buffer, Constants.UDP_HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
-                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                    offset = 8;
                 }
                 else
                 {
                     fixed (byte* ptr = buffer)
                     {
-                        l = *(int*)(ptr + Constants.UDP_HEADER_SIZE);
+                        l = *(int*)ptr;
                     }
-                    data = ByteArrayPool.Rent(l);
-                    int s = LZ4Codec.Decode(
-                        buffer, Constants.UDP_HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
-                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
                 }
+                byte[] data = ByteArrayPool.Rent(l);
+                int s = LZ4Codec.Decode(
+                    buffer, offset, dataLength - offset, data, 0, l, true);
+                if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                ByteArrayPool.Return(buffer);
                 ReceiveAsync();
                 DeserializeData(commandID, data, 0, l, responseID);
             }
             else
             {
+                int offset = 0;
                 if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                 {
                     fixed (byte* ptr = buffer)
                     {
-                        responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
+                        responseID = *(uint*)ptr;
                     }
-                    dataLength -= 4;
-                    data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(buffer, Constants.UDP_HEADER_SIZE + 4, data, 0, dataLength);
-                }
-                else
-                {
-                    data = ByteArrayPool.Rent(dataLength);
-                    Buffer.BlockCopy(buffer, Constants.UDP_HEADER_SIZE, data, 0, dataLength);
+                    offset = 4;
                 }
                 ReceiveAsync();
-                DeserializeData(commandID, data, 0, dataLength, responseID);
+                DeserializeData(commandID, buffer, offset, dataLength - offset, responseID);
             }
         }
 

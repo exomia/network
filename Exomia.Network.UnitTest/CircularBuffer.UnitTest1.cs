@@ -535,19 +535,19 @@ namespace Exomia.Network.UnitTest
         public void SkipUntilTest()
         {
             CircularBuffer cb = new CircularBuffer(1024);
-            Assert.IsFalse(cb.SkipUntil(0));
+            Assert.IsFalse(cb.SkipUntil(0, 0));
 
             byte[] buffer = { 45, 48, 72, 15 };
             cb.Write(buffer, 0, buffer.Length);
 
-            Assert.IsFalse(cb.SkipUntil(0));
+            Assert.IsFalse(cb.SkipUntil(0, 0));
 
             byte[] peekBuffer = new byte[4];
             cb.Peek(peekBuffer, 0, 4, 0);
 
             Assert.IsTrue(peekBuffer.SequenceEqual(buffer));
 
-            Assert.IsTrue(cb.SkipUntil(48));
+            Assert.IsTrue(cb.SkipUntil(0, 48));
 
             Assert.AreEqual(cb.Count, 2);
 
@@ -555,7 +555,7 @@ namespace Exomia.Network.UnitTest
 
             Assert.IsTrue(peekBuffer.Take(2).SequenceEqual(buffer.Skip(2)));
 
-            Assert.IsFalse(cb.SkipUntil(0));
+            Assert.IsFalse(cb.SkipUntil(0, 0));
         }
 
         [TestMethod]

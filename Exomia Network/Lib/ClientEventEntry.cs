@@ -22,14 +22,12 @@
 
 #endregion
 
-
 namespace Exomia.Network.Lib
 {
     sealed class ClientEventEntry
     {
-        private readonly Event<DataReceivedHandler> _dataReceived;
-
         internal readonly DeserializePacket<object> _deserialize;
+        private readonly Event<DataReceivedHandler> _dataReceived;
 
         public ClientEventEntry(DeserializePacket<object> deserialize)
         {
