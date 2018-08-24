@@ -180,13 +180,14 @@ namespace Exomia.Network.TCP
                         0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
                     && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
                 {
-                    if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength) == Constants.ZERO_BYTE)
+                    if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1) == Constants.ZERO_BYTE)
                     {
                         _circularBuffer.Read(_buffer, 0, dataLength, Constants.TCP_HEADER_SIZE);
 
+                        //TODO: skip payload bytes then response bit or other things are set in packetHeader
                         byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
                         if (Serialization.Serialization.Deserialize(
-                                _buffer, 0, dataLength, deserializeBuffer, out int bufferLength) == checksum)
+                                _buffer, 0, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
                         {
                             HandleReceive(deserializeBuffer, commandID, bufferLength, packetHeader);
                             return true;

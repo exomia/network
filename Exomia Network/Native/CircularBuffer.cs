@@ -323,7 +323,7 @@ namespace Exomia.Network.Native
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_count == 0 || _count < offset + 1)
+                if (_count == 0 || _count <= offset)
                 {
                     throw new InvalidOperationException("empty circular buffer or overflow");
                 }

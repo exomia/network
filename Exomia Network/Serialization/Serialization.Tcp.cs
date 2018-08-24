@@ -108,15 +108,14 @@ namespace Exomia.Network.Serialization
                             *(ushort*)(ptr + 5) = checksum;
                             *(uint*)(ptr + 7) = responseID;
                             *(int*)(ptr + 11) = length;
-                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 8) =
-                                Constants.ZERO_BYTE; //TODO: check if +8 or +9
+                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 8) = Constants.ZERO_BYTE;
                         }
                         return;
                     }
                 }
 
                 checksum = Serialize(data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, out l);
-                size = Constants.TCP_HEADER_SIZE + 4 + l;
+                size = Constants.TCP_HEADER_SIZE + 5 + l;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
@@ -125,7 +124,7 @@ namespace Exomia.Network.Serialization
                         | (commandID << COMMANDID_SHIFT);
                     *(ushort*)(ptr + 5) = checksum;
                     *(uint*)(ptr + 7) = responseID;
-                    *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE; //TODO: check if +4 or +5
+                    *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
                 }
             }
             else
@@ -143,7 +142,7 @@ namespace Exomia.Network.Serialization
                     if (s > 0)
                     {
                         checksum = Serialize(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 4, out l);
-                        size = Constants.TCP_HEADER_SIZE + 4 + l;
+                        size = Constants.TCP_HEADER_SIZE + 5 + l;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)(COMPRESSED_1_BIT | (byte)encryptionMode);
@@ -152,15 +151,14 @@ namespace Exomia.Network.Serialization
                                 | (commandID << COMMANDID_SHIFT);
                             *(ushort*)(ptr + 5) = checksum;
                             *(int*)(ptr + 7) = length;
-                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) =
-                                Constants.ZERO_BYTE; //TODO: check if +4 or +5
+                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
                         }
                         return;
                     }
                 }
 
                 checksum = Serialize(data, offset, length, send, Constants.TCP_HEADER_SIZE, out l);
-                size = Constants.TCP_HEADER_SIZE + l;
+                size = Constants.TCP_HEADER_SIZE + 1 + l;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)encryptionMode;
@@ -168,14 +166,14 @@ namespace Exomia.Network.Serialization
                         ((uint)(l + 1) & DATA_LENGTH_MASK)
                         | (commandID << COMMANDID_SHIFT);
                     *(ushort*)(ptr + 5) = checksum;
-                    *(int*)(ptr + Constants.TCP_HEADER_SIZE + l) = Constants.ZERO_BYTE; //TODO: check if +0 or +1
+                    *(int*)(ptr + Constants.TCP_HEADER_SIZE + l) = Constants.ZERO_BYTE;
                 }
             }
         }
 
         internal static ushort Deserialize(byte[] data, int offset, int length, byte[] buffer, out int bufferLength)
         {
-            bufferLength = length - Math2.Ceiling(length >> 3);
+            bufferLength = length - Math2.Ceiling(length / 8.0);
 
             uint checksum = s_h0;
             int o1 = 0;
