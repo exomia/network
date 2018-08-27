@@ -24,19 +24,13 @@
 
 #pragma warning disable 1574
 
-using System;
-using System.Net.Sockets;
-using Exomia.Network.Buffers;
-using Exomia.Network.Native;
-using LZ4;
-
 namespace Exomia.Network.TCP
 {
     /// <inheritdoc cref="ClientBase" />
     /// <summary>
     ///     A TCP-Client build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>
-    public sealed class TcpClientEap 
+    public sealed class TcpClientEap
     {
         //TODO
     }

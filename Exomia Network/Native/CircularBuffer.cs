@@ -356,7 +356,7 @@ namespace Exomia.Network.Native
                 {
                     b = 0;
                     return false;
-                }             
+                }
                 b = *(_ptr + ((_tail + offset) & _mask));
                 return true;
             }
@@ -481,6 +481,29 @@ namespace Exomia.Network.Native
                     _count = 0;
                 }
                 return false;
+            }
+            finally
+            {
+                if (lockTaken) { _lock.Exit(false); }
+            }
+        }
+
+        /// <summary>
+        ///     skips a specified count
+        /// </summary>
+        /// <param name="count">count to skip</param>
+        public void Skip(int count)
+        {
+            bool lockTaken = false;
+            try
+            {
+                _lock.Enter(ref lockTaken);
+                if (count > _count)
+                {
+                    count = _count;
+                }
+                _tail = (_tail + count) & _mask;
+                _count -= count;
             }
             finally
             {

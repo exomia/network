@@ -52,7 +52,8 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(1337u, commandID);
             Assert.AreEqual(data.Length + 1 + 1, dataLength);
 
-            Assert.AreEqual((byte)0, cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1));
+            Assert.IsTrue(cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b));
+            Assert.AreEqual((byte)0, b);
 
             cb.Read(send, 0, dataLength, Constants.TCP_HEADER_SIZE);
 
@@ -85,7 +86,8 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(1337u, commandID);
             Assert.AreEqual(4 + data.Length + 1 + 1, dataLength);
 
-            Assert.AreEqual((byte)0, cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1));
+            Assert.IsTrue(cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b));
+            Assert.AreEqual((byte)0, b);
 
             cb.Read(send, 0, dataLength, Constants.TCP_HEADER_SIZE);
 
@@ -122,7 +124,8 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(1337u, commandID);
             Assert.IsTrue(4 + data.Length + 1 + 1 > dataLength);
 
-            Assert.AreEqual((byte)0, cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1));
+            Assert.IsTrue(cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b));
+            Assert.AreEqual((byte)0, b);
 
             cb.Read(send, 0, dataLength, Constants.TCP_HEADER_SIZE);
 

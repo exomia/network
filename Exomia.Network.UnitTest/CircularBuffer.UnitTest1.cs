@@ -136,11 +136,7 @@ namespace Exomia.Network.UnitTest
 
             Assert.IsTrue(readBuffer.SequenceEqual(buffer));
 
-            Assert.ThrowsException<InvalidOperationException>(
-                () =>
-                {
-                    cb.Read(readBuffer, 0, readBuffer.Length, 0);
-                });
+            Assert.AreEqual(0, cb.Read(readBuffer, 0, readBuffer.Length, 0));
 
             byte[] buffer2 = { 45, 48, 72, 1, 4, 87, 95 };
             cb.Write(buffer2, 0, buffer2.Length);
@@ -165,34 +161,28 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(cb.Count, 4);
 
             byte[] readBuffer = new byte[4];
-            fixed (byte* dest = readBuffer)
+            fixed (byte* src = readBuffer)
             {
-                cb.Read(dest, 0, readBuffer.Length, 0);
+                cb.Read(src, 0, readBuffer.Length, 0);
             }
 
             Assert.AreEqual(cb.Count, 0);
             Assert.IsTrue(cb.IsEmpty);
 
             Assert.IsTrue(readBuffer.SequenceEqual(buffer));
-
-            Assert.ThrowsException<InvalidOperationException>(
-                () =>
-                {
-                    fixed (byte* dest = readBuffer)
-                    {
-                        cb.Read(dest, 0, readBuffer.Length, 0);
-                    }
-                });
+            fixed (byte* src = readBuffer)
+            {
+                Assert.AreEqual(0, cb.Read(src, 0, readBuffer.Length, 0));
+            }
 
             byte[] buffer2 = { 45, 48, 72, 1, 4, 87, 95 };
             cb.Write(buffer2, 0, buffer2.Length);
 
             byte[] readBuffer2 = new byte[buffer2.Length];
-            fixed (byte* dest = readBuffer2)
+            fixed (byte* src = readBuffer2)
             {
-                cb.Read(dest, 0, buffer2.Length - 2, 2);
+                cb.Read(src, 0, buffer2.Length - 2, 2);
             }
-
             Assert.IsTrue(readBuffer2.Take(buffer2.Length - 2).SequenceEqual(buffer2.Skip(2)));
 
             Assert.AreEqual(cb.Count, 0);
@@ -253,40 +243,68 @@ namespace Exomia.Network.UnitTest
         {
             Random rnd = new Random(1337);
 
-            CircularBuffer cb = new CircularBuffer(16);
-
             byte[] buffer = new byte[9];
             rnd.NextBytes(buffer);
 
+            CircularBuffer cb = new CircularBuffer(16);
+            byte[] dummy = new byte[100];
+            Assert.AreEqual(0, cb.Read(dummy, 0, 78, 0));
+
             cb.Write(buffer, 0, buffer.Length);
-            cb.Write(buffer, 0, buffer.Length);
 
-            Assert.AreEqual(cb.Count, 16);
-
-            byte[] readBuffer2 = new byte[16];
-            cb.Read(readBuffer2, 0, readBuffer2.Length, 0);
-
-            Assert.AreEqual(cb.Count, 0);
-            Assert.IsTrue(cb.IsEmpty);
-
-            Assert.IsTrue(readBuffer2.Take(7).SequenceEqual(buffer.Skip(2)));
-
-            byte[] shouldbe = buffer.Skip(2).Concat(buffer).ToArray();
-
-            Assert.IsTrue(readBuffer2.SequenceEqual(shouldbe));
+            Assert.AreEqual(buffer.Length, cb.Read(dummy, 0, 78, 0));
 
             cb.Dispose();
 
             cb = new CircularBuffer(16);
             cb.Write(buffer, 0, buffer.Length);
+
             cb.Write(buffer, 0, buffer.Length);
-            byte[] readBuffer3 = new byte[1];
-            cb.Read(readBuffer3, 0, readBuffer3.Length, 15);
+
+            Assert.AreEqual(cb.Count, 16);
+
+            byte[] readBuffer2 = new byte[9];
+            Assert.AreEqual(readBuffer2.Length, cb.Read(readBuffer2, 0, readBuffer2.Length, 0));
+
+            Assert.AreEqual(cb.Count, 16 - 9);
+            Assert.IsFalse(cb.IsEmpty);
+
+            Assert.IsTrue(readBuffer2.Take(9).SequenceEqual(buffer));
+
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+
+            byte[] readBuffer4 = new byte[9];
+            Assert.AreEqual(9, cb.Read(readBuffer4, 0, readBuffer4.Length, 0));
 
             Assert.AreEqual(cb.Count, 0);
             Assert.IsTrue(cb.IsEmpty);
 
-            Assert.IsTrue(readBuffer3.SequenceEqual(buffer.Skip(8)));
+            cb.Write(buffer, 0, buffer.Length);
+
+            Assert.AreEqual(9, cb.Read(readBuffer4, 0, readBuffer4.Length, 0));
+            Assert.AreEqual(cb.Count, 0);
+            Assert.IsTrue(cb.IsEmpty);
+
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+
+            Assert.AreEqual(9, cb.Read(readBuffer4, 0, readBuffer4.Length, 0));
+
+            Assert.AreEqual(cb.Count, 0);
+            Assert.IsTrue(cb.IsEmpty);
+
+            cb.Write(buffer, 0, buffer.Length);
+
+            Assert.AreEqual(1, cb.Read(readBuffer4, 0, 1, 8));
+            Assert.AreEqual(cb.Count, 0);
+            Assert.IsTrue(cb.IsEmpty);
+
+            Assert.IsTrue(readBuffer4.Take(1).SequenceEqual(buffer.Skip(8).Take(1)));
         }
 
         [TestMethod]
@@ -294,49 +312,84 @@ namespace Exomia.Network.UnitTest
         {
             Random rnd = new Random(1337);
 
-            CircularBuffer cb = new CircularBuffer(16);
-
             byte[] buffer = new byte[9];
             rnd.NextBytes(buffer);
 
-            fixed (byte* src = buffer)
+            CircularBuffer cb = new CircularBuffer(16);
+            byte[] dummy = new byte[100];
+            fixed (byte* src = dummy)
             {
-                cb.Write(src, 0, buffer.Length);
-                cb.Write(src, 0, buffer.Length);
+                Assert.AreEqual(0, cb.Read(src, 0, 78, 0));
             }
+            cb.Write(buffer, 0, buffer.Length);
 
-            Assert.AreEqual(cb.Count, 16);
-
-            byte[] readBuffer = new byte[16];
-
-            fixed (byte* dest = readBuffer)
+            fixed (byte* src = dummy)
             {
-                cb.Read(dest, 0, readBuffer.Length, 0);
-
-                Assert.AreEqual(cb.Count, 0);
-                Assert.IsTrue(cb.IsEmpty);
-
-                Assert.IsTrue(readBuffer.Take(7).SequenceEqual(buffer.Skip(2)));
-
-                byte[] shouldbe = buffer.Skip(2).Concat(buffer).ToArray();
-
-                Assert.IsTrue(readBuffer.SequenceEqual(shouldbe));
+                Assert.AreEqual(buffer.Length, cb.Read(src, 0, 78, 0));
             }
 
             cb.Dispose();
 
             cb = new CircularBuffer(16);
             cb.Write(buffer, 0, buffer.Length);
+
             cb.Write(buffer, 0, buffer.Length);
-            byte[] readBuffer3 = new byte[1];
-            fixed (byte* dest = readBuffer3)
+
+            Assert.AreEqual(cb.Count, 16);
+
+            byte[] readBuffer2 = new byte[9];
+            fixed (byte* src = readBuffer2)
             {
-                cb.Read(dest, 0, readBuffer3.Length, 15);
+                Assert.AreEqual(readBuffer2.Length, cb.Read(src, 0, readBuffer2.Length, 0));
+            }
+
+            Assert.AreEqual(cb.Count, 16 - 9);
+            Assert.IsFalse(cb.IsEmpty);
+
+            Assert.IsTrue(readBuffer2.Take(9).SequenceEqual(buffer));
+
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+
+            byte[] readBuffer4 = new byte[9];
+            fixed (byte* src = readBuffer4)
+            {
+                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
+            }
+
+            Assert.AreEqual(cb.Count, 0);
+            Assert.IsTrue(cb.IsEmpty);
+
+            cb.Write(buffer, 0, buffer.Length);
+            fixed (byte* src = readBuffer4)
+            {
+                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
             }
             Assert.AreEqual(cb.Count, 0);
             Assert.IsTrue(cb.IsEmpty);
 
-            Assert.IsTrue(readBuffer3.SequenceEqual(buffer.Skip(8)));
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+            fixed (byte* src = readBuffer4)
+            {
+                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
+            }
+            Assert.AreEqual(cb.Count, 0);
+            Assert.IsTrue(cb.IsEmpty);
+
+            cb.Write(buffer, 0, buffer.Length);
+            fixed (byte* src = readBuffer4)
+            {
+                Assert.AreEqual(1, cb.Read(src, 0, 1, 8));
+            }
+            Assert.AreEqual(cb.Count, 0);
+            Assert.IsTrue(cb.IsEmpty);
+
+            Assert.IsTrue(readBuffer4.Take(1).SequenceEqual(buffer.Skip(8).Take(1)));
         }
 
         [TestMethod]
@@ -357,11 +410,7 @@ namespace Exomia.Network.UnitTest
 
             Assert.IsTrue(peekBuffer.SequenceEqual(buffer));
 
-            Assert.ThrowsException<InvalidOperationException>(
-                () =>
-                {
-                    cb.Peek(peekBuffer, 0, 8, 0);
-                });
+            Assert.AreEqual(4, cb.Peek(peekBuffer, 0, 8, 0));
 
             byte[] buffer2 = { 45, 48, 72, 1, 4, 87, 95 };
             cb.Write(buffer2, 0, buffer2.Length);
@@ -396,14 +445,7 @@ namespace Exomia.Network.UnitTest
 
             Assert.IsTrue(peekBuffer.SequenceEqual(buffer));
 
-            Assert.ThrowsException<InvalidOperationException>(
-                () =>
-                {
-                    fixed (byte* dest = peekBuffer)
-                    {
-                        cb.Peek(dest, 0, 8, 0);
-                    }
-                });
+            Assert.AreEqual(4, cb.Peek(peekBuffer, 0, 8, 0));
 
             byte[] buffer2 = { 45, 48, 72, 1, 4, 87, 95 };
             cb.Write(buffer2, 0, buffer2.Length);
@@ -425,40 +467,68 @@ namespace Exomia.Network.UnitTest
         {
             Random rnd = new Random(1337);
 
-            CircularBuffer cb = new CircularBuffer(16);
-
             byte[] buffer = new byte[9];
             rnd.NextBytes(buffer);
 
+            CircularBuffer cb = new CircularBuffer(16);
+            byte[] dummy = new byte[100];
+            Assert.AreEqual(0, cb.Peek(dummy, 0, 78, 0));
+
             cb.Write(buffer, 0, buffer.Length);
-            cb.Write(buffer, 0, buffer.Length);
 
-            Assert.AreEqual(cb.Count, 16);
-
-            byte[] peekBuffer2 = new byte[16];
-            cb.Peek(peekBuffer2, 0, peekBuffer2.Length, 0);
-
-            Assert.AreEqual(cb.Count, 16);
-            Assert.IsFalse(cb.IsEmpty);
-
-            Assert.IsTrue(peekBuffer2.Take(7).SequenceEqual(buffer.Skip(2)));
-
-            byte[] shouldbe = buffer.Skip(2).Concat(buffer).ToArray();
-
-            Assert.IsTrue(peekBuffer2.SequenceEqual(shouldbe));
+            Assert.AreEqual(buffer.Length, cb.Peek(dummy, 0, 78, 0));
 
             cb.Dispose();
 
             cb = new CircularBuffer(16);
             cb.Write(buffer, 0, buffer.Length);
+
             cb.Write(buffer, 0, buffer.Length);
-            byte[] peekBuffer3 = new byte[1];
-            cb.Peek(peekBuffer3, 0, peekBuffer3.Length, 15);
+
+            Assert.AreEqual(cb.Count, 16);
+
+            byte[] readBuffer2 = new byte[9];
+            Assert.AreEqual(7, cb.Peek(readBuffer2, 0, readBuffer2.Length, 9));
 
             Assert.AreEqual(cb.Count, 16);
             Assert.IsFalse(cb.IsEmpty);
 
-            Assert.IsTrue(peekBuffer3.SequenceEqual(buffer.Skip(8)));
+            Assert.IsTrue(readBuffer2.Take(7).SequenceEqual(buffer.Take(7)));
+
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+
+            byte[] readBuffer4 = new byte[9];
+            Assert.AreEqual(9, cb.Read(readBuffer4, 0, readBuffer4.Length, 0));
+
+            Assert.AreEqual(0, cb.Count);
+            Assert.IsTrue(cb.IsEmpty);
+
+            cb.Write(buffer, 0, buffer.Length);
+
+            Assert.AreEqual(9, cb.Peek(readBuffer4, 0, readBuffer4.Length, 0));
+            Assert.AreEqual(cb.Count, 9);
+            Assert.IsFalse(cb.IsEmpty);
+
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+
+            Assert.AreEqual(9, cb.Read(readBuffer4, 0, readBuffer4.Length, 0));
+
+            Assert.AreEqual(0, cb.Count);
+            Assert.IsTrue(cb.IsEmpty);
+
+            cb.Write(buffer, 0, buffer.Length);
+
+            Assert.AreEqual(1, cb.Peek(readBuffer4, 0, 1, 8));
+            Assert.AreEqual(9, cb.Count);
+            Assert.IsFalse(cb.IsEmpty);
+
+            Assert.IsTrue(readBuffer4.Take(1).SequenceEqual(buffer.Skip(8).Take(1)));
         }
 
         [TestMethod]
@@ -466,49 +536,82 @@ namespace Exomia.Network.UnitTest
         {
             Random rnd = new Random(1337);
 
-            CircularBuffer cb = new CircularBuffer(16);
-
             byte[] buffer = new byte[9];
             rnd.NextBytes(buffer);
 
-            fixed (byte* src = buffer)
+            CircularBuffer cb = new CircularBuffer(16);
+            byte[] dummy = new byte[100];
+
+            fixed (byte* src = dummy)
             {
-                cb.Write(src, 0, buffer.Length);
-                cb.Write(src, 0, buffer.Length);
+                Assert.AreEqual(0, cb.Peek(src, 0, 78, 0));
             }
+
+            cb.Write(buffer, 0, buffer.Length);
+            fixed (byte* src = dummy)
+            {
+                Assert.AreEqual(buffer.Length, cb.Peek(src, 0, 78, 0));
+            }
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+
+            cb.Write(buffer, 0, buffer.Length);
 
             Assert.AreEqual(cb.Count, 16);
 
-            byte[] peekBuffer = new byte[16];
-
-            fixed (byte* dest = peekBuffer)
+            byte[] readBuffer2 = new byte[9];
+            fixed (byte* src = readBuffer2)
             {
-                cb.Peek(dest, 0, peekBuffer.Length, 0);
-
-                Assert.AreEqual(cb.Count, 16);
-                Assert.IsFalse(cb.IsEmpty);
-
-                Assert.IsTrue(peekBuffer.Take(7).SequenceEqual(buffer.Skip(2)));
-
-                byte[] shouldbe = buffer.Skip(2).Concat(buffer).ToArray();
-
-                Assert.IsTrue(peekBuffer.SequenceEqual(shouldbe));
+                Assert.AreEqual(7, cb.Peek(src, 0, readBuffer2.Length, 9));
             }
+            Assert.AreEqual(cb.Count, 16);
+            Assert.IsFalse(cb.IsEmpty);
+
+            Assert.IsTrue(readBuffer2.Take(7).SequenceEqual(buffer.Take(7)));
 
             cb.Dispose();
 
             cb = new CircularBuffer(16);
             cb.Write(buffer, 0, buffer.Length);
-            cb.Write(buffer, 0, buffer.Length);
-            byte[] peekBuffer3 = new byte[1];
-            fixed (byte* dest = peekBuffer3)
+
+            byte[] readBuffer4 = new byte[9];
+            fixed (byte* src = readBuffer4)
             {
-                cb.Peek(dest, 0, peekBuffer3.Length, 15);
+                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
             }
-            Assert.AreEqual(cb.Count, 16);
+            Assert.AreEqual(0, cb.Count);
+            Assert.IsTrue(cb.IsEmpty);
+
+            cb.Write(buffer, 0, buffer.Length);
+            fixed (byte* src = readBuffer4)
+            {
+                Assert.AreEqual(9, cb.Peek(src, 0, readBuffer4.Length, 0));
+            }
+            Assert.AreEqual(cb.Count, 9);
             Assert.IsFalse(cb.IsEmpty);
 
-            Assert.IsTrue(peekBuffer3.SequenceEqual(buffer.Skip(8)));
+            cb.Dispose();
+
+            cb = new CircularBuffer(16);
+            cb.Write(buffer, 0, buffer.Length);
+            fixed (byte* src = readBuffer4)
+            {
+                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
+            }
+            Assert.AreEqual(0, cb.Count);
+            Assert.IsTrue(cb.IsEmpty);
+
+            cb.Write(buffer, 0, buffer.Length);
+            fixed (byte* src = readBuffer4)
+            {
+                Assert.AreEqual(1, cb.Peek(src, 0, 1, 8));
+            }
+            Assert.AreEqual(9, cb.Count);
+            Assert.IsFalse(cb.IsEmpty);
+
+            Assert.IsTrue(readBuffer4.Take(1).SequenceEqual(buffer.Skip(8).Take(1)));
         }
 
         [TestMethod]
@@ -518,17 +621,16 @@ namespace Exomia.Network.UnitTest
 
             byte[] buffer = { 45, 48, 72, 15 };
             cb.Write(buffer, 0, buffer.Length);
-
-            Assert.AreEqual(cb.PeekByte(0), 45);
-            Assert.AreEqual(cb.PeekByte(1), 48);
-            Assert.AreEqual(cb.PeekByte(2), 72);
-            Assert.AreEqual(cb.PeekByte(3), 15);
-
-            Assert.ThrowsException<InvalidOperationException>(
-                () =>
-                {
-                    return cb.PeekByte(4);
-                });
+            byte b;
+            Assert.IsTrue(cb.PeekByte(0, out b));
+            Assert.AreEqual(b, 45);
+            Assert.IsTrue(cb.PeekByte(1, out b));
+            Assert.AreEqual(b, 48);
+            Assert.IsTrue(cb.PeekByte(2, out b));
+            Assert.AreEqual(b, 72);
+            Assert.IsTrue(cb.PeekByte(3, out b));
+            Assert.AreEqual(b, 15);
+            Assert.IsFalse(cb.PeekByte(4, out b));
         }
 
         [TestMethod]
@@ -543,19 +645,19 @@ namespace Exomia.Network.UnitTest
             Assert.IsFalse(cb.SkipUntil(0, 0));
 
             byte[] peekBuffer = new byte[4];
-            cb.Peek(peekBuffer, 0, 4, 0);
+            Assert.AreEqual(0, cb.Peek(peekBuffer, 0, 4, 0));
 
-            Assert.IsTrue(peekBuffer.SequenceEqual(buffer));
+            Assert.AreEqual(cb.Count, 0);
+
+            Assert.AreEqual(buffer.Length, cb.Write(buffer, 0, buffer.Length));
 
             Assert.IsTrue(cb.SkipUntil(0, 48));
-
-            Assert.AreEqual(cb.Count, 2);
 
             cb.Peek(peekBuffer, 0, 2, 0);
 
             Assert.IsTrue(peekBuffer.Take(2).SequenceEqual(buffer.Skip(2)));
-
             Assert.IsFalse(cb.SkipUntil(0, 0));
+            Assert.AreEqual(cb.Count, 0);
         }
 
         [TestMethod]
@@ -578,9 +680,19 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
 
             cb.Write(buffer, 0, buffer.Length); // 14
-            cb.Write(buffer, 0, buffer.Length); // 16
+            Assert.AreEqual(2, cb.Write(buffer, 0, buffer.Length)); // 16
 
-            Assert.IsTrue(cb.PeekHeader(2 + 7, out packetHeader, out commandID, out dataLength, out checksum));
+            Assert.IsTrue(cb.PeekHeader(7, out packetHeader, out commandID, out dataLength, out checksum));
+            Assert.AreEqual(packetHeader, buffer[0]);
+
+            Assert.AreEqual(commandID, (uint)((buffer[4] << 8) | buffer[3]));
+            Assert.AreEqual(dataLength, (buffer[2] << 8) | buffer[1]);
+            Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
+
+            cb.Skip(7);
+
+            Assert.AreEqual(buffer.Length - 2, cb.Write(buffer, 2, buffer.Length - 2));
+            Assert.IsTrue(cb.PeekHeader(7, out packetHeader, out commandID, out dataLength, out checksum));
 
             Assert.AreEqual(packetHeader, buffer[0]);
 
@@ -588,9 +700,10 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(dataLength, (buffer[2] << 8) | buffer[1]);
             Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
 
-            cb.Write(buffer, 0, buffer.Length); // 16
+            cb.Skip(7);
 
-            Assert.IsTrue(cb.PeekHeader(2 + 7, out packetHeader, out commandID, out dataLength, out checksum));
+            Assert.AreEqual(buffer.Length, cb.Write(buffer, 0, buffer.Length));
+            Assert.IsTrue(cb.PeekHeader(7, out packetHeader, out commandID, out dataLength, out checksum));
 
             Assert.AreEqual(packetHeader, buffer[0]);
 

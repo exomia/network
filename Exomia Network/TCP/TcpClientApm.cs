@@ -24,11 +24,11 @@
 
 #pragma warning disable 1574
 
+using System;
+using System.Net.Sockets;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
 using LZ4;
-using System;
-using System.Net.Sockets;
 
 namespace Exomia.Network.TCP
 {
@@ -61,17 +61,14 @@ namespace Exomia.Network.TCP
                 {
                     socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
                     {
-                        NoDelay = true,
-                        Blocking = false,
-                        DualMode = true
+                        NoDelay = true, Blocking = false, DualMode = true
                     };
                 }
                 else
                 {
                     socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                     {
-                        NoDelay = true,
-                        Blocking = false
+                        NoDelay = true, Blocking = false
                     };
                 }
                 return true;
@@ -171,16 +168,18 @@ namespace Exomia.Network.TCP
 
             int size = _circularBuffer.Write(_bufferWrite, 0, length);
             while (_circularBuffer.PeekHeader(
-                    0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
-                && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
+                       0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
+                   && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
             {
-                if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b) && b == Constants.ZERO_BYTE)
+                if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b) &&
+                    b == Constants.ZERO_BYTE)
                 {
                     _circularBuffer.Read(_bufferRead, 0, dataLength, Constants.TCP_HEADER_SIZE);
                     if (size < length)
                     {
                         _circularBuffer.Write(_bufferWrite, size, length - size);
                     }
+
                     //TODO: skip payload bytes then response bit or other things are set in packetHeader
                     byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
                     if (Serialization.Serialization.Deserialize(
