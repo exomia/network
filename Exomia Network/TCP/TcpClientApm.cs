@@ -24,11 +24,11 @@
 
 #pragma warning disable 1574
 
-using System;
-using System.Net.Sockets;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
 using LZ4;
+using System;
+using System.Net.Sockets;
 
 namespace Exomia.Network.TCP
 {
@@ -39,15 +39,17 @@ namespace Exomia.Network.TCP
     public sealed class TcpClientApm : ClientBase
     {
         private readonly CircularBuffer _circularBuffer;
-        private readonly byte[] _buffer;
+        private readonly byte[] _bufferWrite;
+        private readonly byte[] _bufferRead;
 
         /// <inheritdoc />
         public TcpClientApm(ushort maxPacketSize = 0)
         {
-            _buffer = new byte[maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
+            _bufferWrite = new byte[maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.TCP_PACKET_SIZE_MAX];
-            _circularBuffer = new CircularBuffer(_buffer.Length * 2);
+            _bufferRead = new byte[_bufferWrite.Length];
+            _circularBuffer = new CircularBuffer(_bufferWrite.Length * 2);
         }
 
         /// <inheritdoc />
@@ -59,14 +61,17 @@ namespace Exomia.Network.TCP
                 {
                     socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
                     {
-                        NoDelay = true, Blocking = false, DualMode = true
+                        NoDelay = true,
+                        Blocking = false,
+                        DualMode = true
                     };
                 }
                 else
                 {
                     socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                     {
-                        NoDelay = true, Blocking = false
+                        NoDelay = true,
+                        Blocking = false
                     };
                 }
                 return true;
@@ -86,7 +91,7 @@ namespace Exomia.Network.TCP
                 try
                 {
                     _clientSocket.BeginReceive(
-                        _buffer, 0, _buffer.Length, SocketFlags.None, ReceiveAsyncCallback, null);
+                        _bufferWrite, 0, _bufferWrite.Length, SocketFlags.None, ReceiveAsyncCallback, null);
                 }
                 catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
                 catch (SocketException) { Disconnect(DisconnectReason.Error); }
@@ -164,41 +169,36 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            _circularBuffer.Write(_buffer, 0, length);
-
-            if (!HandleNextPacket())
+            int size = _circularBuffer.Write(_bufferWrite, 0, length);
+            while (_circularBuffer.PeekHeader(
+                    0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
+                && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
             {
-                ReceiveAsync();
-            }
-        }
-
-        private bool HandleNextPacket()
-        {
-            while (true)
-            {
-                if (_circularBuffer.PeekHeader(
-                        0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
-                    && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
+                if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b) && b == Constants.ZERO_BYTE)
                 {
-                    if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1) == Constants.ZERO_BYTE)
+                    _circularBuffer.Read(_bufferRead, 0, dataLength, Constants.TCP_HEADER_SIZE);
+                    if (size < length)
                     {
-                        _circularBuffer.Read(_buffer, 0, dataLength, Constants.TCP_HEADER_SIZE);
-
-                        //TODO: skip payload bytes then response bit or other things are set in packetHeader
-                        byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
-                        if (Serialization.Serialization.Deserialize(
-                                _buffer, 0, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
-                        {
-                            HandleReceive(deserializeBuffer, commandID, bufferLength, packetHeader);
-                            return true;
-                        }
-                        return false;
+                        _circularBuffer.Write(_bufferWrite, size, length - size);
                     }
-
-                    if (_circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE)) { continue; }
+                    //TODO: skip payload bytes then response bit or other things are set in packetHeader
+                    byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
+                    if (Serialization.Serialization.Deserialize(
+                            _bufferRead, 0, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
+                    {
+                        HandleReceive(deserializeBuffer, commandID, bufferLength, packetHeader);
+                        return;
+                    }
+                    break;
                 }
-                return false;
+                bool skipped = _circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
+                if (size < length)
+                {
+                    size += _circularBuffer.Write(_bufferWrite, size, length - size);
+                }
+                if (!skipped && !_circularBuffer.SkipUntil(0, Constants.ZERO_BYTE)) { break; }
             }
+            ReceiveAsync();
         }
 
         private unsafe void HandleReceive(byte[] buffer, uint commandID, int dataLength, byte packetHeader)

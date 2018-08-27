@@ -144,15 +144,20 @@ namespace Exomia.Network.Native
         /// <param name="skip">skip bytes</param>
         /// <returns>a byte array</returns>
         /// <exception cref="InvalidOperationException">if the buffer is empty</exception>
-        public void Read(byte[] dest, int offset, int length, int skip)
+        public int Read(byte[] dest, int offset, int length, int skip)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_count == 0 || _count < skip + length)
+                if (_count == 0)
                 {
-                    throw new InvalidOperationException("empty circular buffer or overflow");
+                    return 0;
+                }
+
+                if (skip + length > _count)
+                {
+                    length = _count - skip;
                 }
 
                 fixed (byte* d = dest)
@@ -175,6 +180,8 @@ namespace Exomia.Network.Native
 
                 _tail = (_tail + length) & _mask;
                 _count -= skip + length;
+
+                return length;
             }
             finally
             {
@@ -190,15 +197,20 @@ namespace Exomia.Network.Native
         /// <param name="length">length</param>
         /// <param name="skip">skip bytes</param>
         /// <exception cref="InvalidOperationException">if the buffer is empty</exception>
-        public void Read(byte* dest, int offset, int length, int skip)
+        public int Read(byte* dest, int offset, int length, int skip)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_count == 0 || _count < skip + length)
+                if (_count == 0)
                 {
-                    throw new InvalidOperationException("empty circular buffer or overflow");
+                    return 0;
+                }
+
+                if (skip + length > _count)
+                {
+                    length = _count - skip;
                 }
 
                 if (_tail + skip + length < _capacity)
@@ -218,6 +230,8 @@ namespace Exomia.Network.Native
 
                 _tail = (_tail + skip + length) & _mask;
                 _count -= skip + length;
+
+                return length;
             }
             finally
             {
@@ -234,15 +248,20 @@ namespace Exomia.Network.Native
         /// <param name="skip">skip bytes</param>
         /// <returns>a byte array</returns>
         /// <exception cref="InvalidOperationException">if the buffer is empty</exception>
-        public void Peek(byte[] dest, int offset, int length, int skip)
+        public int Peek(byte[] dest, int offset, int length, int skip)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_count == 0 || _count < skip + length)
+                if (_count == 0)
                 {
-                    throw new InvalidOperationException("empty circular buffer or overflow");
+                    return 0;
+                }
+
+                if (skip + length > _count)
+                {
+                    length = _count - skip;
                 }
 
                 fixed (byte* d = dest)
@@ -262,6 +281,8 @@ namespace Exomia.Network.Native
                         Mem.Cpy(d + offset, _ptr + ((_tail + skip) & _mask), length);
                     }
                 }
+
+                return length;
             }
             finally
             {
@@ -278,15 +299,20 @@ namespace Exomia.Network.Native
         /// <param name="skip">skip bytes</param>
         /// <returns>a byte array</returns>
         /// <exception cref="InvalidOperationException">if the buffer is empty</exception>
-        public void Peek(byte* dest, int offset, int length, int skip)
+        public int Peek(byte* dest, int offset, int length, int skip)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_count == 0 || _count < skip + length)
+                if (_count == 0)
                 {
-                    throw new InvalidOperationException("empty circular buffer or overflow");
+                    return 0;
+                }
+
+                if (skip + length > _count)
+                {
+                    length = _count - skip;
                 }
 
                 if (_tail + skip + length < _capacity)
@@ -303,6 +329,8 @@ namespace Exomia.Network.Native
                 {
                     Mem.Cpy(dest + offset, _ptr + ((_tail + skip) & _mask), length);
                 }
+
+                return length;
             }
             finally
             {
@@ -314,10 +342,11 @@ namespace Exomia.Network.Native
         ///     peek a single byte from the buffer
         /// </summary>
         /// <param name="offset">offset</param>
-        /// <returns>a byte array</returns>
+        /// <param name="b">out byte</param>
+        /// <returns><c>true</c> if the peek was successful; <c>false</c> otherwise</returns>
         /// <exception cref="InvalidOperationException">if the buffer is empty</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte PeekByte(int offset)
+        public bool PeekByte(int offset, out byte b)
         {
             bool lockTaken = false;
             try
@@ -325,9 +354,11 @@ namespace Exomia.Network.Native
                 _lock.Enter(ref lockTaken);
                 if (_count == 0 || _count <= offset)
                 {
-                    throw new InvalidOperationException("empty circular buffer or overflow");
-                }
-                return *(_ptr + ((_tail + offset) & _mask));
+                    b = 0;
+                    return false;
+                }             
+                b = *(_ptr + ((_tail + offset) & _mask));
+                return true;
             }
             finally
             {
@@ -423,7 +454,7 @@ namespace Exomia.Network.Native
         }
 
         /// <summary>
-        ///     peek a single byte from the buffer
+        ///     skips until a specified byte is found
         /// </summary>
         /// <param name="offset">offset</param>
         /// <param name="value">the value to compare with</param>
@@ -436,15 +467,18 @@ namespace Exomia.Network.Native
                 _lock.Enter(ref lockTaken);
                 if (_count > offset)
                 {
-                    for (int i = offset; i < _count; i++)
+                    int i = offset;
+                    while (i < _count)
                     {
-                        if (*(_ptr + ((_tail + i) & _mask)) == value)
+                        if (*(_ptr + ((_tail + i++) & _mask)) == value)
                         {
-                            _tail = (_tail + i + 1) & _mask;
-                            _count -= i + 1;
+                            _tail = (_tail + i) & _mask;
+                            _count -= i;
                             return true;
                         }
                     }
+                    _tail = (_tail + _count) & _mask;
+                    _count = 0;
                 }
                 return false;
             }
@@ -461,12 +495,18 @@ namespace Exomia.Network.Native
         /// <param name="value">source array</param>
         /// <param name="offset">offset</param>
         /// <param name="length">length</param>
-        public void Write(byte[] value, int offset, int length)
+        /// <returns>the bytes written to the buffer</returns>
+        public int Write(byte[] value, int offset, int length)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
+
+                if (_count + length > _capacity)
+                {
+                    length = _capacity - _count;
+                }
 
                 fixed (byte* src = value)
                 {
@@ -485,11 +525,7 @@ namespace Exomia.Network.Native
                 _head = (_head + length) & _mask;
                 _count += length;
 
-                if (_count > _capacity)
-                {
-                    _tail += _count - _capacity;
-                    _count = _capacity;
-                }
+                return length;
             }
             finally
             {
@@ -504,12 +540,18 @@ namespace Exomia.Network.Native
         /// <param name="src">source array</param>
         /// <param name="offset">source offset</param>
         /// <param name="length">length</param>
-        public void Write(byte* src, int offset, int length)
+        /// <returns>the bytes written to the buffer</returns>
+        public int Write(byte* src, int offset, int length)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
+
+                if (_count + length > _capacity)
+                {
+                    length = _capacity - _count;
+                }
 
                 if (_head + length < _capacity)
                 {
@@ -525,11 +567,7 @@ namespace Exomia.Network.Native
                 _head = (_head + length) & _mask;
                 _count += length;
 
-                if (_count > _capacity)
-                {
-                    _tail += _count - _capacity;
-                    _count = _capacity;
-                }
+                return length;
             }
             finally
             {

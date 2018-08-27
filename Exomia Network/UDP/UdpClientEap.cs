@@ -34,7 +34,7 @@ namespace Exomia.Network.UDP
 {
     /// <inheritdoc cref="ClientBase" />
     /// <summary>
-    ///     A TCP/UDP-Client build with the "Event-based Asynchronous Pattern" (EAP)
+    ///     A UDP-Client build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>
     public sealed class UdpClientEap : ClientBase
     {

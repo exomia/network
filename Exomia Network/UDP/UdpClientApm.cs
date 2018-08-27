@@ -34,7 +34,7 @@ namespace Exomia.Network.UDP
 {
     /// <inheritdoc cref="ClientBase" />
     /// <summary>
-    ///     A TCP/UDP-Client build with the "Asynchronous Programming Model" (APM)
+    ///     A UDP-Client build with the "Asynchronous Programming Model" (APM)
     /// </summary>
     public sealed class UdpClientApm : ClientBase
     {
