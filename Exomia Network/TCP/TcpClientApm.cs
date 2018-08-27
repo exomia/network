@@ -139,7 +139,7 @@ namespace Exomia.Network.TCP
             _circularBuffer.Dispose();
         }
 
-        private void ReceiveAsyncCallback(IAsyncResult iar)
+        private unsafe void ReceiveAsyncCallback(IAsyncResult iar)
         {
             int length;
             try
@@ -174,21 +174,50 @@ namespace Exomia.Network.TCP
                 if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b) &&
                     b == Constants.ZERO_BYTE)
                 {
-                    _circularBuffer.Read(_bufferRead, 0, dataLength, Constants.TCP_HEADER_SIZE);
-                    if (size < length)
+                    fixed (byte* ptr = _bufferRead)
                     {
-                        _circularBuffer.Write(_bufferWrite, size, length - size);
-                    }
+                        _circularBuffer.Read(ptr, 0, dataLength, Constants.TCP_HEADER_SIZE);
+                        if (size < length)
+                        {
+                            _circularBuffer.Write(_bufferWrite, size, length - size);
+                        }
 
-                    //TODO: skip payload bytes then response bit or other things are set in packetHeader
-                    byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
-                    if (Serialization.Serialization.Deserialize(
-                            _bufferRead, 0, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
-                    {
-                        HandleReceive(deserializeBuffer, commandID, bufferLength, packetHeader);
-                        return;
+                        uint responseID = 0;
+                        int offset = 0;
+                        if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
+                        {
+                            responseID = *(uint*)ptr;
+                            offset = 4;
+                        }
+                        if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                        {
+                            offset += 4;
+                        }
+
+                        byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
+                        if (Serialization.Serialization.Deserialize(
+                                ptr, offset, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
+                        {
+                            if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                            {
+                                int l = *(int*)(ptr + offset);
+
+                                byte[] buffer = ByteArrayPool.Rent(l);
+                                int s = LZ4Codec.Decode(
+                                    deserializeBuffer, 0, bufferLength, buffer, 0, l, true);
+                                if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                                ByteArrayPool.Return(deserializeBuffer);
+                                deserializeBuffer = buffer;
+                                bufferLength = l;
+                            }
+
+                            ReceiveAsync();
+                            DeserializeData(commandID, deserializeBuffer, 0, bufferLength, responseID);
+                            return;
+                        }
+                        break;
                     }
-                    break;
                 }
                 bool skipped = _circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
                 if (size < length)
@@ -198,54 +227,6 @@ namespace Exomia.Network.TCP
                 if (!skipped && !_circularBuffer.SkipUntil(0, Constants.ZERO_BYTE)) { break; }
             }
             ReceiveAsync();
-        }
-
-        private unsafe void HandleReceive(byte[] buffer, uint commandID, int dataLength, byte packetHeader)
-        {
-            uint responseID = 0;
-            if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
-            {
-                int l;
-                int offset = 4;
-                if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                {
-                    fixed (byte* ptr = buffer)
-                    {
-                        responseID = *(uint*)ptr;
-                        l = *(int*)(ptr + 4);
-                    }
-                    offset = 8;
-                }
-                else
-                {
-                    fixed (byte* ptr = buffer)
-                    {
-                        l = *(int*)ptr;
-                    }
-                }
-                byte[] data = ByteArrayPool.Rent(l);
-                int s = LZ4Codec.Decode(
-                    buffer, offset, dataLength - offset, data, 0, l, true);
-                if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
-                ByteArrayPool.Return(buffer);
-                ReceiveAsync();
-                DeserializeData(commandID, data, 0, l, responseID);
-            }
-            else
-            {
-                int offset = 0;
-                if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                {
-                    fixed (byte* ptr = buffer)
-                    {
-                        responseID = *(uint*)ptr;
-                    }
-                    offset = 4;
-                }
-                ReceiveAsync();
-                DeserializeData(commandID, buffer, offset, dataLength - offset, responseID);
-            }
         }
 
         private void SendDataCallback(IAsyncResult iar)

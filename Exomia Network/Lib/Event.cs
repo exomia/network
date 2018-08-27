@@ -25,7 +25,6 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Exomia.Network.Lib
@@ -36,6 +35,7 @@ namespace Exomia.Network.Lib
     /// <typeparam name="T">typeof delegate</typeparam>
     sealed class Event<T> where T : Delegate
     {
+        //TODO: calculate and use BlockCopy
         private readonly int _sizeOf;
         private T[] _callbacks;
         private int _count;
@@ -70,7 +70,7 @@ namespace Exomia.Network.Lib
             _callbacks = new T[capacity];
             _lock = new SpinLock(Debugger.IsAttached);
 
-            _sizeOf = Marshal.SizeOf(typeof(T));
+            //_sizeOf = Marshal.SizeOf();
         }
 
         /// <summary>
@@ -86,7 +86,9 @@ namespace Exomia.Network.Lib
                 if (_count >= _callbacks.Length)
                 {
                     T[] buffer = new T[_callbacks.Length * 2];
-                    Buffer.BlockCopy(_callbacks, 0, buffer, 0, _count * _sizeOf);
+
+                    //Buffer.BlockCopy(_callbacks, 0, buffer, 0, _count * _sizeOf);
+                    Array.Copy(_callbacks, buffer, _count);
                     Interlocked.Exchange(ref _callbacks, buffer);
                 }
                 _callbacks[_count++] = callback;

@@ -171,24 +171,22 @@ namespace Exomia.Network.Serialization
             }
         }
 
-        internal static ushort Deserialize(byte[] data, int offset, int length, byte[] buffer, out int bufferLength)
+        internal static ushort Deserialize(byte* src, int offset, int length, byte[] buffer, out int bufferLength)
         {
             bufferLength = length - Math2.Ceiling(length / 8.0);
 
             uint checksum = s_h0;
             int o1 = 0;
-            fixed (byte* src = data)
+
+            fixed (byte* dest = buffer)
             {
-                fixed (byte* dest = buffer)
+                while (offset + 8 < length)
                 {
-                    while (offset + 8 < length)
-                    {
-                        Deserialize(&checksum, dest, o1, src, offset, 8);
-                        o1 += 7;
-                        offset += 8;
-                    }
-                    Deserialize(&checksum, dest, o1, src, offset, length - offset);
+                    Deserialize(&checksum, dest, o1, src, offset, 8);
+                    o1 += 7;
+                    offset += 8;
                 }
+                Deserialize(&checksum, dest, o1, src, offset, length - offset);
             }
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));

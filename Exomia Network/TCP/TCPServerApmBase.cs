@@ -26,7 +26,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
-using Exomia.Network.Serialization;
+using Exomia.Network.Native;
 using LZ4;
 
 namespace Exomia.Network.TCP
@@ -63,21 +63,12 @@ namespace Exomia.Network.TCP
                     commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
                 try
                 {
+                    SendStateObject state;
+                    state.Socket = arg0;
+                    state.Buffer = send;
                     arg0.BeginSend(
-                        send, 0, size, SocketFlags.None, iar =>
-                        {
-                            try
-                            {
-                                if (arg0.EndSend(iar) <= 0)
-                                {
-                                    InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
-                                }
-                            }
-                            finally
-                            {
-                                ByteArrayPool.Return(send);
-                            }
-                        }, null);
+                        send, 0, size, SocketFlags.None, BeginSendCallback, state);
+
                     return SendError.None;
                 }
                 catch (ObjectDisposedException)
@@ -165,6 +156,26 @@ namespace Exomia.Network.TCP
             }
         }
 
+        private void BeginSendCallback(IAsyncResult iar)
+        {
+            SendStateObject state = (SendStateObject)iar.AsyncState;
+            try
+            {
+                if (state.Socket.EndSend(iar) <= 0)
+                {
+                    InvokeClientDisconnect(state.Socket, DisconnectReason.Unspecified);
+                }
+            }
+            catch
+            {
+                /* IGNORE */
+            }
+            finally
+            {
+                ByteArrayPool.Return(state.Buffer);
+            }
+        }
+
         private void AcceptCallback(IAsyncResult ar)
         {
             try
@@ -172,7 +183,11 @@ namespace Exomia.Network.TCP
                 Socket socket = _listener.EndAccept(ar);
                 ServerClientStateObject state = new ServerClientStateObject
                 {
-                    Socket = socket, Buffer = new byte[_maxPacketSize]
+                    //0.2mb
+                    Socket = socket,
+                    BufferWrite = new byte[_maxPacketSize],
+                    BufferRead = new byte[_maxPacketSize],
+                    CircularBuffer = new CircularBuffer(_maxPacketSize * 2)
                 };
 
                 ReceiveAsync(state);
@@ -197,7 +212,7 @@ namespace Exomia.Network.TCP
                 try
                 {
                     state.Socket.BeginReceive(
-                        state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveDataCallback, state);
+                        state.BufferWrite, 0, state.BufferWrite.Length, SocketFlags.None, ReceiveDataCallback, state);
                 }
                 catch (ObjectDisposedException) { InvokeClientDisconnect(state.Socket, DisconnectReason.Aborted); }
                 catch (SocketException) { InvokeClientDisconnect(state.Socket, DisconnectReason.Error); }
@@ -233,77 +248,81 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            //TODO: circular
-            state.Buffer.GetHeaderUdp(out uint commandID, out int dataLength, out byte h1);
-
-            if (dataLength == length - Constants.TCP_HEADER_SIZE)
+            CircularBuffer circularBuffer = state.CircularBuffer;
+            int size = circularBuffer.Write(state.BufferWrite, 0, length);
+            while (circularBuffer.PeekHeader(
+                       0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
+                   && dataLength <= circularBuffer.Count - Constants.TCP_HEADER_SIZE)
             {
-                Socket socket = state.Socket;
-
-                uint responseID = 0;
-                byte[] data;
-                if ((h1 & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                if (circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b) &&
+                    b == Constants.ZERO_BYTE)
                 {
-                    int l;
-                    if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
+                    fixed (byte* ptr = state.BufferRead)
                     {
-                        fixed (byte* ptr = state.Buffer)
+                        circularBuffer.Read(ptr, 0, dataLength, Constants.TCP_HEADER_SIZE);
+                        if (size < length)
                         {
-                            responseID = *(uint*)(ptr + Constants.TCP_HEADER_SIZE);
-                            l = *(int*)(ptr + Constants.TCP_HEADER_SIZE + 4);
+                            circularBuffer.Write(state.BufferWrite, size, length - size);
                         }
-                        data = ByteArrayPool.Rent(l);
 
-                        int s = LZ4Codec.Decode(
-                            state.Buffer, Constants.TCP_HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
-                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-                    }
-                    else
-                    {
-                        fixed (byte* ptr = state.Buffer)
+                        uint responseID = 0;
+                        int offset = 0;
+                        if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                         {
-                            l = *(int*)(ptr + Constants.TCP_HEADER_SIZE);
+                            responseID = *(uint*)ptr;
+                            offset = 4;
                         }
-                        data = ByteArrayPool.Rent(l);
+                        if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                        {
+                            offset += 4;
+                        }
 
-                        int s = LZ4Codec.Decode(
-                            state.Buffer, Constants.TCP_HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
-                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                        byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
+                        if (Serialization.Serialization.Deserialize(
+                                ptr, offset, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
+                        {
+                            if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                            {
+                                int l = *(int*)(ptr + offset);
+
+                                byte[] buffer = ByteArrayPool.Rent(l);
+                                int s = LZ4Codec.Decode(
+                                    deserializeBuffer, 0, bufferLength, buffer, 0, l, true);
+                                if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                                ByteArrayPool.Return(deserializeBuffer);
+                                deserializeBuffer = buffer;
+                                bufferLength = l;
+                            }
+
+                            ReceiveAsync(state);
+                            DeserializeData(state.Socket, commandID, deserializeBuffer, 0, bufferLength, responseID);
+                            return;
+                        }
+                        break;
                     }
-
-                    ReceiveAsync(state);
-                    DeserializeData(socket, commandID, data, 0, l, responseID);
                 }
-                else
+                bool skipped = circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
+                if (size < length)
                 {
-                    if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                    {
-                        fixed (byte* ptr = state.Buffer)
-                        {
-                            responseID = *(uint*)(ptr + Constants.TCP_HEADER_SIZE);
-                        }
-                        dataLength -= 4;
-                        data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Buffer, Constants.TCP_HEADER_SIZE + 4, data, 0, dataLength);
-                    }
-                    else
-                    {
-                        data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Buffer, Constants.TCP_HEADER_SIZE, data, 0, dataLength);
-                    }
-
-                    ReceiveAsync(state);
-                    DeserializeData(socket, commandID, data, 0, dataLength, responseID);
+                    size += circularBuffer.Write(state.BufferWrite, size, length - size);
                 }
-                return;
+                if (!skipped && !circularBuffer.SkipUntil(0, Constants.ZERO_BYTE)) { break; }
             }
-
             ReceiveAsync(state);
+        }
+
+        private struct SendStateObject
+        {
+            public byte[] Buffer;
+            public Socket Socket;
         }
 
         private sealed class ServerClientStateObject
         {
-            public byte[] Buffer;
+            public byte[] BufferWrite;
+            public byte[] BufferRead;
+            public CircularBuffer CircularBuffer;
             public Socket Socket;
         }
     }

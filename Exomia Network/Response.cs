@@ -53,5 +53,14 @@ namespace Exomia.Network
         {
             return r.SendError == SendError.None;
         }
+
+        /// <summary>
+        ///     <c>true</c> if no SendError occured; <c>false</c> otherwise
+        /// </summary>
+        /// <param name="r">instance of Response{TResult}</param>
+        public static implicit operator TResult(in Response<TResult> r)
+        {
+            return r.Result;
+        }
     }
 }
