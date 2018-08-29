@@ -47,7 +47,7 @@ namespace Exomia.Network.Lib
 
         public void Raise(IClient client, object result)
         {
-            for (int i = 0; i < _dataReceived.Count; ++i)
+            for (int i = _dataReceived.Count - 1; i >= 0; --i)
             {
                 if (!_dataReceived[i].Invoke(client, result))
                 {

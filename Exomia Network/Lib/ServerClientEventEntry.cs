@@ -50,7 +50,7 @@ namespace Exomia.Network.Lib
         public void Raise(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid,
             TServerClient client)
         {
-            for (int i = 0; i < _dataReceived.Count; ++i)
+            for (int i = _dataReceived.Count - 1; i >= 0; --i)
             {
                 if (!_dataReceived[i].Invoke(server, arg0, data, responseid, client))
                 {

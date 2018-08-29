@@ -142,7 +142,8 @@ namespace Exomia.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeaderUdp(this byte[] header, out uint commandID, out int dataLength, out byte h1)
+        internal static void GetHeaderUdp(this byte[] header, out byte packetHeader, out uint commandID,
+            out int dataLength)
         {
             // 8bit
             // 
@@ -167,7 +168,7 @@ namespace Exomia.Network.Serialization
 
             fixed (byte* ptr = header)
             {
-                h1 = *ptr;
+                packetHeader = *ptr;
                 int h2 = *(int*)(ptr + 1);
                 commandID = (uint)(h2 >> COMMANDID_SHIFT);
                 dataLength = h2 & DATA_LENGTH_MASK;

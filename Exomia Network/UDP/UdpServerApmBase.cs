@@ -23,13 +23,14 @@
 #endregion
 
 using System;
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using Exomia.Native;
 using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
 using LZ4;
+using Debugger = System.Diagnostics.Debugger;
 
 namespace Exomia.Network.UDP
 {
@@ -180,61 +181,46 @@ namespace Exomia.Network.UDP
 
             ListenAsync();
 
-            state.Buffer.GetHeaderUdp(out uint commandID, out int dataLength, out byte h1);
-            if (dataLength == length - Constants.UDP_HEADER_SIZE)
+            state.Buffer.GetHeaderUdp(out byte packetHeader, out uint commandID, out int dataLength);
+
+            if (length == dataLength + Constants.UDP_HEADER_SIZE)
             {
+                EndPoint ep = state.EndPoint;
+
                 uint responseID = 0;
-                byte[] data;
-                if ((h1 & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                int offset = 0;
+                fixed (byte* src = state.Buffer)
                 {
-                    int l;
-                    if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
+                    if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                     {
-                        fixed (byte* ptr = state.Buffer)
-                        {
-                            responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
-                            l = *(int*)(ptr + Constants.UDP_HEADER_SIZE + 4);
-                        }
-                        data = ByteArrayPool.Rent(l);
+                        responseID = *(uint*)src;
+                        offset = 4;
+                    }
+                    byte[] payload;
+                    if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                    {
+                        int l = *(int*)(src + offset);
+                        offset += 4;
 
+                        payload = ByteArrayPool.Rent(l);
                         int s = LZ4Codec.Decode(
-                            state.Buffer, Constants.UDP_HEADER_SIZE + 8, dataLength - 8, data, 0, l, true);
+                            state.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l, true);
                         if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                        DeserializeData(ep, commandID, payload, 0, l, responseID);
                     }
                     else
                     {
-                        fixed (byte* ptr = state.Buffer)
+                        dataLength -= offset;
+                        payload = ByteArrayPool.Rent(dataLength);
+
+                        fixed (byte* dest = payload)
                         {
-                            l = *(int*)(ptr + Constants.UDP_HEADER_SIZE);
+                            Mem.Cpy(dest, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
                         }
-                        data = ByteArrayPool.Rent(l);
 
-                        int s = LZ4Codec.Decode(
-                            state.Buffer, Constants.UDP_HEADER_SIZE + 4, dataLength - 4, data, 0, l, true);
-                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                        DeserializeData(ep, commandID, payload, 0, dataLength, responseID);
                     }
-
-                    DeserializeData(state.EndPoint, commandID, data, 0, l, responseID);
-                }
-                else
-                {
-                    if ((h1 & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                    {
-                        fixed (byte* ptr = state.Buffer)
-                        {
-                            responseID = *(uint*)(ptr + Constants.UDP_HEADER_SIZE);
-                        }
-                        dataLength -= 4;
-                        data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Buffer, Constants.UDP_HEADER_SIZE + 4, data, 0, dataLength);
-                    }
-                    else
-                    {
-                        data = ByteArrayPool.Rent(dataLength);
-                        Buffer.BlockCopy(state.Buffer, Constants.UDP_HEADER_SIZE, data, 0, dataLength);
-                    }
-
-                    DeserializeData(state.EndPoint, commandID, data, 0, dataLength, responseID);
                 }
             }
 
