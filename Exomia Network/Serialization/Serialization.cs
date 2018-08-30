@@ -22,17 +22,26 @@
 
 #endregion
 
-namespace Exomia.Network
+namespace Exomia.Network.Serialization
 {
-    static class Constants
+    static partial class Serialization
     {
-        internal const int TCP_HEADER_SIZE = 7;
-        internal const int TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_SIZE - 8;
-        internal const byte ZERO_BYTE = 0;
+        internal const uint UNUSED_BIT_MASK = 0b10000000;
 
-        internal const int UDP_HEADER_SIZE = 5;
-        internal const int UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_SIZE - 8;
+        internal const uint RESPONSE_BIT_MASK = 0b01000000;
 
-        internal const uint USER_COMMAND_LIMIT = 65500;
+        internal const uint COMPRESSED_BIT_MASK = 0b00100000;
+
+        internal const uint ENCRYPT_BIT_MASK = 0b00010000;
+        internal const uint ENCRYPT_MODE_MASK = 0b00001111;
+
+        private const byte UNUSED_1_BIT = 1 << 7;
+        private const byte RESPONSE_1_BIT = 1 << 6;
+        private const byte COMPRESSED_1_BIT = 1 << 5;
+
+        private const int COMMANDID_SHIFT = 16;
+        private const int DATA_LENGTH_MASK = 0xFFFF;
+
+        private const int LENGTH_THRESHOLD = 1 << 12; //4096
     }
 }

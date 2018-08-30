@@ -22,50 +22,36 @@
 
 #endregion
 
-using System.Runtime.InteropServices;
-
 namespace Exomia.Network
 {
     /// <summary>
-    ///     PING_STRUCT
+    ///     SendError enum
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 8)]
-    public struct PING_STRUCT
+    public enum SendError
     {
         /// <summary>
-        ///     TimeStamp
+        ///     No error, all good
         /// </summary>
-        public long TimeStamp;
-    }
-
-    /// <summary>
-    ///     CLIENTINFO_STRUCT
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 72)]
-    public struct CLIENTINFO_STRUCT
-    {
-        /// <summary>
-        ///     ClientID
-        /// </summary>
-        public long ClientID;
+        None,
 
         /// <summary>
-        ///     ClientName (64)
+        ///     A socket exception is occured
         /// </summary>
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-        public string ClientName;
-    }
+        Socket,
 
-    /// <summary>
-    ///     CONNECT_STRUCT
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 16)]
-    public struct CONNECT_STRUCT
-    {
         /// <summary>
-        ///     Checksum(16)
+        ///     The socket was disposed
         /// </summary>
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] Checksum;
+        Disposed,
+
+        /// <summary>
+        ///     The SEND_FLAG is not set
+        /// </summary>
+        Invalid,
+
+        /// <summary>
+        ///     Unknown error occured
+        /// </summary>
+        Unknown
     }
 }

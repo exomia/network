@@ -25,18 +25,28 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     SocketMode
+    ///     can be used to determine if a client has disconnected properly
     /// </summary>
-    public enum SocketMode
+    public enum DisconnectReason
     {
         /// <summary>
-        ///     TCP
+        ///     Unspecified/Unknown Reason
         /// </summary>
-        Tcp,
+        Unspecified,
 
         /// <summary>
-        ///     UDP
+        ///     Graceful
         /// </summary>
-        Udp
+        Graceful,
+
+        /// <summary>
+        ///     Aborted
+        /// </summary>
+        Aborted,
+
+        /// <summary>
+        ///     Error
+        /// </summary>
+        Error
     }
 }

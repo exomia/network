@@ -22,24 +22,43 @@
 
 #endregion
 
-namespace Exomia.Network.Serialization
+using System.Runtime.CompilerServices;
+using Exomia.Network.Serialization;
+
+namespace Exomia.Network.Extensions.Class
 {
     /// <summary>
-    ///     ISerializable interface
+    ///     ClassExt class
     /// </summary>
-    public interface ISerializable
+    public static class ClassExtensions
     {
         /// <summary>
-        ///     serialize the object to a byte array
+        ///     returns a new deserialized object from a byte array
         /// </summary>
-        /// <param name="length">the length of the data</param>
-        /// <returns>serialized data</returns>
-        byte[] Serialize(out int length);
+        /// <typeparam name="T">ISerializable</typeparam>
+        /// <param name="arr">byte array</param>
+        /// <param name="obj">out object</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void FromBytes<T>(this byte[] arr, out T obj)
+            where T : ISerializable, new()
+        {
+            obj = new T();
+            obj.Deserialize(arr);
+        }
 
         /// <summary>
-        ///     deserialize the object from a byte array
+        ///     returns a new deserialized object from a byte array
         /// </summary>
-        /// <param name="data"></param>
-        void Deserialize(byte[] data);
+        /// <typeparam name="T">ISerializable</typeparam>
+        /// <param name="arr">byte array</param>
+        /// <returns>returns a new deserialized object from a byte array</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T FromBytes<T>(this byte[] arr)
+            where T : ISerializable, new()
+        {
+            T obj = new T();
+            obj.Deserialize(arr);
+            return obj;
+        }
     }
 }

@@ -22,17 +22,29 @@
 
 #endregion
 
-namespace Exomia.Network
+using System.Runtime.CompilerServices;
+
+namespace Exomia.Network.Lib
 {
-    static class Constants
+    static class Math2
     {
-        internal const int TCP_HEADER_SIZE = 7;
-        internal const int TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_SIZE - 8;
-        internal const byte ZERO_BYTE = 0;
+        private const long L_OFFSET_MAX = int.MaxValue + 1L;
 
-        internal const int UDP_HEADER_SIZE = 5;
-        internal const int UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_SIZE - 8;
+        /// <summary>
+        ///     Returns the smallest integer greater than or equal to the specified floating-point number.
+        /// </summary>
+        /// <param name="f">A floating-point number with single precision</param>
+        /// <returns>The smallest integer, which is greater than or equal to f.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Ceiling(double f)
+        {
+            return (int)(L_OFFSET_MAX - (long)(L_OFFSET_MAX - f));
+        }
 
-        internal const uint USER_COMMAND_LIMIT = 65500;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint R1(uint a, int b)
+        {
+            return (a << b) | (a >> (32 - b));
+        }
     }
 }

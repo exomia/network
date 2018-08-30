@@ -22,17 +22,38 @@
 
 #endregion
 
-namespace Exomia.Network
+namespace Exomia.Network.Lib
 {
-    static class Constants
+    sealed class ClientEventEntry
     {
-        internal const int TCP_HEADER_SIZE = 7;
-        internal const int TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_SIZE - 8;
-        internal const byte ZERO_BYTE = 0;
+        internal readonly DeserializePacket<object> _deserialize;
+        private readonly Event<DataReceivedHandler> _dataReceived;
 
-        internal const int UDP_HEADER_SIZE = 5;
-        internal const int UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_SIZE - 8;
+        public ClientEventEntry(DeserializePacket<object> deserialize)
+        {
+            _dataReceived = new Event<DataReceivedHandler>();
+            _deserialize = deserialize;
+        }
 
-        internal const uint USER_COMMAND_LIMIT = 65500;
+        public void Add(DataReceivedHandler callback)
+        {
+            _dataReceived.Add(callback);
+        }
+
+        public void Remove(DataReceivedHandler callback)
+        {
+            _dataReceived.Remove(callback);
+        }
+
+        public void Raise(IClient client, object result)
+        {
+            for (int i = _dataReceived.Count - 1; i >= 0; --i)
+            {
+                if (!_dataReceived[i].Invoke(client, result))
+                {
+                    _dataReceived.Remove(i);
+                }
+            }
+        }
     }
 }

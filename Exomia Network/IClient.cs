@@ -23,27 +23,41 @@
 #endregion
 
 using System;
+using System.Net;
 using System.Threading.Tasks;
+using Exomia.Network.DefaultPackets;
 using Exomia.Network.Serialization;
 
 namespace Exomia.Network
 {
+    /// <inheritdoc />
     /// <summary>
     ///     IClient interface
     /// </summary>
-    public interface IClient
+    public interface IClient : IDisposable
     {
-        #region Methods
-
         /// <summary>
-        ///     trys to connect the client to a server
+        ///     try's to connect the client to a server
         /// </summary>
-        /// <param name="mode"></param>
         /// <param name="serverAddress"></param>
         /// <param name="port"></param>
         /// <param name="timeout"></param>
         /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
-        bool Connect(SocketMode mode, string serverAddress, int port, int timeout = 10);
+        bool Connect(string serverAddress, int port, int timeout = 10);
+
+        /// <summary>
+        ///     try's to connect the client to a server
+        /// </summary>
+        /// <param name="ipAddresses"></param>
+        /// <param name="port"></param>
+        /// <param name="timeout"></param>
+        /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
+        bool Connect(IPAddress[] ipAddresses, int port, int timeout = 10);
+
+        /// <summary>
+        ///     call to disconnect from a server
+        /// </summary>
+        void Disconnect();
 
         /// <summary>
         ///     send data to the server
@@ -51,15 +65,17 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
         /// <param name="offset">offset</param>
-        /// <param name="lenght">lenght of data</param>
-        void Send(uint commandid, byte[] data, int offset, int lenght);
+        /// <param name="length">length of data</param>
+        /// <returns>SendError</returns>
+        SendError Send(uint commandid, byte[] data, int offset, int length);
 
         /// <summary>
         ///     send data to the server
         /// </summary>
         /// <param name="commandid">command id</param>
         /// <param name="serializable">ISerializable</param>
-        void Send(uint commandid, ISerializable serializable);
+        /// <returns>SendError</returns>
+        SendError Send(uint commandid, ISerializable serializable);
 
         /// <summary>
         ///     send data to the server
@@ -67,7 +83,8 @@ namespace Exomia.Network
         /// <typeparam name="T">struct type</typeparam>
         /// <param name="commandid">command id</param>
         /// <param name="data">struct data</param>
-        void Send<T>(uint commandid, in T data) where T : struct;
+        /// <returns>SendError</returns>
+        SendError Send<T>(uint commandid, in T data) where T : unmanaged;
 
         /// <summary>
         ///     send data to the server
@@ -76,10 +93,10 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
         /// <param name="offset">offset</param>
-        /// <param name="lenght">lenght of data</param>
-        /// <returns></returns>
-        Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght)
-            where TResult : struct;
+        /// <param name="length">length of data</param>
+        /// <returns>task of Response{TResult}</returns>
+        Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length)
+            where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server
@@ -88,10 +105,10 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
         /// <param name="offset">offset</param>
-        /// <param name="lenght">lenght of data</param>
+        /// <param name="length">length of data</param>
         /// <param name="deserialize"></param>
-        /// <returns></returns>
-        Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght,
+        /// <returns>task of Response{TResult}</returns>
+        Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length,
             DeserializePacket<TResult> deserialize);
 
         /// <summary>
@@ -101,11 +118,11 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
         /// <param name="offset">offset</param>
-        /// <param name="lenght">lenght of data</param>
+        /// <param name="length">length of data</param>
         /// <param name="timeout">timeout</param>
-        /// <returns></returns>
-        Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght, TimeSpan timeout)
-            where TResult : struct;
+        /// <returns>task of Response{TResult}</returns>
+        Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length, TimeSpan timeout)
+            where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server
@@ -114,11 +131,11 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
         /// <param name="offset">offset</param>
-        /// <param name="lenght">lenght of data</param>
+        /// <param name="length">length of data</param>
         /// <param name="deserialize"></param>
         /// <param name="timeout">timeout</param>
-        /// <returns></returns>
-        Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght,
+        /// <returns>task of Response{TResult}</returns>
+        Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length,
             DeserializePacket<TResult> deserialize, TimeSpan timeout);
 
         /// <summary>
@@ -127,9 +144,9 @@ namespace Exomia.Network
         /// <typeparam name="TResult">struct type</typeparam>
         /// <param name="commandid">command id</param>
         /// <param name="serializable">ISerializable</param>
-        /// <returns></returns>
+        /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable)
-            where TResult : struct;
+            where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server
@@ -138,7 +155,7 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="serializable">ISerializable</param>
         /// <param name="deserialize"></param>
-        /// <returns></returns>
+        /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable,
             DeserializePacket<TResult> deserialize);
 
@@ -149,9 +166,9 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="serializable">ISerializable</param>
         /// <param name="timeout">timeout</param>
-        /// <returns></returns>
+        /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable, TimeSpan timeout)
-            where TResult : struct;
+            where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server
@@ -161,7 +178,7 @@ namespace Exomia.Network
         /// <param name="serializable">ISerializable</param>
         /// <param name="deserialize"></param>
         /// <param name="timeout">timeout</param>
-        /// <returns></returns>
+        /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable,
             DeserializePacket<TResult> deserialize, TimeSpan timeout);
 
@@ -172,10 +189,10 @@ namespace Exomia.Network
         /// <typeparam name="TResult">struct type</typeparam>
         /// <param name="commandid">command id</param>
         /// <param name="data">struct data</param>
-        /// <returns></returns>
+        /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data)
-            where T : struct
-            where TResult : struct;
+            where T : unmanaged
+            where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server
@@ -185,9 +202,9 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">struct data</param>
         /// <param name="deserialize"></param>
-        /// <returns></returns>
+        /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, DeserializePacket<TResult> deserialize)
-            where T : struct;
+            where T : unmanaged;
 
         /// <summary>
         ///     send data to the server
@@ -197,10 +214,10 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">struct data</param>
         /// <param name="timeout">timeout</param>
-        /// <returns></returns>
+        /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, TimeSpan timeout)
-            where T : struct
-            where TResult : struct;
+            where T : unmanaged
+            where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server
@@ -211,28 +228,26 @@ namespace Exomia.Network
         /// <param name="data">struct data</param>
         /// <param name="deserialize"></param>
         /// <param name="timeout">timeout</param>
-        /// <returns></returns>
+        /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, DeserializePacket<TResult> deserialize,
             TimeSpan timeout)
-            where T : struct;
+            where T : unmanaged;
 
         /// <summary>
         ///     send a ping command to the server
         /// </summary>
-        void SendPing();
+        SendError SendPing();
 
         /// <summary>
         ///     send a ping command to the server
         /// </summary>
-        Task<Response<PING_STRUCT>> SendRPing();
+        Task<Response<PingPacket>> SendRPing();
 
         /// <summary>
         ///     send a client info command to the server
         /// </summary>
         /// <param name="clientID">client id</param>
         /// <param name="clientName">client name</param>
-        void SendClientInfo(long clientID, string clientName);
-
-        #endregion
+        SendError SendClientInfo(long clientID, string clientName);
     }
 }

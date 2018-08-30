@@ -1,4 +1,4 @@
-﻿#region MIT License
+#region MIT License
 
 // Copyright (c) 2018 exomia - Daniel Bätz
 // 
@@ -22,17 +22,22 @@
 
 #endregion
 
-namespace Exomia.Network
-{
-    static class Constants
-    {
-        internal const int TCP_HEADER_SIZE = 7;
-        internal const int TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_SIZE - 8;
-        internal const byte ZERO_BYTE = 0;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
-        internal const int UDP_HEADER_SIZE = 5;
-        internal const int UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_SIZE - 8;
+[assembly: AssemblyTitle("Exomia.Network.UnitTest")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("Exomia.Network.UnitTest")]
+[assembly: AssemblyCopyright("Copyright ©  2018")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
 
-        internal const uint USER_COMMAND_LIMIT = 65500;
-    }
-}
+[assembly: ComVisible(false)]
+
+[assembly: Guid("c70ae613-9a81-4063-8f4a-6f09f145ee85")]
+
+// [assembly: AssemblyVersion("1.0.*")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]

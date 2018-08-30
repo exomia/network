@@ -22,17 +22,24 @@
 
 #endregion
 
-namespace Exomia.Network
+using System.Runtime.InteropServices;
+
+namespace Exomia.Network.DefaultPackets
 {
-    static class Constants
+    /// <summary>
+    ///     ClientinfoPacket
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, Size = 72)]
+    public unsafe struct ClientinfoPacket
     {
-        internal const int TCP_HEADER_SIZE = 7;
-        internal const int TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_SIZE - 8;
-        internal const byte ZERO_BYTE = 0;
+        /// <summary>
+        ///     ClientID
+        /// </summary>
+        public long ClientID;
 
-        internal const int UDP_HEADER_SIZE = 5;
-        internal const int UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_SIZE - 8;
-
-        internal const uint USER_COMMAND_LIMIT = 65500;
+        /// <summary>
+        ///     ClientName (64)
+        /// </summary>
+        public fixed char ClientName[64];
     }
 }

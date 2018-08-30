@@ -22,45 +22,41 @@
 
 #endregion
 
-namespace Exomia.Network
+namespace Exomia.Network.Lib
 {
-    /// <summary>
-    /// </summary>
-    /// <typeparam name="TResult"></typeparam>
-    public readonly struct Response<TResult>
+    sealed class ServerClientEventEntry<T, TServerClient>
+        where T : class
+        where TServerClient : ServerClientBase<T>
     {
-        /// <summary>
-        ///     Result
-        /// </summary>
-        public readonly TResult Result;
+        internal readonly DeserializePacket<object> _deserialize;
+        private readonly Event<ClientDataReceivedHandler<T, TServerClient>> _dataReceived;
 
-        /// <summary>
-        ///     SendError
-        /// </summary>
-        public readonly SendError SendError;
-
-        internal Response(in TResult result, SendError sendError)
+        public ServerClientEventEntry(DeserializePacket<object> deserialize)
         {
-            Result = result;
-            SendError = sendError;
+            _dataReceived = new Event<ClientDataReceivedHandler<T, TServerClient>>();
+            _deserialize = deserialize;
         }
 
-        /// <summary>
-        ///     <c>true</c> if no SendError occured; <c>false</c> otherwise
-        /// </summary>
-        /// <param name="r">instance of Response{TResult}</param>
-        public static implicit operator bool(in Response<TResult> r)
+        public void Add(ClientDataReceivedHandler<T, TServerClient> callback)
         {
-            return r.SendError == SendError.None;
+            _dataReceived.Add(callback);
         }
 
-        /// <summary>
-        ///     <c>true</c> if no SendError occured; <c>false</c> otherwise
-        /// </summary>
-        /// <param name="r">instance of Response{TResult}</param>
-        public static implicit operator TResult(in Response<TResult> r)
+        public void Remove(ClientDataReceivedHandler<T, TServerClient> callback)
         {
-            return r.Result;
+            _dataReceived.Remove(callback);
+        }
+
+        public void Raise(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid,
+            TServerClient client)
+        {
+            for (int i = _dataReceived.Count - 1; i >= 0; --i)
+            {
+                if (!_dataReceived[i].Invoke(server, arg0, data, responseid, client))
+                {
+                    _dataReceived.Remove(i);
+                }
+            }
         }
     }
 }
