@@ -306,7 +306,7 @@ SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where 
 
 ## Changelog
 
-### v1.1.2.1
+### v1.2.2.1
 
 	- new internal tcp system
 	- new packet handling system
