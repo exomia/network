@@ -46,6 +46,7 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         public UdpClientEap(int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
+            : base()
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
                 ? maxPacketSize
@@ -58,8 +59,7 @@ namespace Exomia.Network.UDP
             _sendEventArgsPool = new SocketAsyncEventArgsPool(32);
         }
 
-        /// <inheritdoc />
-        protected override bool TryCreateSocket(out Socket socket)
+        private protected override bool TryCreateSocket(out Socket socket)
         {
             try
             {
@@ -85,9 +85,7 @@ namespace Exomia.Network.UDP
                 return false;
             }
         }
-
-        /// <inheritdoc />
-        protected override void ReceiveAsync()
+        private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
@@ -103,9 +101,7 @@ namespace Exomia.Network.UDP
                 catch { Disconnect(DisconnectReason.Unspecified); }
             }
         }
-
-        /// <inheritdoc />
-        protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
+        private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
             uint responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }

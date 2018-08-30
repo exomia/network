@@ -49,6 +49,7 @@ namespace Exomia.Network
         /// <param name="offset">offset</param>
         /// <param name="length">data length</param>
         /// <param name="responseid"></param>
+        /// <returns>SendError</returns>
         SendError SendTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid);
 
         /// <summary>
@@ -58,6 +59,7 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="serializable">ISerializable</param>
         /// <param name="responseid"></param>
+        /// <returns>SendError</returns>
         SendError SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid);
 
         /// <summary>
@@ -68,6 +70,7 @@ namespace Exomia.Network
         /// <param name="commandid">command id</param>
         /// <param name="data">data</param>
         /// <param name="responseid"></param>
+        /// <returns>SendError</returns>
         SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : unmanaged;
 
         /// <summary>

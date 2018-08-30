@@ -48,6 +48,7 @@ namespace Exomia.Network.TCP
 
         /// <inheritdoc />
         public TcpClientEap(ushort maxPacketSize = 0)
+            : base()
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
@@ -62,8 +63,7 @@ namespace Exomia.Network.TCP
             _sendEventArgsPool = new SocketAsyncEventArgsPool(32);
         }
 
-        /// <inheritdoc />
-        protected override bool TryCreateSocket(out Socket socket)
+        private protected override bool TryCreateSocket(out Socket socket)
         {
             try
             {
@@ -90,8 +90,7 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <inheritdoc />
-        protected override void ReceiveAsync()
+        private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
@@ -108,8 +107,7 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <inheritdoc />
-        protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
+        private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
             uint responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }

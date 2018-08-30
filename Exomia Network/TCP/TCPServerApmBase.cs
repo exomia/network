@@ -46,7 +46,8 @@ namespace Exomia.Network.TCP
 
         /// <inheritdoc />
         protected TcpServerApmBase(int maxPacketSize = 0)
-        {
+            : base()
+        { 
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.TCP_PACKET_SIZE_MAX;
@@ -93,8 +94,7 @@ namespace Exomia.Network.TCP
             return SendError.Invalid;
         }
 
-        /// <inheritdoc />
-        protected override bool OnRun(int port, out Socket listener)
+        private protected override bool OnRun(int port, out Socket listener)
         {
             try
             {
@@ -125,8 +125,7 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <inheritdoc />
-        protected override void ListenAsync()
+        private protected override void ListenAsync()
         {
             try
             {

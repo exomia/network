@@ -50,6 +50,7 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         protected UdpServerEapBase(uint maxClients, int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
+            : base()
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
                 ? maxPacketSize
@@ -108,8 +109,7 @@ namespace Exomia.Network.UDP
             return SendError.Invalid;
         }
 
-        /// <inheritdoc />
-        protected override bool OnRun(int port, out Socket listener)
+        private protected override bool OnRun(int port, out Socket listener)
         {
             try
             {
@@ -138,8 +138,7 @@ namespace Exomia.Network.UDP
             }
         }
 
-        /// <inheritdoc />
-        protected override void ListenAsync()
+        private protected override void ListenAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {

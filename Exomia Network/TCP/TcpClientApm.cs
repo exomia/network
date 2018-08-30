@@ -43,7 +43,8 @@ namespace Exomia.Network.TCP
         private readonly byte[] _bufferRead;
 
         /// <inheritdoc />
-        public TcpClientApm(ushort maxPacketSize = 0)
+        public TcpClientApm(ushort maxPacketSize = 0) 
+            : base()
         {
             _bufferWrite = new byte[maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
@@ -52,8 +53,7 @@ namespace Exomia.Network.TCP
             _circularBuffer = new CircularBuffer(_bufferWrite.Length * 2);
         }
 
-        /// <inheritdoc />
-        protected override bool TryCreateSocket(out Socket socket)
+        private protected override bool TryCreateSocket(out Socket socket)
         {
             try
             {
@@ -80,8 +80,7 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <inheritdoc />
-        protected override void ReceiveAsync()
+        private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
@@ -96,8 +95,7 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <inheritdoc />
-        protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
+        private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
             uint responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }

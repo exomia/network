@@ -49,11 +49,11 @@ namespace Exomia.Network
     {
         /// <summary>
         /// </summary>
-        protected const byte RECEIVE_FLAG = 0b0000_0001;
+        private protected const byte RECEIVE_FLAG = 0b0000_0001;
 
         /// <summary>
         /// </summary>
-        protected const byte SEND_FLAG = 0b0000_0010;
+        private protected const byte SEND_FLAG = 0b0000_0010;
 
         private const int INITIAL_QUEUE_SIZE = 16;
         private const int INITIAL_TASKCOMPLETION_QUEUE_SIZE = 128;
@@ -74,11 +74,11 @@ namespace Exomia.Network
 
         /// <summary>
         /// </summary>
-        protected Socket _clientSocket;
+        private protected Socket _clientSocket;
 
         /// <summary>
         /// </summary>
-        protected byte _state;
+        private protected byte _state;
 
         private readonly byte[] _connectChecksum = new byte[16];
 
@@ -112,10 +112,7 @@ namespace Exomia.Network
             get { return _serverAddress; }
         }
 
-        /// <summary>
-        ///     ClientBase constructor
-        /// </summary>
-        protected ClientBase()
+        private protected ClientBase()
         {
             _clientSocket = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
@@ -204,17 +201,9 @@ namespace Exomia.Network
             return true;
         }
 
-        /// <summary>
-        ///     tries to create a socket
-        /// </summary>
-        /// <param name="socket">the socket which was generated</param>
-        /// <returns><c>true</c> if socket was successfully created; <c>false otherwise</c></returns>
-        protected abstract bool TryCreateSocket(out Socket socket);
+        private protected abstract bool TryCreateSocket(out Socket socket);
 
-        /// <summary>
-        /// </summary>
-        /// <param name="reason"></param>
-        protected void Disconnect(DisconnectReason reason)
+        private protected void Disconnect(DisconnectReason reason)
         {
             if (_clientSocket != null && _state != 0)
             {
@@ -237,9 +226,7 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        /// </summary>
-        protected abstract void ReceiveAsync();
+        private protected abstract void ReceiveAsync();
 
         private protected unsafe void DeserializeData(uint commandid, byte[] data, int offset, int length,
             uint responseid)
@@ -305,20 +292,6 @@ namespace Exomia.Network
 
                                 if (res != null) { cee.Raise(this, res); }
                             });
-
-                        /*Task.Factory.StartNew(() => {
-                            object res = cee._deserialize(in packet);
-                            ByteArrayPool.Return(data);
-                            if (res != null) { cee.RaiseAsync(this, res); }
-                        });*/
-
-                        /*cee._deserialize.BeginInvoke(
-                        in packet, iar =>
-                        {
-                            object res = cee._deserialize.EndInvoke(in packet, iar);
-                            ByteArrayPool.Return(data);
-                            if (res != null) { cee.RaiseAsync(this, res); }
-                        }, null);*/
                         return;
                     }
                     break;
@@ -435,15 +408,7 @@ namespace Exomia.Network
 
         #region Send
 
-        /// <summary>
-        /// </summary>
-        /// <param name="commandid"></param>
-        /// <param name="data"></param>
-        /// <param name="offset"></param>
-        /// <param name="length"></param>
-        /// <param name="responseID"></param>
-        /// <returns></returns>
-        protected abstract SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
+        private protected abstract SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
             uint responseID);
 
         /// <inheritdoc />

@@ -9,26 +9,29 @@ exomia/network is a wrapper library around System.Socket for easy TCP/UDP client
 -Client-UDP
 
 ```csharp
-using (ClientEap client = new ClientEap())
+static void Main(string[] args)
 {
-    client.Disconnected += (c) => { Console.WriteLine("Disconnected"); };
-    if (client.Connect(SocketMode.Udp, "127.0.0.1", 3001)) { Console.WriteLine("CONNECTED"); }
-    else { Console.WriteLine("CONNECTION FAILED"); }
+	using(UdpClientEap client = new UdpClientEap())
+	{
+		client.Disconnected += (c, r) => { Console.WriteLine(r + " | Disconnected"); };
+		
+		Console.WriteLine(client.Connect("127.0.0.1", 3000) ? "CONNECTED" : "CONNECT FAILED");
 
-    for (int i = 0; i < 10; i++)
-    {
-        Response<PING_STRUCT> res = await client.SendRPing();
-        if (res)
-        {
-            Console.WriteLine(i +
-                "ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
-                    .TotalMilliseconds);
-        }
-        else { Console.WriteLine("error receiving response"); }
-    }
+		for (int i = 0; i < 10; i++)
+		{
+			Response<PingPacket> res = await client.SendRPing();
+			if (res)
+			{
+				Console.WriteLine(i +
+					"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
+						.TotalMilliseconds);
+			}
+			else { Console.WriteLine("error receiving response"); }
+		}
 
-    Console.WriteLine("press any key to exit...");
-    Console.ReadKey();
+		Console.WriteLine("press any key to exit...");
+		Console.ReadKey();
+	}
 }
 ```
 
@@ -80,48 +83,51 @@ static void Main(string[] args)
 -Client-TCP
 
 ```csharp
-using (ClientEap client = new ClientEap())
+static void Main(string[] args)
 {
-	client.Disconnected += (c) => { Console.WriteLine("Disconnected"); };
-	client.AddCommand(45, (in Packet packet) =>
+	using (TcpClientEap client = new TcpClientEap())
 	{
-		return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
-	});
-
-	client.AddDataReceivedCallback(45, (client1, data) =>
-	{
-		Console.WriteLine(data + " -- OK");
-		return true;
-	});
-
-	if (client.Connect(SocketMode.TCP, "127.0.0.1", 3000)) { Console.WriteLine("CONNECTED"); }
-	else { Console.WriteLine("CONNECTION FAILED"); }
-	byte[] request = Encoding.UTF8.GetBytes("get time");
-	for (int i = 0; i < 10; i++)
-	{
-		Response<PING_STRUCT> res = await client.SendRPing();
-		if (res.Success)
-		{
-			Console.WriteLine(i +
-				"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
-					.TotalMilliseconds);
-		}
-		else { Console.WriteLine("error receiving response"); }
-
-		Response<string> res2 = await client.SendR<string>(45, request, 0, request .Length, (in Packet packet) =>
+		client.Disconnected += (c, r) => { Console.WriteLine(r + " | Disconnected"); };
+		client.AddCommand(45, (in Packet packet) =>
 		{
 			return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
 		});
 
-		if (res2)
+		client.AddDataReceivedCallback(45, (client1, data) =>
 		{
-			Console.WriteLine(res2.Result);
-		}
-		else { Console.WriteLine("error receiving response"); }
-	}
+			Console.WriteLine(data + " -- OK");
+			return true;
+		});
 
-	Console.WriteLine("press any key to exit...");
-	Console.ReadKey();
+		Console.WriteLine(client.Connect("127.0.0.1", 3000) ? "CONNECTED" : "CONNECT FAILED");
+		
+		byte[] request = Encoding.UTF8.GetBytes("get time");
+		for (int i = 0; i < 10; i++)
+		{
+			Response<PingPacket> res = await client.SendRPing();
+			if (res.Success)
+			{
+				Console.WriteLine(i +
+					"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
+						.TotalMilliseconds);
+			}
+			else { Console.WriteLine("error receiving response"); }
+
+			Response<string> res2 = await client.SendR<string>(45, request, 0, request .Length, (in Packet packet) =>
+			{
+				return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
+			});
+
+			if (res2)
+			{
+				Console.WriteLine(res2.Result);
+			}
+			else { Console.WriteLine("error receiving response"); }
+		}
+
+		Console.WriteLine("press any key to exit...");
+		Console.ReadKey();
+	}
 }
 ```
 
@@ -206,14 +212,14 @@ to send data to a server or from a server to a client you have several options s
 /// <param name="data">data</param>
 /// <param name="offset">offset</param>
 /// <param name="lenght">lenght of data</param>
-void Send(uint commandid, byte[] data, int offset, int lenght);
+SendError Send(uint commandid, byte[] data, int offset, int lenght);
 
 /// <summary>
 ///     send data to the server
 /// </summary>
 /// <param name="commandid">command id</param>
 /// <param name="serializable">ISerializable</param>
-void Send(uint commandid, ISerializable serializable);
+SendError Send(uint commandid, ISerializable serializable);
 
 /// <summary>
 ///     send data to the server
@@ -221,7 +227,7 @@ void Send(uint commandid, ISerializable serializable);
 /// <typeparam name="T">struct type</typeparam>
 /// <param name="commandid">command id</param>
 /// <param name="data">struct data</param>
-void Send<T>(uint commandid, in T data) where T : struct;
+SendError Send<T>(uint commandid, in T data) where T : struct;
 
 ...
 ```
@@ -229,18 +235,18 @@ alternative you can use the 'SendR' methods to wait until you received the respo
 
 Samples:
 ```csharp
- /// <summary>
- ///     send data to the server
- /// </summary>
- /// <typeparam name="TResult">struct type</typeparam>
- /// <param name="commandid">command id</param>
- /// <param name="data">data</param>
- /// <param name="offset">offset</param>
- /// <param name="lenght">lenght of data</param>
- /// <param name="timeout">timeout</param>
- /// <returns></returns>
+/// <summary>
+///     send data to the server
+/// </summary>
+/// <typeparam name="TResult">struct type</typeparam>
+/// <param name="commandid">command id</param>
+/// <param name="data">data</param>
+/// <param name="offset">offset</param>
+/// <param name="lenght">lenght of data</param>
+/// <param name="timeout">timeout</param>
+/// <returns>task of Response{TResult}</returns>
 Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght, TimeSpan timeout)
-    where TResult : struct;
+    where TResult : unmanaged;
 
 /// <summary>
 ///     send data to the server
@@ -252,7 +258,7 @@ Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, 
 /// <param name="lenght">lenght of data</param>
 /// <param name="deserialize"></param>
 /// <param name="timeout">timeout</param>
-/// <returns></returns>
+ /// <returns>task of Response{TResult}</returns>
 Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght,
     DeserializePacket<TResult> deserialize, TimeSpan timeout);
     
@@ -271,7 +277,8 @@ Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, 
 /// <param name="offset">offset</param>
 /// <param name="lenght">data lenght</param>
 /// <param name="responseid">responseid</param>
-void SendTo(T arg0, uint commandid, byte[] data, int offset, int lenght, uint responseid);
+/// <returns>SendError</returns>
+SendError SendTo(T arg0, uint commandid, byte[] data, int offset, int lenght, uint responseid);
 
 /// <summary>
 ///     send data to the client
@@ -280,7 +287,8 @@ void SendTo(T arg0, uint commandid, byte[] data, int offset, int lenght, uint re
 /// <param name="commandid">command id</param>
 /// <param name="serializable">ISerializable</param>
 /// <param name="responseid">responseid</param>
-void SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid);
+/// <returns>SendError</returns>
+SendError SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid);
 
 /// <summary>
 ///     send data to the client
@@ -289,13 +297,24 @@ void SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid)
 /// <param name="arg0">Socket|EndPoint</param>
 /// <param name="commandid">command id</param>
 /// <param name="data">data</param>
-/// <param name="responseid">responseid</param>
-void SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : struct;
+/// <param name="responseid"></param>
+/// <returns>SendError</returns>
+SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : unmanaged;
 
 ...
 ```
 
 ## Changelog
+
+### v1.1.2.1
+
+	- new internal tcp system
+	- new packet handling system
+	- better event system
+	- renaming and moving
+	- removed some unused extensions
+	- unit tests added
+	- interface changes
 
 ### v1.1.1.1
 

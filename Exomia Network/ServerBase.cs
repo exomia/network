@@ -42,17 +42,9 @@ namespace Exomia.Network
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        /// <summary>
-        /// </summary>
-        protected const int CLOSE_TIMEOUT = 10;
-
-        /// <summary>
-        /// </summary>
-        protected const byte RECEIVE_FLAG = 0b0000_0001;
-
-        /// <summary>
-        /// </summary>
-        protected const byte SEND_FLAG = 0b0000_0010;
+        private protected const int CLOSE_TIMEOUT = 10;
+        private protected const byte RECEIVE_FLAG = 0b0000_0001;
+        private protected const byte SEND_FLAG = 0b0000_0010;
 
         private const int INITIAL_QUEUE_SIZE = 16;
         private const int INITIAL_CLIENT_QUEUE_SIZE = 32;
@@ -72,20 +64,9 @@ namespace Exomia.Network
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
 
-        /// <summary>
-        ///     Socket
-        /// </summary>
-        protected Socket _listener;
-
-        /// <summary>
-        ///     port
-        /// </summary>
-        protected int _port;
-
-        /// <summary>
-        ///     state
-        /// </summary>
-        protected byte _state;
+        private protected Socket _listener;
+        private protected int _port;
+        private protected byte _state;
 
         private readonly Dictionary<uint, ServerClientEventEntry<T, TServerClient>> _dataReceivedCallbacks;
 
@@ -105,7 +86,7 @@ namespace Exomia.Network
         /// <summary>
         ///     ServerBase constructor
         /// </summary>
-        protected ServerBase()
+        private protected ServerBase()
         {
             _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<T, TServerClient>>(INITIAL_QUEUE_SIZE);
             _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
@@ -115,7 +96,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     ServerBase destuctor
+        ///     ServerBase destructor
         /// </summary>
         ~ServerBase()
         {
@@ -138,28 +119,10 @@ namespace Exomia.Network
             return false;
         }
 
-        /// <summary>
-        ///     called than a server wants to run
-        /// </summary>
-        /// <param name="port">port</param>
-        /// <param name="listener">out socket</param>
-        /// <returns></returns>
-        protected abstract bool OnRun(int port, out Socket listener);
+        private protected abstract bool OnRun(int port, out Socket listener);
 
-        /// <summary>
-        /// </summary>
-        protected abstract void ListenAsync();
-
-        /// <summary>
-        ///     call to deserialize the data async
-        /// </summary>
-        /// <param name="arg0">Socket|Endpoint</param>
-        /// <param name="commandid">command id</param>
-        /// <param name="data">data</param>
-        /// <param name="offset">offset</param>
-        /// <param name="length">data length</param>
-        /// <param name="responseid">responseid</param>
-        protected void DeserializeData(T arg0, uint commandid, byte[] data, int offset, int length,
+        private protected abstract void ListenAsync();
+        private protected void DeserializeData(T arg0, uint commandid, byte[] data, int offset, int length,
             uint responseid)
         {
             switch (commandid)
@@ -235,7 +198,7 @@ namespace Exomia.Network
         /// <summary>
         ///     called than a new client is connected
         /// </summary>
-        /// <param name="arg0"></param>
+        /// <param name="arg0">Socket|Endpoint</param>
         protected virtual void OnClientConnected(T arg0) { }
 
         /// <summary>
@@ -246,12 +209,7 @@ namespace Exomia.Network
         /// <returns><c>true</c> if the new ServerClient should be added to the clients list; <c>false</c> otherwise</returns>
         protected abstract bool CreateServerClient(T arg0, out TServerClient serverClient);
 
-        /// <summary>
-        ///     needs to be called than a client is disconnected
-        /// </summary>
-        /// <param name="arg0">Socket|EndPoint</param>
-        /// <param name="reason">DisconnectReason</param>
-        protected void InvokeClientDisconnect(T arg0, DisconnectReason reason)
+        private protected void InvokeClientDisconnect(T arg0, DisconnectReason reason)
         {
             bool lockTaken = false;
             bool removed;
