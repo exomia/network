@@ -41,7 +41,7 @@ namespace Exomia.Network
         {
             if (numberOfBuffers <= 0) { throw new ArgumentOutOfRangeException(nameof(numberOfBuffers)); }
 
-            _lock = new SpinLock(Debugger.IsAttached);
+            _lock   = new SpinLock(Debugger.IsAttached);
             _buffer = new SocketAsyncEventArgs[numberOfBuffers];
         }
 
@@ -56,7 +56,7 @@ namespace Exomia.Network
 
                 if (_index < _buffer.Length)
                 {
-                    buffer = _buffer[_index];
+                    buffer            = _buffer[_index];
                     _buffer[_index++] = null;
                 }
             }

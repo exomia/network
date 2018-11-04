@@ -63,7 +63,7 @@ namespace Exomia.Network.Extensions.Struct
         public static unsafe void ToBytesUnsafe<T>(this T data, out byte[] arr, out int length) where T : struct
         {
             length = Marshal.SizeOf(typeof(T));
-            arr = new byte[length];
+            arr    = new byte[length];
             fixed (byte* ptr = arr)
             {
                 Marshal.StructureToPtr(data, new IntPtr(ptr), true);
@@ -119,7 +119,7 @@ namespace Exomia.Network.Extensions.Struct
         public static unsafe void ToBytesUnsafe2<T>(this T data, out byte[] arr, out int length) where T : unmanaged
         {
             length = sizeof(T);
-            arr = new byte[length];
+            arr    = new byte[length];
             fixed (byte* ptr = arr)
             {
                 *(T*)ptr = data;
@@ -180,7 +180,7 @@ namespace Exomia.Network.Extensions.Struct
         public static void ToBytes<T>(this T data, out byte[] arr, out int length) where T : struct
         {
             length = Marshal.SizeOf(typeof(T));
-            arr = new byte[length];
+            arr    = new byte[length];
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {

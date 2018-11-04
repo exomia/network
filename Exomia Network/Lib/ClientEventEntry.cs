@@ -32,7 +32,7 @@ namespace Exomia.Network.Lib
         public ClientEventEntry(DeserializePacket<object> deserialize)
         {
             _dataReceived = new Event<DataReceivedHandler>();
-            _deserialize = deserialize;
+            _deserialize  = deserialize;
         }
 
         public void Add(DataReceivedHandler callback)

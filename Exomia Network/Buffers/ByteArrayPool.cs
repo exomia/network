@@ -47,8 +47,8 @@ namespace Exomia.Network.Buffers
                 1 << 7, 1 << 8, 1 << 9, 1 << 10, 1 << 11, 1 << 12, 1 << 13, 1 << 14, 1 << 15, 1 << 16
             };
             s_bufferCount = new[] { 128, 128, 64, 64, 64, 32, 32, 16, 8, 8 };
-            s_index = new uint[s_bufferLength.Length];
-            s_buffers = new byte[s_bufferLength.Length][][];
+            s_index       = new uint[s_bufferLength.Length];
+            s_buffers     = new byte[s_bufferLength.Length][][];
         }
 
         internal static byte[] Rent(int size)
@@ -69,7 +69,7 @@ namespace Exomia.Network.Buffers
                 if (s_index[bucketIndex] < s_buffers[bucketIndex].Length)
                 {
                     uint index = s_index[bucketIndex]++;
-                    buffer = s_buffers[bucketIndex][index];
+                    buffer                        = s_buffers[bucketIndex][index];
                     s_buffers[bucketIndex][index] = null;
                 }
             }
@@ -113,28 +113,28 @@ namespace Exomia.Network.Buffers
             int index = 0;
             if (br > 0xFFFF)
             {
-                br >>= 16;
-                index = 16;
+                br    >>= 16;
+                index =   16;
             }
             if (br > 0xFF)
             {
-                br >>= 8;
-                index += 8;
+                br    >>= 8;
+                index +=  8;
             }
             if (br > 0xF)
             {
-                br >>= 4;
-                index += 4;
+                br    >>= 4;
+                index +=  4;
             }
             if (br > 0x3)
             {
-                br >>= 2;
-                index += 2;
+                br    >>= 2;
+                index +=  2;
             }
             if (br > 0x1)
             {
-                br >>= 1;
-                index += 1;
+                br    >>= 1;
+                index +=  1;
             }
 
             return index + (int)br;

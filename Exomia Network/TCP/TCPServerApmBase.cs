@@ -46,8 +46,7 @@ namespace Exomia.Network.TCP
 
         /// <inheritdoc />
         protected TcpServerApmBase(int maxPacketSize = 0)
-            : base()
-        { 
+        {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.TCP_PACKET_SIZE_MAX;
@@ -183,9 +182,9 @@ namespace Exomia.Network.TCP
                 ServerClientStateObject state = new ServerClientStateObject
                 {
                     //0.2mb
-                    Socket = socket,
-                    BufferWrite = new byte[_maxPacketSize],
-                    BufferRead = new byte[_maxPacketSize],
+                    Socket         = socket,
+                    BufferWrite    = new byte[_maxPacketSize],
+                    BufferRead     = new byte[_maxPacketSize],
                     CircularBuffer = new CircularBuffer(_maxPacketSize * 2)
                 };
 
@@ -269,7 +268,7 @@ namespace Exomia.Network.TCP
                         if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                         {
                             responseID = *(uint*)ptr;
-                            offset = 4;
+                            offset     = 4;
                         }
                         if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
                         {
@@ -291,7 +290,7 @@ namespace Exomia.Network.TCP
 
                                 ByteArrayPool.Return(deserializeBuffer);
                                 deserializeBuffer = buffer;
-                                bufferLength = l;
+                                bufferLength      = l;
                             }
 
                             ReceiveAsync(state);

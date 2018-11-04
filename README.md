@@ -227,7 +227,7 @@ SendError Send(uint commandid, ISerializable serializable);
 /// <typeparam name="T">struct type</typeparam>
 /// <param name="commandid">command id</param>
 /// <param name="data">struct data</param>
-SendError Send<T>(uint commandid, in T data) where T : struct;
+SendError Send<T>(uint commandid, in T data) where T : unmanaged;
 
 ...
 ```

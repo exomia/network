@@ -43,13 +43,12 @@ namespace Exomia.Network.TCP
         private readonly byte[] _bufferRead;
 
         /// <inheritdoc />
-        public TcpClientApm(ushort maxPacketSize = 0) 
-            : base()
+        public TcpClientApm(ushort maxPacketSize = 0)
         {
             _bufferWrite = new byte[maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.TCP_PACKET_SIZE_MAX];
-            _bufferRead = new byte[_bufferWrite.Length];
+            _bufferRead     = new byte[_bufferWrite.Length];
             _circularBuffer = new CircularBuffer(_bufferWrite.Length * 2);
         }
 
@@ -185,7 +184,7 @@ namespace Exomia.Network.TCP
                         if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                         {
                             responseID = *(uint*)ptr;
-                            offset = 4;
+                            offset     = 4;
                         }
                         if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
                         {
@@ -207,7 +206,7 @@ namespace Exomia.Network.TCP
 
                                 ByteArrayPool.Return(deserializeBuffer);
                                 deserializeBuffer = buffer;
-                                bufferLength = l;
+                                bufferLength      = l;
                             }
 
                             ReceiveAsync();

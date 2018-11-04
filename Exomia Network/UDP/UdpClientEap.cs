@@ -46,13 +46,12 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         public UdpClientEap(int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
-            : base()
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.UDP_PACKET_SIZE_MAX;
 
-            _receiveEventArgs = new SocketAsyncEventArgs();
+            _receiveEventArgs           =  new SocketAsyncEventArgs();
             _receiveEventArgs.Completed += ReceiveAsyncCompleted;
             _receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
 
@@ -85,6 +84,7 @@ namespace Exomia.Network.UDP
                 return false;
             }
         }
+
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -101,6 +101,7 @@ namespace Exomia.Network.UDP
                 catch { Disconnect(DisconnectReason.Unspecified); }
             }
         }
+
         private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
             uint responseID)
         {
@@ -110,7 +111,7 @@ namespace Exomia.Network.UDP
                 SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
                 if (sendEventArgs == null)
                 {
-                    sendEventArgs = new SocketAsyncEventArgs();
+                    sendEventArgs           =  new SocketAsyncEventArgs();
                     sendEventArgs.Completed += SendAsyncCompleted;
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
@@ -180,7 +181,7 @@ namespace Exomia.Network.UDP
                 if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                 {
                     responseID = *(uint*)src;
-                    offset = 4;
+                    offset     = 4;
                 }
                 byte[] payload;
                 if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
@@ -199,7 +200,7 @@ namespace Exomia.Network.UDP
                 else
                 {
                     dataLength -= offset;
-                    payload = ByteArrayPool.Rent(dataLength);
+                    payload    =  ByteArrayPool.Rent(dataLength);
 
                     fixed (byte* dest = payload)
                     {

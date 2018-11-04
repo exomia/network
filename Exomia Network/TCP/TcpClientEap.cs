@@ -48,15 +48,14 @@ namespace Exomia.Network.TCP
 
         /// <inheritdoc />
         public TcpClientEap(ushort maxPacketSize = 0)
-            : base()
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.TCP_PACKET_SIZE_MAX;
-            _bufferRead = new byte[_maxPacketSize];
+            _bufferRead     = new byte[_maxPacketSize];
             _circularBuffer = new CircularBuffer(_maxPacketSize * 2);
 
-            _receiveEventArgs = new SocketAsyncEventArgs();
+            _receiveEventArgs           =  new SocketAsyncEventArgs();
             _receiveEventArgs.Completed += ReceiveAsyncCompleted;
             _receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
 
@@ -116,7 +115,7 @@ namespace Exomia.Network.TCP
                 SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
                 if (sendEventArgs == null)
                 {
-                    sendEventArgs = new SocketAsyncEventArgs();
+                    sendEventArgs           =  new SocketAsyncEventArgs();
                     sendEventArgs.Completed += SendAsyncCompleted;
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
@@ -194,7 +193,7 @@ namespace Exomia.Network.TCP
                         if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                         {
                             responseID = *(uint*)ptr;
-                            offset = 4;
+                            offset     = 4;
                         }
                         if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
                         {
@@ -216,7 +215,7 @@ namespace Exomia.Network.TCP
 
                                 ByteArrayPool.Return(deserializeBuffer);
                                 deserializeBuffer = buffer;
-                                bufferLength = l;
+                                bufferLength      = l;
                             }
 
                             ReceiveAsync();

@@ -98,16 +98,16 @@ namespace Exomia.Network.Serialization
                     if (s > 0)
                     {
                         checksum = Serialize(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 8, out l);
-                        size = Constants.TCP_HEADER_SIZE + 9 + l;
+                        size     = Constants.TCP_HEADER_SIZE + 9 + l;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)(RESPONSE_1_BIT | COMPRESSED_1_BIT | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 9) & DATA_LENGTH_MASK)
                                 | (commandID << COMMANDID_SHIFT);
-                            *(ushort*)(ptr + 5) = checksum;
-                            *(uint*)(ptr + 7) = responseID;
-                            *(int*)(ptr + 11) = length;
+                            *(ushort*)(ptr + 5)                              = checksum;
+                            *(uint*)(ptr + 7)                                = responseID;
+                            *(int*)(ptr + 11)                                = length;
                             *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 8) = Constants.ZERO_BYTE;
                         }
                         return;
@@ -115,15 +115,15 @@ namespace Exomia.Network.Serialization
                 }
 
                 checksum = Serialize(data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, out l);
-                size = Constants.TCP_HEADER_SIZE + 5 + l;
+                size     = Constants.TCP_HEADER_SIZE + 5 + l;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
                     *(uint*)(ptr + 1) =
                         ((uint)(l + 5) & DATA_LENGTH_MASK)
                         | (commandID << COMMANDID_SHIFT);
-                    *(ushort*)(ptr + 5) = checksum;
-                    *(uint*)(ptr + 7) = responseID;
+                    *(ushort*)(ptr + 5)                              = checksum;
+                    *(uint*)(ptr + 7)                                = responseID;
                     *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
                 }
             }
@@ -142,15 +142,15 @@ namespace Exomia.Network.Serialization
                     if (s > 0)
                     {
                         checksum = Serialize(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 4, out l);
-                        size = Constants.TCP_HEADER_SIZE + 5 + l;
+                        size     = Constants.TCP_HEADER_SIZE + 5 + l;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)(COMPRESSED_1_BIT | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 5) & DATA_LENGTH_MASK)
                                 | (commandID << COMMANDID_SHIFT);
-                            *(ushort*)(ptr + 5) = checksum;
-                            *(int*)(ptr + 7) = length;
+                            *(ushort*)(ptr + 5)                              = checksum;
+                            *(int*)(ptr + 7)                                 = length;
                             *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
                         }
                         return;
@@ -158,14 +158,14 @@ namespace Exomia.Network.Serialization
                 }
 
                 checksum = Serialize(data, offset, length, send, Constants.TCP_HEADER_SIZE, out l);
-                size = Constants.TCP_HEADER_SIZE + 1 + l;
+                size     = Constants.TCP_HEADER_SIZE + 1 + l;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)encryptionMode;
                     *(uint*)(ptr + 1) =
                         ((uint)(l + 1) & DATA_LENGTH_MASK)
                         | (commandID << COMMANDID_SHIFT);
-                    *(ushort*)(ptr + 5) = checksum;
+                    *(ushort*)(ptr + 5)                          = checksum;
                     *(int*)(ptr + Constants.TCP_HEADER_SIZE + l) = Constants.ZERO_BYTE;
                 }
             }
@@ -183,7 +183,7 @@ namespace Exomia.Network.Serialization
                 while (offset + 8 < length)
                 {
                     Deserialize(&checksum, dest, o1, src, offset, 8);
-                    o1 += 7;
+                    o1     += 7;
                     offset += 8;
                 }
                 Deserialize(&checksum, dest, o1, src, offset, length - offset);
@@ -201,7 +201,7 @@ namespace Exomia.Network.Serialization
             {
                 Serialize(&checksum, buffer, bufferOffset, data, offset, 7);
                 bufferOffset += 8;
-                offset += 7;
+                offset       += 7;
             }
             Serialize(&checksum, buffer, bufferOffset, data, offset, length - offset);
 
@@ -215,12 +215,12 @@ namespace Exomia.Network.Serialization
             {
                 uint d = data[o2 + i];
                 byte s = (byte)(d >> 7);
-                b = (byte)(b | (s << (6 - i)));
-                buffer[o1 + i] = (byte)(ONE | d);
-                *checksum ^= d + C0;
+                b              =  (byte)(b | (s << (6 - i)));
+                buffer[o1 + i] =  (byte)(ONE | d);
+                *checksum      ^= d + C0;
             }
-            buffer[o1 + size] = b;
-            *checksum += Math2.R1(b, 23) + C1;
+            buffer[o1 + size] =  b;
+            *checksum         += Math2.R1(b, 23) + C1;
         }
 
         private static void Deserialize(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
@@ -229,8 +229,8 @@ namespace Exomia.Network.Serialization
             for (int i = 0; i < size - 1; ++i)
             {
                 byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
-                *(dest + o1 + i) = d;
-                *checksum ^= d + C0;
+                *(dest + o1 + i) =  d;
+                *checksum        ^= d + C0;
             }
             *checksum += Math2.R1(b, 23) + C1;
         }

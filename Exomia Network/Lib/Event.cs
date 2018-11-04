@@ -66,7 +66,7 @@ namespace Exomia.Network.Lib
         public Event(int capacity = 4)
         {
             _callbacks = new T[capacity];
-            _lock = new SpinLock(Debugger.IsAttached);
+            _lock      = new SpinLock(Debugger.IsAttached);
         }
 
         /// <summary>
@@ -103,7 +103,7 @@ namespace Exomia.Network.Lib
             try
             {
                 _lock.Enter(ref lockTaken);
-                _callbacks[index] = _callbacks[--_count];
+                _callbacks[index]  = _callbacks[--_count];
                 _callbacks[_count] = null;
             }
             finally
@@ -126,7 +126,7 @@ namespace Exomia.Network.Lib
                 {
                     if (item == _callbacks[i])
                     {
-                        _callbacks[i] = _callbacks[--_count];
+                        _callbacks[i]      = _callbacks[--_count];
                         _callbacks[_count] = null;
                         return true;
                     }

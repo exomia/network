@@ -46,7 +46,6 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         protected UdpServerApmBase(uint maxClients, int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
-            : base()
         {
             _pool = new ServerClientStateObjectPool(maxClients, maxPacketSize);
         }
@@ -115,6 +114,7 @@ namespace Exomia.Network.UDP
                 return false;
             }
         }
+
         private protected override void ListenAsync()
         {
             ServerClientStateObject state = _pool.Rent();
@@ -192,7 +192,7 @@ namespace Exomia.Network.UDP
                     if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                     {
                         responseID = *(uint*)src;
-                        offset = 4;
+                        offset     = 4;
                     }
                     byte[] payload;
                     if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
@@ -210,7 +210,7 @@ namespace Exomia.Network.UDP
                     else
                     {
                         dataLength -= offset;
-                        payload = ByteArrayPool.Rent(dataLength);
+                        payload    =  ByteArrayPool.Rent(dataLength);
 
                         fixed (byte* dest = payload)
                         {
@@ -244,7 +244,7 @@ namespace Exomia.Network.UDP
                 _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
                     ? maxPacketSize
                     : Constants.UDP_PACKET_SIZE_MAX;
-                _lock = new SpinLock(Debugger.IsAttached);
+                _lock    = new SpinLock(Debugger.IsAttached);
                 _buffers = new ServerClientStateObject[maxClients != 0 ? maxClients + 1u : 33];
             }
 
@@ -258,7 +258,7 @@ namespace Exomia.Network.UDP
 
                     if (_index < _buffers.Length)
                     {
-                        buffer = _buffers[_index];
+                        buffer             = _buffers[_index];
                         _buffers[_index++] = null;
                     }
                 }
@@ -285,7 +285,7 @@ namespace Exomia.Network.UDP
 
                     if (_index != 0)
                     {
-                        obj.EndPoint = new IPEndPoint(IPAddress.Any, 0);
+                        obj.EndPoint       = new IPEndPoint(IPAddress.Any, 0);
                         _buffers[--_index] = obj;
                     }
                 }

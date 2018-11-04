@@ -41,7 +41,7 @@ namespace Exomia.Network
 
         internal Response(in TResult result, SendError sendError)
         {
-            Result = result;
+            Result    = result;
             SendError = sendError;
         }
 

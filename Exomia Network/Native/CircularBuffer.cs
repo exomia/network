@@ -94,12 +94,12 @@ namespace Exomia.Network.Native
                 throw new ArgumentOutOfRangeException();
             }
             value--;
-            value |= value >> 1;
-            value |= value >> 2;
-            value |= value >> 4;
-            value |= value >> 8;
-            value |= value >> 16;
-            _capacity = (int)(value + 1);
+            value     |= value >> 1;
+            value     |= value >> 2;
+            value     |= value >> 4;
+            value     |= value >> 8;
+            value     |= value >> 16;
+            _capacity =  (int)(value + 1);
 
             if (_capacity <= 0)
             {
@@ -109,7 +109,7 @@ namespace Exomia.Network.Native
             _mask = _capacity - 1;
 
             _mPtr = Marshal.AllocHGlobal(_capacity);
-            _ptr = (byte*)_mPtr;
+            _ptr  = (byte*)_mPtr;
 
             Clear();
         }
@@ -125,8 +125,8 @@ namespace Exomia.Network.Native
                 _lock.Enter(ref lockTaken);
 
                 Mem.Set(_ptr, 0, _capacity);
-                _head = 0;
-                _tail = 0;
+                _head  = 0;
+                _tail  = 0;
                 _count = 0;
             }
             finally
@@ -178,7 +178,7 @@ namespace Exomia.Network.Native
                     }
                 }
 
-                _tail = (_tail + length) & _mask;
+                _tail  =  (_tail + length) & _mask;
                 _count -= skip + length;
 
                 return length;
@@ -228,7 +228,7 @@ namespace Exomia.Network.Native
                     Mem.Cpy(dest + offset, _ptr + ((_tail + skip) & _mask), length);
                 }
 
-                _tail = (_tail + skip + length) & _mask;
+                _tail  =  (_tail + skip + length) & _mask;
                 _count -= skip + length;
 
                 return length;
@@ -385,10 +385,10 @@ namespace Exomia.Network.Native
                 _lock.Enter(ref lockTaken);
                 if (_count == 0 || _count < skip + Constants.TCP_HEADER_SIZE)
                 {
-                    commandID = 0;
-                    dataLength = 0;
+                    commandID    = 0;
+                    dataLength   = 0;
                     packetHeader = 0;
-                    checksum = 0;
+                    checksum     = 0;
                     return false;
                 }
 
@@ -419,9 +419,9 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + _tail + skip);
                     uint h2 = *(uint*)(_ptr + _tail + skip + 1);
-                    commandID = h2 >> COMMANDID_SHIFT;
+                    commandID  = h2 >> COMMANDID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
-                    checksum = *(ushort*)(_ptr + _tail + skip + 5);
+                    checksum   = *(ushort*)(_ptr + _tail + skip + 5);
                 }
                 else if (_tail + skip < _capacity)
                 {
@@ -430,7 +430,7 @@ namespace Exomia.Network.Native
                                      | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
                                      | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
                                      | *(_ptr + ((_tail + skip + 1) & _mask)));
-                    commandID = h2 >> COMMANDID_SHIFT;
+                    commandID  = h2 >> COMMANDID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
                     checksum = (ushort)(
                         (*(_ptr + ((_tail + skip + 6) & _mask)) << 8)
@@ -440,9 +440,9 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + ((_tail + skip) & _mask));
                     uint h2 = *(uint*)(_ptr + ((_tail + skip + 1) & _mask));
-                    commandID = h2 >> COMMANDID_SHIFT;
+                    commandID  = h2 >> COMMANDID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
-                    checksum = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
+                    checksum   = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
                 }
 
                 return true;
@@ -472,12 +472,12 @@ namespace Exomia.Network.Native
                     {
                         if (*(_ptr + ((_tail + i++) & _mask)) == value)
                         {
-                            _tail = (_tail + i) & _mask;
+                            _tail  =  (_tail + i) & _mask;
                             _count -= i;
                             return true;
                         }
                     }
-                    _tail = (_tail + _count) & _mask;
+                    _tail  = (_tail + _count) & _mask;
                     _count = 0;
                 }
                 return false;
@@ -502,7 +502,7 @@ namespace Exomia.Network.Native
                 {
                     count = _count;
                 }
-                _tail = (_tail + count) & _mask;
+                _tail  =  (_tail + count) & _mask;
                 _count -= count;
             }
             finally
@@ -545,7 +545,7 @@ namespace Exomia.Network.Native
                     }
                 }
 
-                _head = (_head + length) & _mask;
+                _head  =  (_head + length) & _mask;
                 _count += length;
 
                 return length;
@@ -587,7 +587,7 @@ namespace Exomia.Network.Native
                     Mem.Cpy(_ptr, src + offset + l1, length - l1);
                 }
 
-                _head = (_head + length) & _mask;
+                _head  =  (_head + length) & _mask;
                 _count += length;
 
                 return length;

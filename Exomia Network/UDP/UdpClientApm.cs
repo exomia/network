@@ -174,7 +174,7 @@ namespace Exomia.Network.UDP
                 if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                 {
                     responseID = *(uint*)src;
-                    offset = 4;
+                    offset     = 4;
                 }
                 byte[] payload;
                 if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
@@ -193,7 +193,7 @@ namespace Exomia.Network.UDP
                 else
                 {
                     dataLength -= offset;
-                    payload = ByteArrayPool.Rent(dataLength);
+                    payload    =  ByteArrayPool.Rent(dataLength);
 
                     fixed (byte* dest = payload)
                     {

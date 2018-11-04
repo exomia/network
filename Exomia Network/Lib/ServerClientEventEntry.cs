@@ -34,7 +34,7 @@ namespace Exomia.Network.Lib
         public ServerClientEventEntry(DeserializePacket<object> deserialize)
         {
             _dataReceived = new Event<ClientDataReceivedHandler<T, TServerClient>>();
-            _deserialize = deserialize;
+            _deserialize  = deserialize;
         }
 
         public void Add(ClientDataReceivedHandler<T, TServerClient> callback)

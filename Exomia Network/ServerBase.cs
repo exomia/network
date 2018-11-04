@@ -89,9 +89,9 @@ namespace Exomia.Network
         private protected ServerBase()
         {
             _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<T, TServerClient>>(INITIAL_QUEUE_SIZE);
-            _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
+            _clients               = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
 
-            _clientsLock = new SpinLock(Debugger.IsAttached);
+            _clientsLock               = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
         }
 
@@ -108,7 +108,7 @@ namespace Exomia.Network
         {
             if (_isRunning) { return true; }
             _isRunning = true;
-            _port = port;
+            _port      = port;
 
             if (OnRun(port, out _listener))
             {
@@ -122,6 +122,7 @@ namespace Exomia.Network
         private protected abstract bool OnRun(int port, out Socket listener);
 
         private protected abstract void ListenAsync();
+
         private protected void DeserializeData(T arg0, uint commandid, byte[] data, int offset, int length,
             uint responseid)
         {

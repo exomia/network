@@ -86,7 +86,7 @@ namespace Exomia.Network.Serialization
                                 ((uint)(s + 8) & DATA_LENGTH_MASK) |
                                 (commandID << COMMANDID_SHIFT);
                             *(uint*)(ptr + 5) = responseID;
-                            *(int*)(ptr + 9) = length;
+                            *(int*)(ptr + 9)  = length;
                         }
                         return;
                     }
@@ -170,7 +170,7 @@ namespace Exomia.Network.Serialization
             {
                 packetHeader = *ptr;
                 int h2 = *(int*)(ptr + 1);
-                commandID = (uint)(h2 >> COMMANDID_SHIFT);
+                commandID  = (uint)(h2 >> COMMANDID_SHIFT);
                 dataLength = h2 & DATA_LENGTH_MASK;
             }
         }
