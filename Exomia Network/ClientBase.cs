@@ -24,6 +24,12 @@
 
 #pragma warning disable 1574
 
+using Exomia.Native;
+using Exomia.Network.Buffers;
+using Exomia.Network.DefaultPackets;
+using Exomia.Network.Extensions.Struct;
+using Exomia.Network.Lib;
+using Exomia.Network.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -31,12 +37,6 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Exomia.Native;
-using Exomia.Network.Buffers;
-using Exomia.Network.DefaultPackets;
-using Exomia.Network.Extensions.Struct;
-using Exomia.Network.Lib;
-using Exomia.Network.Serialization;
 using Debugger = System.Diagnostics.Debugger;
 
 namespace Exomia.Network
@@ -114,14 +114,14 @@ namespace Exomia.Network
 
         private protected ClientBase()
         {
-            _clientSocket          = null;
+            _clientSocket = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
             _taskCompletionSources =
                 new Dictionary<uint, TaskCompletionSource<Packet>>(INITIAL_TASKCOMPLETION_QUEUE_SIZE);
 
             _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
-            _responseID                = 1;
+            _responseID = 1;
 
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
@@ -257,45 +257,45 @@ namespace Exomia.Network
             switch (commandid)
             {
                 case CommandID.PING:
-                {
-                    PingPacket pingStruct;
-                    fixed (byte* ptr = data)
                     {
-                        pingStruct = *(PingPacket*)(ptr + offset);
-                    }
-                    Ping?.Invoke(pingStruct);
-                    break;
-                }
-                case CommandID.CONNECT:
-                {
-                    data.FromBytesUnsafe(offset, out ConnectPacket connectPacket);
-                    fixed (byte* ptr = _connectChecksum)
-                    {
-                        if (SequenceEqual(connectPacket.Checksum, ptr, 16))
+                        PingPacket pingStruct;
+                        fixed (byte* ptr = data)
                         {
-                            _manuelResetEvent.Set();
+                            pingStruct = *(PingPacket*)(ptr + offset);
                         }
+                        Ping?.Invoke(pingStruct);
+                        break;
                     }
-                    break;
-                }
-                default:
-                {
-                    if (commandid <= Constants.USER_COMMAND_LIMIT &&
-                        _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
+                case CommandID.CONNECT:
                     {
-                        Packet packet = new Packet(data, offset, length);
-                        ThreadPool.QueueUserWorkItem(
-                            x =>
+                        data.FromBytesUnsafe(offset, out ConnectPacket connectPacket);
+                        fixed (byte* ptr = _connectChecksum)
+                        {
+                            if (SequenceEqual(connectPacket.Checksum, ptr, 16))
                             {
-                                object res = cee._deserialize(in packet);
-                                ByteArrayPool.Return(data);
-
-                                if (res != null) { cee.Raise(this, res); }
-                            });
-                        return;
+                                _manuelResetEvent.Set();
+                            }
+                        }
+                        break;
                     }
-                    break;
-                }
+                default:
+                    {
+                        if (commandid <= Constants.USER_COMMAND_LIMIT &&
+                            _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
+                        {
+                            Packet packet = new Packet(data, offset, length);
+                            ThreadPool.QueueUserWorkItem(
+                                x =>
+                                {
+                                    object res = cee._deserialize(in packet);
+                                    ByteArrayPool.Return(data);
+
+                                    if (res != null) { cee.Raise(this, res); }
+                                });
+                            return;
+                        }
+                        break;
+                    }
             }
             ByteArrayPool.Return(data);
         }
@@ -443,6 +443,8 @@ namespace Exomia.Network
         public async Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length,
             DeserializePacket<TResult> deserialize, TimeSpan timeout)
         {
+            if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
+
             TaskCompletionSource<Packet> tcs =
                 new TaskCompletionSource<Packet>(TaskCreationOptions.None);
             using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
@@ -479,12 +481,13 @@ namespace Exomia.Network
                 if (sendError == SendError.None)
                 {
                     Packet packet = await tcs.Task;
-                    if (packet.Buffer != null && deserialize != null)
+                    if (packet.Buffer != null)
                     {
                         TResult result = deserialize(in packet);
                         ByteArrayPool.Return(packet.Buffer);
                         return new Response<TResult>(result, SendError.None);
                     }
+                    sendError = SendError.Unknown; //TimeOut Error
                 }
                 lockTaken = false;
                 try

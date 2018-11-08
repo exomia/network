@@ -47,7 +47,7 @@ namespace Exomia.Network.TCP
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <inheritdoc />
-        public TcpClientEap(ushort maxPacketSize = 0)
+        public TcpClientEap(ushort maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize

@@ -43,7 +43,7 @@ namespace Exomia.Network.TCP
         private readonly byte[] _bufferRead;
 
         /// <inheritdoc />
-        public TcpClientApm(ushort maxPacketSize = 0)
+        public TcpClientApm(ushort maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
         {
             _bufferWrite = new byte[maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize

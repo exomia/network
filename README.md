@@ -47,7 +47,7 @@ class UdpServer : UdpServerEapBase<UdpServerClient>
     }
 
     /// <inheritdoc />
-    public UdpServer(uint maxClients, int maxPacketSize = 65523)
+    public UdpServer(uint maxClients, int maxPacketSize = 65522)
         : base(maxClients, maxPacketSize) { }
 }
 
@@ -68,9 +68,9 @@ static void Main(string[] args)
 		{
 		    Console.WriteLine("Client connected: " + (endpoint as IPEndPoint));
 		};
-		server.ClientDisconnected += (endpoint) =>
+		server.ClientDisconnected += (endpoint, reason) =>
 		{
-		    Console.WriteLine("Client disconnected: " + (endpoint as IPEndPoint));
+		    Console.WriteLine(reason + " Client disconnected: " + (endpoint as IPEndPoint));
 		};
 		server.Run(3001);
 
@@ -105,7 +105,7 @@ static void Main(string[] args)
 		for (int i = 0; i < 10; i++)
 		{
 			Response<PingPacket> res = await client.SendRPing();
-			if (res.Success)
+			if (res)
 			{
 				Console.WriteLine(i +
 					"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
@@ -143,13 +143,13 @@ class TcpServer : TcpServerEapBase<TcpServerClient>
     }
 
     /// <inheritdoc />
-    public TcpServer(int maxPacketSize = 0)
+    public TcpServer(int maxPacketSize = 65520)
         : base(maxPacketSize) { }
 }
 
 class TcpServerClient : ServerClientBase<Socket>
 {
-    public UdpServerClient(Socketarg0) : base(arg0) { }
+    public TcpServerClient(Socketarg0) : base(arg0) { }
     public override IPAddress IPAddress { get { return (_arg0.RemoteEndPoint as IPEndPoint)?.Address; } }
     public override EndPoint EndPoint { get { return _arg0.RemoteEndPoint; } }
 }
@@ -160,13 +160,13 @@ static void Main(string[] args)
 {
 	using(TcpServer server = new TcpServer())
 	{
-		server.ClientConnected += (endpoint) =>
+		server.ClientConnected += (socket) =>
 		{
-		    Console.WriteLine("Client connected: " + (endpoint as IPEndPoint));
+		    Console.WriteLine("Client connected: " + (socket.RemoteEndPoint as IPEndPoint));
 		};
-		server.ClientDisconnected += (endpoint) =>
+		server.ClientDisconnected += (socket, reason) =>
 		{
-		    Console.WriteLine("Client disconnected: " + (endpoint as IPEndPoint));
+		    Console.WriteLine(reason + " Client disconnected: " + (socket.RemoteEndPoint as IPEndPoint));
 		};
 
 		server.AddCommand(45, (in Packet packet) =>

@@ -45,7 +45,7 @@ namespace Exomia.Network.TCP
         protected readonly int _maxPacketSize;
 
         /// <inheritdoc />
-        protected TcpServerApmBase(int maxPacketSize = 0)
+        protected TcpServerApmBase(int maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
         {
             _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
