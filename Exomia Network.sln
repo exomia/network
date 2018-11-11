@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2015
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Exomia Network", "Exomia Network\Exomia Network.csproj", "{4A17DCCB-D3DE-48DF-97A7-F46936096CA6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Exomia.Network", "Exomia.Network\Exomia.Network.csproj", "{4A17DCCB-D3DE-48DF-97A7-F46936096CA6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Exomia.Network.UnitTest", "Exomia.Network.UnitTest\Exomia.Network.UnitTest.csproj", "{C70AE613-9A81-4063-8F4A-6F09F145EE85}"
 EndProject
