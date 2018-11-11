@@ -27,13 +27,12 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Exomia.Native;
-using Debugger = System.Diagnostics.Debugger;
 
 namespace Exomia.Network.Native
 {
-    unsafe class CircularBuffer : IDisposable
+    internal unsafe class CircularBuffer : IDisposable
     {
-        private const int COMMANDID_SHIFT = 16;
+        private const int COMMAND_ID_SHIFT = 16;
         private const int DATA_LENGTH_MASK = 0xFFFF;
 
         private readonly IntPtr _mPtr;
@@ -81,7 +80,7 @@ namespace Exomia.Network.Native
         /// <param name="capacity">capacity (pow2)</param>
         public CircularBuffer(int capacity = 1024)
         {
-            _lock = new SpinLock(Debugger.IsAttached);
+            _lock = new SpinLock(System.Diagnostics.Debugger.IsAttached);
 
             if (capacity <= 0)
             {
@@ -419,7 +418,7 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + _tail + skip);
                     uint h2 = *(uint*)(_ptr + _tail + skip + 1);
-                    commandID  = h2 >> COMMANDID_SHIFT;
+                    commandID  = h2 >> COMMAND_ID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
                     checksum   = *(ushort*)(_ptr + _tail + skip + 5);
                 }
@@ -430,7 +429,7 @@ namespace Exomia.Network.Native
                                      | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
                                      | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
                                      | *(_ptr + ((_tail + skip + 1) & _mask)));
-                    commandID  = h2 >> COMMANDID_SHIFT;
+                    commandID  = h2 >> COMMAND_ID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
                     checksum = (ushort)(
                         (*(_ptr + ((_tail + skip + 6) & _mask)) << 8)
@@ -440,7 +439,7 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + ((_tail + skip) & _mask));
                     uint h2 = *(uint*)(_ptr + ((_tail + skip + 1) & _mask));
-                    commandID  = h2 >> COMMANDID_SHIFT;
+                    commandID  = h2 >> COMMAND_ID_SHIFT;
                     dataLength = (int)(h2 & DATA_LENGTH_MASK);
                     checksum   = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
                 }

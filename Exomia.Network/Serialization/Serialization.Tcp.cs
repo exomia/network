@@ -174,10 +174,8 @@ namespace Exomia.Network.Serialization
         internal static ushort Deserialize(byte* src, int offset, int length, byte[] buffer, out int bufferLength)
         {
             bufferLength = length - Math2.Ceiling(length / 8.0);
-
             uint checksum = s_h0;
             int o1 = 0;
-
             fixed (byte* dest = buffer)
             {
                 while (offset + 8 < length)
@@ -192,7 +190,19 @@ namespace Exomia.Network.Serialization
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
 
-        private static ushort Serialize(byte[] data, int offset, int length, byte[] buffer, int bufferOffset,
+        private static void Deserialize(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
+        {
+            byte b = *(src + o2 + size - 1);
+            for (int i = 0; i < size - 1; ++i)
+            {
+                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
+                *(dest + o1 + i) =  d;
+                *checksum        ^= d + C0;
+            }
+            *checksum += Math2.R1(b, 23) + C1;
+        }
+
+        internal static ushort Serialize(byte[] data, int offset, int length, byte[] buffer, int bufferOffset,
             out int bufferLength)
         {
             bufferLength = length + Math2.Ceiling(length / 7.0f);
@@ -221,18 +231,6 @@ namespace Exomia.Network.Serialization
             }
             buffer[o1 + size] =  b;
             *checksum         += Math2.R1(b, 23) + C1;
-        }
-
-        private static void Deserialize(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
-        {
-            byte b = *(src + o2 + size - 1);
-            for (int i = 0; i < size - 1; ++i)
-            {
-                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
-                *(dest + o1 + i) =  d;
-                *checksum        ^= d + C0;
-            }
-            *checksum += Math2.R1(b, 23) + C1;
         }
     }
 }

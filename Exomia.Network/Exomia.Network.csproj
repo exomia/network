@@ -4,7 +4,7 @@
     <Authors>exomia</Authors>
     <Description>tcp / udp client and server</Description>
     <Copyright>Copyright © 2018 exomia</Copyright>
-    <Version>1.2.2.2</Version>
+    <Version>1.2.2.3</Version>
     <PackageLicenseUrl>https://raw.githubusercontent.com/exomia/network/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/exomia/network</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
@@ -69,7 +69,7 @@
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Exomia.Native" Version="1.0.0.1" />
+    <PackageReference Include="Exomia.Native" Version="1.0.0.2" />
     <PackageReference Include="lz4net" Version="1.0.15.93" />
   </ItemGroup>
 
@@ -143,6 +143,11 @@
       <Pack>true</Pack>
       <PackagePath>build\net471\win\x64\$(ProjectName).Release.xml</PackagePath>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Update="Exomia.Native">
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>
