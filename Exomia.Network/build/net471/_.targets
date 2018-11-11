@@ -7,19 +7,18 @@
     </Reference>
   </ItemGroup>
 
-  <PropertyGroup>
-    <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">$(MSBuildThisFileDirectory)win\$(MSBuildThisFileName).Debug.dll</LibFile>
-    <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">$(MSBuildThisFileDirectory)win\$(MSBuildThisFileName).Release.dll</LibFile>
-
-    <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">$(MSBuildThisFileDirectory)win\x86\$(MSBuildThisFileName).Debug.dll</LibFile>
-    <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">$(MSBuildThisFileDirectory)win\x86\$(MSBuildThisFileName).Release.dll</LibFile>
-
-    <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">$(MSBuildThisFileDirectory)win\x64\$(MSBuildThisFileName).Debug.dll</LibFile>
-    <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">$(MSBuildThisFileDirectory)win\x64\$(MSBuildThisFileName).Release.dll</LibFile>
-  </PropertyGroup>
-
   <!--INFO: CHANGE THE NAME-->
   <Target Name="ExomiaNetwork" AfterTargets="AfterBuild">
+    <PropertyGroup>
+      <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">$(MSBuildThisFileDirectory)win\$(MSBuildThisFileName).Debug.dll</LibFile>
+      <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">$(MSBuildThisFileDirectory)win\$(MSBuildThisFileName).Release.dll</LibFile>
+
+      <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">$(MSBuildThisFileDirectory)win\x86\$(MSBuildThisFileName).Debug.dll</LibFile>
+      <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">$(MSBuildThisFileDirectory)win\x86\$(MSBuildThisFileName).Release.dll</LibFile>
+
+      <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">$(MSBuildThisFileDirectory)win\x64\$(MSBuildThisFileName).Debug.dll</LibFile>
+      <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">$(MSBuildThisFileDirectory)win\x64\$(MSBuildThisFileName).Release.dll</LibFile>
+    </PropertyGroup>
     <Copy
       SourceFiles="$(LibFile)"
       DestinationFiles="$(TargetDir)$(MSBuildThisFileName).dll"
