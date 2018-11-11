@@ -22,6 +22,10 @@
 
 #endregion
 
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Exomia.Network.UnitTest")]
+
 namespace Exomia.Network
 {
     static class Constants

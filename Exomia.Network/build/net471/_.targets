@@ -18,7 +18,8 @@
     <LibFile Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">$(MSBuildThisFileDirectory)win\x64\$(MSBuildThisFileName).Release.dll</LibFile>
   </PropertyGroup>
 
-  <Target Name="AfterBuild">
+  <!--INFO: CHANGE THE NAME-->
+  <Target Name="ExomiaNetwork" AfterTargets="AfterBuild">
     <Copy
       SourceFiles="$(LibFile)"
       DestinationFiles="$(TargetDir)$(MSBuildThisFileName).dll"
