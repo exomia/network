@@ -69,7 +69,7 @@
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Exomia.Native" Version="1.0.0.2" />
+    <PackageReference Include="Exomia.Native" Version="1.0.0.3" />
     <PackageReference Include="lz4net" Version="1.0.15.93" />
   </ItemGroup>
 
