@@ -242,12 +242,5 @@ namespace Exomia.Network
         ///     send a ping command to the server
         /// </summary>
         Task<Response<PingPacket>> SendRPing();
-
-        /// <summary>
-        ///     send a client info command to the server
-        /// </summary>
-        /// <param name="clientID">client id</param>
-        /// <param name="clientName">client name</param>
-        SendError SendClientInfo(long clientID, string clientName);
     }
 }

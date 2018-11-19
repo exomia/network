@@ -4,7 +4,7 @@
     <Authors>exomia</Authors>
     <Description>tcp / udp client and server</Description>
     <Copyright>Copyright © 2018 exomia</Copyright>
-    <Version>1.2.2.4</Version>
+    <Version>1.2.2.5</Version>
     <PackageLicenseUrl>https://raw.githubusercontent.com/exomia/network/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/exomia/network</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
@@ -77,7 +77,7 @@
   <ItemGroup>
     <None Include="build\net471\_.targets" Visible="true">
       <Pack>true</Pack>
-      <PackagePath>\build\net471\$(ProjectName).targets</PackagePath>    
+      <PackagePath>\build\net471\$(ProjectName).targets</PackagePath>
     </None>
 
     <!--build AnyCPU DEBUG-->
@@ -101,7 +101,7 @@
       <Pack>true</Pack>
       <PackagePath>build\net471\win\$(ProjectName).Release.xml</PackagePath>
     </None>
-  
+
     <!--build x86 DEBUG-->
     <None Include="bin\x86\Debug\net471\$(ProjectName).dll" Visible="false">
       <Pack>true</Pack>
@@ -123,7 +123,7 @@
       <Pack>true</Pack>
       <PackagePath>build\net471\win\x86\$(ProjectName).Release.xml</PackagePath>
     </None>
-       
+
     <!--build x64 DEBUG-->
     <None Include="bin\x64\Debug\net471\$(ProjectName).dll" Visible="false">
       <Pack>true</Pack>

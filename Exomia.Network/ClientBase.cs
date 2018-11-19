@@ -24,12 +24,6 @@
 
 #pragma warning disable 1574
 
-using Exomia.Native;
-using Exomia.Network.Buffers;
-using Exomia.Network.DefaultPackets;
-using Exomia.Network.Extensions.Struct;
-using Exomia.Network.Lib;
-using Exomia.Network.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -37,7 +31,12 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Debugger = System.Diagnostics.Debugger;
+using Exomia.Native;
+using Exomia.Network.Buffers;
+using Exomia.Network.DefaultPackets;
+using Exomia.Network.Extensions.Struct;
+using Exomia.Network.Lib;
+using Exomia.Network.Serialization;
 
 namespace Exomia.Network
 {
@@ -56,7 +55,7 @@ namespace Exomia.Network
         private protected const byte SEND_FLAG = 0b0000_0010;
 
         private const int INITIAL_QUEUE_SIZE = 16;
-        private const int INITIAL_TASKCOMPLETION_QUEUE_SIZE = 128;
+        private const int INITIAL_TASK_COMPLETION_QUEUE_SIZE = 128;
 
         private const int CLOSE_TIMEOUT = 10;
 
@@ -114,14 +113,14 @@ namespace Exomia.Network
 
         private protected ClientBase()
         {
-            _clientSocket = null;
+            _clientSocket          = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
             _taskCompletionSources =
-                new Dictionary<uint, TaskCompletionSource<Packet>>(INITIAL_TASKCOMPLETION_QUEUE_SIZE);
+                new Dictionary<uint, TaskCompletionSource<Packet>>(INITIAL_TASK_COMPLETION_QUEUE_SIZE);
 
-            _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
-            _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
-            _responseID = 1;
+            _lockTaskCompletionSources = new SpinLock(System.Diagnostics.Debugger.IsAttached);
+            _dataReceivedCallbacksLock = new SpinLock(System.Diagnostics.Debugger.IsAttached);
+            _responseID                = 1;
 
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
@@ -257,45 +256,45 @@ namespace Exomia.Network
             switch (commandid)
             {
                 case CommandID.PING:
+                {
+                    PingPacket pingStruct;
+                    fixed (byte* ptr = data)
                     {
-                        PingPacket pingStruct;
-                        fixed (byte* ptr = data)
-                        {
-                            pingStruct = *(PingPacket*)(ptr + offset);
-                        }
-                        Ping?.Invoke(pingStruct);
-                        break;
+                        pingStruct = *(PingPacket*)(ptr + offset);
                     }
+                    Ping?.Invoke(pingStruct);
+                    break;
+                }
                 case CommandID.CONNECT:
+                {
+                    data.FromBytesUnsafe(offset, out ConnectPacket connectPacket);
+                    fixed (byte* ptr = _connectChecksum)
                     {
-                        data.FromBytesUnsafe(offset, out ConnectPacket connectPacket);
-                        fixed (byte* ptr = _connectChecksum)
+                        if (SequenceEqual(connectPacket.Checksum, ptr, 16))
                         {
-                            if (SequenceEqual(connectPacket.Checksum, ptr, 16))
-                            {
-                                _manuelResetEvent.Set();
-                            }
+                            _manuelResetEvent.Set();
                         }
-                        break;
                     }
+                    break;
+                }
                 default:
+                {
+                    if (commandid <= Constants.USER_COMMAND_LIMIT &&
+                        _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
                     {
-                        if (commandid <= Constants.USER_COMMAND_LIMIT &&
-                            _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
-                        {
-                            Packet packet = new Packet(data, offset, length);
-                            ThreadPool.QueueUserWorkItem(
-                                x =>
-                                {
-                                    object res = cee._deserialize(in packet);
-                                    ByteArrayPool.Return(data);
+                        Packet packet = new Packet(data, offset, length);
+                        ThreadPool.QueueUserWorkItem(
+                            x =>
+                            {
+                                object res = cee._deserialize(in packet);
+                                ByteArrayPool.Return(data);
 
-                                    if (res != null) { cee.Raise(this, res); }
-                                });
-                            return;
-                        }
-                        break;
+                                if (res != null) { cee.Raise(this, res); }
+                            });
+                        return;
                     }
+                    break;
+                }
             }
             ByteArrayPool.Return(data);
         }
@@ -601,18 +600,6 @@ namespace Exomia.Network
         {
             return SendR<PingPacket, PingPacket>(
                 CommandID.PING, new PingPacket(DateTime.Now.Ticks));
-        }
-
-        /// <inheritdoc />
-        public unsafe SendError SendClientInfo(long clientID, string clientName)
-        {
-            ClientinfoPacket packet;
-            packet.ClientID = clientID;
-            fixed (char* ptr = clientName)
-            {
-                Mem.Cpy(packet.ClientName, ptr, sizeof(char) * Math.Max(0, Math.Min(clientName.Length, 64)));
-            }
-            return Send(CommandID.CLIENTINFO, packet);
         }
 
         private unsafe SendError SendConnect()

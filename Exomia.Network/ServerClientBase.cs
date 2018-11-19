@@ -34,26 +34,11 @@ namespace Exomia.Network
     public abstract class ServerClientBase<T> where T : class
     {
         /// <summary>
-        ///     called than the client info is changed
-        /// </summary>
-        public event ClientInfoHandler<ServerClientBase<T>, T> ClientInfoChanged;
-
-        /// <summary>
         ///     Socket|Endpoint
         /// </summary>
         protected T _arg0;
-
-        private object _clientInfo;
-
+        
         private DateTime _lastReceivedPacketTimeStamp = DateTime.Now;
-
-        /// <summary>
-        ///     ClientInfo
-        /// </summary>
-        public object ClientInfo
-        {
-            get { return _clientInfo; }
-        }
 
         /// <summary>
         ///     LastReceivedPacketTimeStamp
@@ -80,16 +65,6 @@ namespace Exomia.Network
         protected ServerClientBase(T arg0)
         {
             _arg0 = arg0;
-        }
-
-        internal void SetClientInfo(object info)
-        {
-            if (!_clientInfo.Equals(info))
-            {
-                object oldInfo = _clientInfo;
-                _clientInfo = info;
-                ClientInfoChanged?.Invoke(this, oldInfo, info);
-            }
         }
 
         internal void SetLastReceivedPacketTimeStamp()
