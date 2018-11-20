@@ -30,6 +30,7 @@ using Exomia.Native;
 using Exomia.Network.Buffers;
 using Exomia.Network.Serialization;
 using LZ4;
+using Debugger = System.Diagnostics.Debugger;
 
 namespace Exomia.Network.UDP
 {
@@ -243,7 +244,7 @@ namespace Exomia.Network.UDP
                 _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
                     ? maxPacketSize
                     : Constants.UDP_PACKET_SIZE_MAX;
-                _lock    = new SpinLock(System.Diagnostics.Debugger.IsAttached);
+                _lock    = new SpinLock(Debugger.IsAttached);
                 _buffers = new ServerClientStateObject[maxClients != 0 ? maxClients + 1u : 33];
             }
 

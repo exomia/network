@@ -150,7 +150,7 @@ namespace Exomia.Network.UDP
             return SendError.Invalid;
         }
 
-        private void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private unsafe void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
@@ -167,50 +167,46 @@ namespace Exomia.Network.UDP
 
             if (e.BytesTransferred == dataLength + Constants.UDP_HEADER_SIZE)
             {
-                HandleReceive(e.Buffer, packetHeader, commandID, dataLength);
+                uint responseID = 0;
+                int offset = 0;
+                fixed (byte* src = e.Buffer)
+                {
+                    if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
+                    {
+                        responseID = *(uint*)src;
+                        offset     = 4;
+                    }
+                    byte[] payload;
+                    if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                    {
+                        int l = *(int*)(src + offset);
+                        offset += 4;
+
+                        payload = ByteArrayPool.Rent(l);
+                        int s = LZ4Codec.Decode(
+                            e.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l, true);
+                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                        ReceiveAsync();
+                        DeserializeData(commandID, payload, 0, l, responseID);
+                    }
+                    else
+                    {
+                        dataLength -= offset;
+                        payload    =  ByteArrayPool.Rent(dataLength);
+
+                        fixed (byte* dest = payload)
+                        {
+                            Mem.Cpy(dest, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
+                        }
+
+                        ReceiveAsync();
+                        DeserializeData(commandID, payload, 0, dataLength, responseID);
+                    }
+                }
+                return;
             }
             ReceiveAsync();
-        }
-
-        private unsafe void HandleReceive(byte[] buffer, byte packetHeader, uint commandID, int dataLength)
-        {
-            uint responseID = 0;
-            int offset = 0;
-            fixed (byte* src = buffer)
-            {
-                if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                {
-                    responseID = *(uint*)src;
-                    offset     = 4;
-                }
-                byte[] payload;
-                if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
-                {
-                    int l = *(int*)(src + offset);
-                    offset += 4;
-
-                    payload = ByteArrayPool.Rent(l);
-                    int s = LZ4Codec.Decode(
-                        buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l, true);
-                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
-                    ReceiveAsync();
-                    DeserializeData(commandID, payload, 0, l, responseID);
-                }
-                else
-                {
-                    dataLength -= offset;
-                    payload    =  ByteArrayPool.Rent(dataLength);
-
-                    fixed (byte* dest = payload)
-                    {
-                        Mem.Cpy(dest, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
-                    }
-
-                    ReceiveAsync();
-                    DeserializeData(commandID, payload, 0, dataLength, responseID);
-                }
-            }
         }
 
         private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)

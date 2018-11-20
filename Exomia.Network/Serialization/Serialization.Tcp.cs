@@ -104,7 +104,7 @@ namespace Exomia.Network.Serialization
                             *ptr = (byte)(RESPONSE_1_BIT | COMPRESSED_1_BIT | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 9) & DATA_LENGTH_MASK)
-                                | (commandID << COMMANDID_SHIFT);
+                                | (commandID << COMMAND_ID_SHIFT);
                             *(ushort*)(ptr + 5)                              = checksum;
                             *(uint*)(ptr + 7)                                = responseID;
                             *(int*)(ptr + 11)                                = length;
@@ -121,7 +121,7 @@ namespace Exomia.Network.Serialization
                     *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
                     *(uint*)(ptr + 1) =
                         ((uint)(l + 5) & DATA_LENGTH_MASK)
-                        | (commandID << COMMANDID_SHIFT);
+                        | (commandID << COMMAND_ID_SHIFT);
                     *(ushort*)(ptr + 5)                              = checksum;
                     *(uint*)(ptr + 7)                                = responseID;
                     *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
@@ -148,7 +148,7 @@ namespace Exomia.Network.Serialization
                             *ptr = (byte)(COMPRESSED_1_BIT | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 5) & DATA_LENGTH_MASK)
-                                | (commandID << COMMANDID_SHIFT);
+                                | (commandID << COMMAND_ID_SHIFT);
                             *(ushort*)(ptr + 5)                              = checksum;
                             *(int*)(ptr + 7)                                 = length;
                             *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
@@ -164,7 +164,7 @@ namespace Exomia.Network.Serialization
                     *ptr = (byte)encryptionMode;
                     *(uint*)(ptr + 1) =
                         ((uint)(l + 1) & DATA_LENGTH_MASK)
-                        | (commandID << COMMANDID_SHIFT);
+                        | (commandID << COMMAND_ID_SHIFT);
                     *(ushort*)(ptr + 5)                          = checksum;
                     *(int*)(ptr + Constants.TCP_HEADER_SIZE + l) = Constants.ZERO_BYTE;
                 }
@@ -190,18 +190,6 @@ namespace Exomia.Network.Serialization
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
 
-        private static void Deserialize(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
-        {
-            byte b = *(src + o2 + size - 1);
-            for (int i = 0; i < size - 1; ++i)
-            {
-                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
-                *(dest + o1 + i) =  d;
-                *checksum        ^= d + C0;
-            }
-            *checksum += Math2.R1(b, 23) + C1;
-        }
-
         internal static ushort Serialize(byte[] data, int offset, int length, byte[] buffer, int bufferOffset,
             out int bufferLength)
         {
@@ -216,6 +204,18 @@ namespace Exomia.Network.Serialization
             Serialize(&checksum, buffer, bufferOffset, data, offset, length - offset);
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
+        }
+
+        private static void Deserialize(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
+        {
+            byte b = *(src + o2 + size - 1);
+            for (int i = 0; i < size - 1; ++i)
+            {
+                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
+                *(dest + o1 + i) =  d;
+                *checksum        ^= d + C0;
+            }
+            *checksum += Math2.R1(b, 23) + C1;
         }
 
         private static void Serialize(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)

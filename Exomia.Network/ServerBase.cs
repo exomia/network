@@ -139,15 +139,6 @@ namespace Exomia.Network
                     SendTo(arg0, CommandID.CONNECT, data, offset, length, responseid);
                     break;
                 }
-                case CommandID.CLIENTINFO:
-                {
-                    if (_clients.TryGetValue(arg0, out TServerClient sClient))
-                    {
-                        data.FromBytesUnsafe2(out ClientinfoPacket clientinfoPacket);
-                        sClient.SetClientInfo(clientinfoPacket);
-                    }
-                    break;
-                }
                 case CommandID.DISCONNECT:
                 {
                     InvokeClientDisconnect(arg0, DisconnectReason.Graceful);
@@ -171,22 +162,6 @@ namespace Exomia.Network
 
                                     if (res != null) { scee.Raise(this, arg0, res, responseid, sClient); }
                                 });
-
-                            /*Task.Factory.StartNew(() =>
-                            {
-                                object res = scee._deserialize(in packet);
-                                ByteArrayPool.Return(data);
-                                if (res != null) { scee.RaiseAsync(this, arg0, res, responseid, sClient); }
-                            });*/
-
-                            /*scee._deserialize.BeginInvoke(
-                                in packet, iar =>
-                                {
-                                    object res = scee._deserialize.EndInvoke(in packet, iar);
-                                    ByteArrayPool.Return(data);
-
-                                    if (res != null) { scee.RaiseAsync(this, arg0, res, responseid, sClient); }
-                                }, null);*/
                             return;
                         }
                     }

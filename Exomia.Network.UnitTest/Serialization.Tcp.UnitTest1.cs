@@ -23,7 +23,6 @@
 #endregion
 
 using System;
-using System.Linq;
 using Exomia.Network.Lib;
 using Exomia.Network.Native;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
