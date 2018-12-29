@@ -4,7 +4,7 @@
     <Authors>exomia</Authors>
     <Description>tcp / udp client and server</Description>
     <Copyright>Copyright © 2018 exomia</Copyright>
-    <Version>1.2.2.5</Version>
+    <Version>1.2.2.6</Version>
     <PackageLicenseUrl>https://raw.githubusercontent.com/exomia/network/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/exomia/network</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
@@ -15,10 +15,11 @@
     <LangVersion>latest</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RepositoryType>git</RepositoryType>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
     <PackageOutputPath>.</PackageOutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <PackageId>$(MSBuildProjectName)</PackageId>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
@@ -28,6 +29,7 @@
     <DocumentationFile></DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <PackageId>$(MSBuildProjectName).x64</PackageId>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
@@ -37,6 +39,7 @@
     <DocumentationFile></DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <PackageId>$(MSBuildProjectName).x86</PackageId>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
@@ -47,6 +50,7 @@
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <PackageId>$(MSBuildProjectName)</PackageId>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
@@ -54,6 +58,7 @@
     <DocumentationFile></DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <PackageId>$(MSBuildProjectName).x64</PackageId>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
@@ -61,6 +66,7 @@
     <DocumentationFile></DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <PackageId>$(MSBuildProjectName).x86</PackageId>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
@@ -69,85 +75,23 @@
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Exomia.Native" Version="1.0.0.3" />
     <PackageReference Include="lz4net" Version="1.0.15.93" />
   </ItemGroup>
 
-  <!--TARGETS-->
   <ItemGroup>
-    <None Include="build\net471\_.targets" Visible="true">
-      <Pack>true</Pack>
-      <PackagePath>\build\net471\$(ProjectName).targets</PackagePath>
-    </None>
-
-    <!--build AnyCPU DEBUG-->
-    <None Include="bin\Debug\net471\$(ProjectName).dll" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\$(ProjectName).Debug.dll</PackagePath>
-      <Visible>false</Visible>
-    </None>
-    <None Include="bin\Debug\net471\$(ProjectName).xml" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\$(ProjectName).Debug.xml</PackagePath>
-    </None>
-
-    <!--build AnyCPU RELEASE-->
-    <None Include="bin\Release\net471\$(ProjectName).dll" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\$(ProjectName).Release.dll</PackagePath>
-      <Visible>false</Visible>
-    </None>
-    <None Include="bin\Release\net471\$(ProjectName).xml" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\$(ProjectName).Release.xml</PackagePath>
-    </None>
-
-    <!--build x86 DEBUG-->
-    <None Include="bin\x86\Debug\net471\$(ProjectName).dll" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\x86\$(ProjectName).Debug.dll</PackagePath>
-      <Visible>false</Visible>
-    </None>
-    <None Include="bin\x86\Debug\net471\$(ProjectName).xml" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\x86\$(ProjectName).Debug.xml</PackagePath>
-    </None>
-
-    <!--build x86 RELEASE-->
-    <None Include="bin\x86\Release\net471\$(ProjectName).dll" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\x86\$(ProjectName).Release.dll</PackagePath>
-      <Visible>false</Visible>
-    </None>
-    <None Include="bin\x86\Release\net471\$(ProjectName).xml" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\x86\$(ProjectName).Release.xml</PackagePath>
-    </None>
-
-    <!--build x64 DEBUG-->
-    <None Include="bin\x64\Debug\net471\$(ProjectName).dll" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\x64\$(ProjectName).Debug.dll</PackagePath>
-    </None>
-    <None Include="bin\x64\Debug\net471\$(ProjectName).xml" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\x64\$(ProjectName).Debug.xml</PackagePath>
-    </None>
-
-    <!--build x64 RELEASE-->
-    <None Include="bin\x64\Release\net471\$(ProjectName).dll" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\x64\$(ProjectName).Release.dll</PackagePath>
-    </None>
-    <None Include="bin\x64\Release\net471\$(ProjectName).xml" Visible="false">
-      <Pack>true</Pack>
-      <PackagePath>build\net471\win\x64\$(ProjectName).Release.xml</PackagePath>
-    </None>
+    <PackageReference Include="Exomia.Native" Version="1.0.0.5" Condition="'$(Configuration)'=='Debug'"/>
   </ItemGroup>
-  <ItemGroup>
-    <Reference Update="Exomia.Native">
-      <Private>false</Private>
-    </Reference>
+
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <PackageReference Include="Exomia.Native" Version="1.0.0.5"/>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <PackageReference Include="Exomia.Native.x86" Version="1.0.0.5"/>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <PackageReference Include="Exomia.Native.x64" Version="1.0.0.5"/>
   </ItemGroup>
 
 </Project>
