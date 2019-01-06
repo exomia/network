@@ -26,8 +26,6 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Exomia.Native;
-using Debugger = System.Diagnostics.Debugger;
 
 namespace Exomia.Network.Native
 {
@@ -78,7 +76,7 @@ namespace Exomia.Network.Native
         /// <param name="capacity">capacity (pow2)</param>
         public CircularBuffer(int capacity = 1024)
         {
-            _lock = new SpinLock(Debugger.IsAttached);
+            _lock = new SpinLock(System.Diagnostics.Debugger.IsAttached);
 
             if (capacity <= 0)
             {

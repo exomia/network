@@ -31,11 +31,11 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Exomia.Native;
 using Exomia.Network.Buffers;
 using Exomia.Network.DefaultPackets;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
+using Exomia.Network.Native;
 using Exomia.Network.Serialization;
 
 namespace Exomia.Network

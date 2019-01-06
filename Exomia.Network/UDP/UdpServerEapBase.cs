@@ -25,8 +25,8 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using Exomia.Native;
 using Exomia.Network.Buffers;
+using Exomia.Network.Native;
 using Exomia.Network.Serialization;
 using LZ4;
 
