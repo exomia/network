@@ -16,82 +16,40 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RepositoryType>git</RepositoryType>
     <IncludeBuildOutput>true</IncludeBuildOutput>
-    <PackageOutputPath>.</PackageOutputPath>
+    <PackageOutputPath>.</PackageOutputPath> 
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DocumentationFile></DocumentationFile>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>NU1605</WarningsAsErrors>
+    <DefineConstants Condition="'$(Platform)'=='AnyCPU'">DEBUG;TRACE;x86</DefineConstants>
+    <DefineConstants Condition="'$(Platform)'!='AnyCPU'">DEBUG;TRACE;$(Platform)</DefineConstants>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>NU1605</WarningsAsErrors>
+    <DefineConstants Condition="'$(Platform)'=='AnyCPU'">TRACE;x86</DefineConstants>
+    <DefineConstants Condition="'$(Platform)'!='AnyCPU'">TRACE;$(Platform)</DefineConstants>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Platform)'=='AnyCPU'">
+    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
     <PackageId>$(MSBuildProjectName)</PackageId>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors>NU1605</WarningsAsErrors>
-    <DefineConstants>DEBUG;TRACE;x86</DefineConstants>
-    <DocumentationFile></DocumentationFile>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <PackageId>$(MSBuildProjectName).x64</PackageId>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors>NU1605</WarningsAsErrors>
-    <DefineConstants>DEBUG;TRACE;x64</DefineConstants>
-    <DocumentationFile></DocumentationFile>
+  
+  <PropertyGroup Condition="'$(Platform)'!='AnyCPU'">
+    <AssemblyName>$(MSBuildProjectName).$(Platform)</AssemblyName>
+    <PackageId>$(MSBuildProjectName).$(Platform)</PackageId>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-    <PackageId>$(MSBuildProjectName).x86</PackageId>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors>NU1605</WarningsAsErrors>
-    <DefineConstants>DEBUG;TRACE;x86</DefineConstants>
-    <DocumentationFile></DocumentationFile>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <PackageId>$(MSBuildProjectName)</PackageId>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DebugType>none</DebugType>
-    <DebugSymbols>false</DebugSymbols>
-    <DefineConstants>TRACE;x86</DefineConstants>
-    <DocumentationFile></DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <PackageId>$(MSBuildProjectName).x64</PackageId>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DebugType>none</DebugType>
-    <DebugSymbols>false</DebugSymbols>
-    <DefineConstants>TRACE;x64</DefineConstants>
-    <DocumentationFile></DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-    <PackageId>$(MSBuildProjectName).x86</PackageId>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DebugType>none</DebugType>
-    <DebugSymbols>false</DebugSymbols>
-    <DefineConstants>TRACE;x86</DefineConstants>
-    <DocumentationFile></DocumentationFile>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
-  </PropertyGroup>
+  
   <ItemGroup>
     <PackageReference Include="lz4net" Version="1.0.15.93" />
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Exomia.Native" Version="1.0.0.5" Condition="'$(Configuration)'=='Debug'"/>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <PackageReference Include="Exomia.Native" Version="1.0.0.5"/>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-    <PackageReference Include="Exomia.Native.x86" Version="1.0.0.5"/>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <PackageReference Include="Exomia.Native.x64" Version="1.0.0.5"/>
-  </ItemGroup>
-
 </Project>

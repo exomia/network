@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -168,7 +168,7 @@ namespace Exomia.Network.TCP
                        0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
                    && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
             {
-                if (_circularBuffer.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b) &&
+                if (_circularBuffer.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b) &&
                     b == Constants.ZERO_BYTE)
                 {
                     fixed (byte* ptr = _bufferRead)
@@ -186,27 +186,32 @@ namespace Exomia.Network.TCP
                             responseID = *(uint*)ptr;
                             offset     = 4;
                         }
-                        if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+
+                        CompressionMode compressionMode =
+                            (CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK);
+                        if (compressionMode != CompressionMode.None)
                         {
                             offset += 4;
                         }
 
                         byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
-                        if (Serialization.Serialization.Deserialize(
+                        if (Serialization.Serialization.S2E(
                                 ptr, offset, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
                         {
-                            if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                            switch (compressionMode)
                             {
-                                int l = *(int*)(ptr + offset);
+                                case CompressionMode.Lz4:
+                                    int l = *(int*)(ptr + offset);
 
-                                byte[] buffer = ByteArrayPool.Rent(l);
-                                int s = LZ4Codec.Decode(
-                                    deserializeBuffer, 0, bufferLength, buffer, 0, l, true);
-                                if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                                    byte[] buffer = ByteArrayPool.Rent(l);
+                                    int s = LZ4Codec.Decode(
+                                        deserializeBuffer, 0, bufferLength, buffer, 0, l, true);
+                                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
 
-                                ByteArrayPool.Return(deserializeBuffer);
-                                deserializeBuffer = buffer;
-                                bufferLength      = l;
+                                    ByteArrayPool.Return(deserializeBuffer);
+                                    deserializeBuffer = buffer;
+                                    bufferLength      = l;
+                                    break;
                             }
 
                             ReceiveAsync();

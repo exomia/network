@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@ namespace Exomia.Network
         ///     runs the server and starts the listener
         /// </summary>
         /// <param name="port"></param>
-        /// <returns><b>true</b> if succesfull; <b>false</b> otherwise</returns>
+        /// <returns><b>true</b> if successful; <b>false</b> otherwise</returns>
         bool Run(int port);
 
         /// <summary>

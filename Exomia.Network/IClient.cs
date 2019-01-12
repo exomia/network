@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@ namespace Exomia.Network
         /// <param name="serverAddress"></param>
         /// <param name="port"></param>
         /// <param name="timeout"></param>
-        /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
+        /// <returns><b>true</b> if connect was successful; <b>false</b> otherwise</returns>
         bool Connect(string serverAddress, int port, int timeout = 10);
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace Exomia.Network
         /// <param name="ipAddresses"></param>
         /// <param name="port"></param>
         /// <param name="timeout"></param>
-        /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
+        /// <returns><b>true</b> if connect was successful; <b>false</b> otherwise</returns>
         bool Connect(IPAddress[] ipAddresses, int port, int timeout = 10);
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace Exomia.Network
         /// <param name="deserialize"></param>
         /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length,
-            DeserializePacket<TResult> deserialize);
+            DeserializePacketHandler<TResult> deserialize);
 
         /// <summary>
         ///     send data to the server
@@ -136,7 +136,7 @@ namespace Exomia.Network
         /// <param name="timeout">timeout</param>
         /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length,
-            DeserializePacket<TResult> deserialize, TimeSpan timeout);
+            DeserializePacketHandler<TResult> deserialize, TimeSpan timeout);
 
         /// <summary>
         ///     send data to the server
@@ -157,7 +157,7 @@ namespace Exomia.Network
         /// <param name="deserialize"></param>
         /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable,
-            DeserializePacket<TResult> deserialize);
+            DeserializePacketHandler<TResult> deserialize);
 
         /// <summary>
         ///     send data to the server
@@ -180,7 +180,7 @@ namespace Exomia.Network
         /// <param name="timeout">timeout</param>
         /// <returns>task of Response{TResult}</returns>
         Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable,
-            DeserializePacket<TResult> deserialize, TimeSpan timeout);
+            DeserializePacketHandler<TResult> deserialize, TimeSpan timeout);
 
         /// <summary>
         ///     send data to the server
@@ -203,7 +203,7 @@ namespace Exomia.Network
         /// <param name="data">struct data</param>
         /// <param name="deserialize"></param>
         /// <returns>task of Response{TResult}</returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, DeserializePacket<TResult> deserialize)
+        Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, DeserializePacketHandler<TResult> deserialize)
             where T : unmanaged;
 
         /// <summary>
@@ -229,7 +229,7 @@ namespace Exomia.Network
         /// <param name="deserialize"></param>
         /// <param name="timeout">timeout</param>
         /// <returns>task of Response{TResult}</returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, DeserializePacket<TResult> deserialize,
+        Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, DeserializePacketHandler<TResult> deserialize,
             TimeSpan timeout)
             where T : unmanaged;
 

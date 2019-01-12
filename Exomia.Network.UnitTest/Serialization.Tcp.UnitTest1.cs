@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,7 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(1337u, commandID);
             Assert.AreEqual(data.Length + 1 + 1, dataLength);
 
-            Assert.IsTrue(cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b));
+            Assert.IsTrue(cb.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b));
             Assert.AreEqual((byte)0, b);
 
             cb.Read(send, 0, dataLength, Constants.TCP_HEADER_SIZE);
@@ -85,7 +85,7 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(1337u, commandID);
             Assert.AreEqual(4 + data.Length + 1 + 1, dataLength);
 
-            Assert.IsTrue(cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b));
+            Assert.IsTrue(cb.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b));
             Assert.AreEqual((byte)0, b);
 
             cb.Read(send, 0, dataLength, Constants.TCP_HEADER_SIZE);
@@ -123,7 +123,7 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(1337u, commandID);
             Assert.IsTrue(4 + data.Length + 1 + 1 > dataLength);
 
-            Assert.IsTrue(cb.PeekByte(Constants.TCP_HEADER_SIZE + dataLength - 1, out byte b));
+            Assert.IsTrue(cb.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b));
             Assert.AreEqual((byte)0, b);
 
             cb.Read(send, 0, dataLength, Constants.TCP_HEADER_SIZE);

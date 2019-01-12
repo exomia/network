@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,6 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using Exomia.Network.Buffers;
-using Exomia.Network.DefaultPackets;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
@@ -248,7 +247,7 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandid">command id</param>
         /// <param name="deserialize"></param>
-        public void AddCommand(uint commandid, DeserializePacket<object> deserialize)
+        public void AddCommand(uint commandid, DeserializePacketHandler<object> deserialize)
         {
             if (commandid > Constants.USER_COMMAND_LIMIT)
             {

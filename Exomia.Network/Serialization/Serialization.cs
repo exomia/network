@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,18 +26,11 @@ namespace Exomia.Network.Serialization
 {
     static partial class Serialization
     {
-        internal const uint UNUSED_BIT_MASK = 0b10000000;
-
         internal const uint RESPONSE_BIT_MASK = 0b01000000;
 
-        internal const uint COMPRESSED_BIT_MASK = 0b00100000;
-
-        internal const uint ENCRYPT_BIT_MASK = 0b00010000;
-        internal const uint ENCRYPT_MODE_MASK = 0b00001111;
-
-        private const byte UNUSED_1_BIT = 1 << 7;
         private const byte RESPONSE_1_BIT = 1 << 6;
-        private const byte COMPRESSED_1_BIT = 1 << 5;
+
+        internal const byte COMPRESSED_MODE_MASK = 0b00111000;
 
         internal const int COMMAND_ID_SHIFT = 16;
         internal const int DATA_LENGTH_MASK = 0xFFFF;

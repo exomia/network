@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -59,15 +59,14 @@ namespace Exomia.Network.Serialization
         {
             // 8bit
             // 
-            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED BIT | ENCRYPT BIT | ENCRYPT MODE |
-            // | 7            | 6            | 5              | 4           | 3  2  1  0   |
-            // | VR: 0/1      | VR: 0/1      | VR: 0/1        | VR: 0/1     | VR: 0-15     | VR = VALUE RANGE
-            // -------------------------------------------------------------------------------------------------------------
-            // | 0            | 0            | 0              | 0           | 1  1  1  1   | ENCRYPT_MODE_MASK    0b00001111
-            // | 0            | 0            | 0              | 1           | 0  0  0  0   | ENCRYPT_BIT_MASK     0b00010000
-            // | 0            | 0            | 1              | 0           | 0  0  0  0   | COMPRESSED_BIT_MASK  0b00100000
-            // | 0            | 1            | 0              | 0           | 0  0  0  0   | RESPONSE_BIT_MASK    0b01000000
-            // | 1            | 0            | 0              | 0           | 0  0  0  0   | UNUSED_BIT_MASK      0b10000000
+            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
+            // | 7            | 6            | 5  4  3         | 2  1  0      |
+            // | VR: 0/1      | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
+            // ---------------------------------------------------------------------------------------------------------------------
+            // | 0            | 0            | 0  0  0         | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
+            // | 0            | 0            | 1  1  1         | 0  0  0      | COMPRESSED_MODE_MASK 0b00111000
+            // | 0            | 1            | 0  0  0         | 0  0  0      | RESPONSE_BIT_MASK    0b01000000
+            // | 1            | 0            | 0  0  0         | 0  0  0      | UNUSED_BIT_MASK      0b10000000
 
             // 32bit
             // 
@@ -97,11 +96,11 @@ namespace Exomia.Network.Serialization
                     }
                     if (s > 0)
                     {
-                        checksum = Serialize(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 8, out l);
+                        checksum = E2S(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 8, out l);
                         size     = Constants.TCP_HEADER_SIZE + 9 + l;
                         fixed (byte* ptr = send)
                         {
-                            *ptr = (byte)(RESPONSE_1_BIT | COMPRESSED_1_BIT | (byte)encryptionMode);
+                            *ptr = (byte)(RESPONSE_1_BIT | (byte)CompressionMode.Lz4 | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 9) & DATA_LENGTH_MASK)
                                 | (commandID << COMMAND_ID_SHIFT);
@@ -114,7 +113,7 @@ namespace Exomia.Network.Serialization
                     }
                 }
 
-                checksum = Serialize(data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, out l);
+                checksum = E2S(data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, out l);
                 size     = Constants.TCP_HEADER_SIZE + 5 + l;
                 fixed (byte* ptr = send)
                 {
@@ -141,11 +140,11 @@ namespace Exomia.Network.Serialization
                     }
                     if (s > 0)
                     {
-                        checksum = Serialize(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 4, out l);
+                        checksum = E2S(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 4, out l);
                         size     = Constants.TCP_HEADER_SIZE + 5 + l;
                         fixed (byte* ptr = send)
                         {
-                            *ptr = (byte)(COMPRESSED_1_BIT | (byte)encryptionMode);
+                            *ptr = (byte)((byte)CompressionMode.Lz4 | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 5) & DATA_LENGTH_MASK)
                                 | (commandID << COMMAND_ID_SHIFT);
@@ -157,7 +156,7 @@ namespace Exomia.Network.Serialization
                     }
                 }
 
-                checksum = Serialize(data, offset, length, send, Constants.TCP_HEADER_SIZE, out l);
+                checksum = E2S(data, offset, length, send, Constants.TCP_HEADER_SIZE, out l);
                 size     = Constants.TCP_HEADER_SIZE + 1 + l;
                 fixed (byte* ptr = send)
                 {
@@ -171,7 +170,7 @@ namespace Exomia.Network.Serialization
             }
         }
 
-        internal static ushort Deserialize(byte* src, int offset, int length, byte[] buffer, out int bufferLength)
+        internal static ushort S2E(byte* src, int offset, int length, byte[] buffer, out int bufferLength)
         {
             bufferLength = length - Math2.Ceiling(length / 8.0);
             uint checksum = s_h0;
@@ -190,25 +189,25 @@ namespace Exomia.Network.Serialization
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
 
-        internal static ushort Serialize(byte[] data, int offset, int length, byte[] buffer, int bufferOffset,
+        private static ushort E2S(byte[] data, int offset, int length, byte[] buffer, int bufferOffset,
             out int bufferLength)
         {
             bufferLength = length + Math2.Ceiling(length / 7.0f);
             uint checksum = s_h0;
             while (offset + 7 < length)
             {
-                Serialize(&checksum, buffer, bufferOffset, data, offset, 7);
+                E2S(&checksum, buffer, bufferOffset, data, offset, 7);
                 bufferOffset += 8;
                 offset       += 7;
             }
-            Serialize(&checksum, buffer, bufferOffset, data, offset, length - offset);
+            E2S(&checksum, buffer, bufferOffset, data, offset, length - offset);
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
 
         private static void Deserialize(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
         {
-            byte b = *(src + o2 + size - 1);
+            byte b = *((src + o2 + size) - 1);
             for (int i = 0; i < size - 1; ++i)
             {
                 byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
@@ -218,7 +217,7 @@ namespace Exomia.Network.Serialization
             *checksum += Math2.R1(b, 23) + C1;
         }
 
-        private static void Serialize(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)
+        private static void E2S(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)
         {
             byte b = ONE;
             for (int i = 0; i < size; ++i)

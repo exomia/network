@@ -25,33 +25,19 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     CommandID
+    ///     CompressionMode
+    ///     MASK 0b00111000
     /// </summary>
-    public static class CommandID
+    public enum CompressionMode : byte
     {
         /// <summary>
-        ///     RESPONSE_ID
+        ///     None
         /// </summary>
-        public const uint RESPONSE = 65534;
+        None = 0b000000,
 
         /// <summary>
-        ///     CLIENTINFO_ID
+        ///     LZ4
         /// </summary>
-        public const uint CLIENTINFO = 65533;
-
-        /// <summary>
-        ///     CONNECT_ID
-        /// </summary>
-        public const uint CONNECT = 65532;
-
-        /// <summary>
-        ///     DISCONNECT_ID
-        /// </summary>
-        public const uint DISCONNECT = 65531;
-
-        /// <summary>
-        ///     PING_ID
-        /// </summary>
-        public const uint PING = 65530;
+        Lz4 = 0b100000
     }
 }

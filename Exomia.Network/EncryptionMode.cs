@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,18 +25,19 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     CryptographyMode
+    ///     EncryptionMode
+    ///     MASK 0b00000111
     /// </summary>
     public enum EncryptionMode : byte
     {
         /// <summary>
         ///     None
         /// </summary>
-        None = 0,
+        None = 0b000,
 
         /// <summary>
         ///     End2End
         /// </summary>
-        End2End = 0b10001
+        End2End = 0b100
     }
 }

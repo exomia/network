@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,52 +39,4 @@ namespace Exomia.Network
         object data, uint responseid, TServerClient client)
         where T : class
         where TServerClient : ServerClientBase<T>;
-
-    /// <summary>
-    ///     DataReceivedHandler callback
-    /// </summary>
-    /// <param name="client">IClient</param>
-    /// <param name="data">data</param>
-    /// <returns></returns>
-    public delegate bool DataReceivedHandler(IClient client, object data);
-
-    /// <summary>
-    ///     DisconnectedHandler callback
-    /// </summary>
-    /// <param name="client">client</param>
-    /// <param name="reason">reason</param>
-    public delegate void DisconnectedHandler(IClient client, DisconnectReason reason);
-
-    /// <summary>
-    ///     ClientActionHandler callback
-    /// </summary>
-    /// <typeparam name="T">Socket|EndPoint</typeparam>
-    /// <param name="arg0"></param>
-    public delegate void ClientActionHandler<in T>(T arg0) where T : class;
-
-    /// <summary>
-    ///     ClientDisconnectHandler callback
-    /// </summary>
-    /// <typeparam name="T">Socket|EndPoint</typeparam>
-    /// <param name="arg0"></param>
-    /// <param name="reason">reason</param>
-    public delegate void ClientDisconnectHandler<in T>(T arg0, DisconnectReason reason) where T : class;
-
-    /// <summary>
-    ///     ClientInfoHandler callback
-    /// </summary>
-    /// <param name="client">ServerClient</param>
-    /// <param name="oldValue">oldValue</param>
-    /// <param name="newValue">newValue</param>
-    public delegate void ClientInfoHandler<in T, TArg0>(T client, object oldValue, object newValue)
-        where T : ServerClientBase<TArg0>
-        where TArg0 : class;
-
-    /// <summary>
-    ///     DeserializePacket callback
-    /// </summary>
-    /// <typeparam name="TResult"></typeparam>
-    /// <param name="packet"></param>
-    /// <returns></returns>
-    public delegate TResult DeserializePacket<out TResult>(in Packet packet);
 }

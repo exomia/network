@@ -25,33 +25,10 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     CommandID
+    ///     ClientDisconnectHandler callback
     /// </summary>
-    public static class CommandID
-    {
-        /// <summary>
-        ///     RESPONSE_ID
-        /// </summary>
-        public const uint RESPONSE = 65534;
-
-        /// <summary>
-        ///     CLIENTINFO_ID
-        /// </summary>
-        public const uint CLIENTINFO = 65533;
-
-        /// <summary>
-        ///     CONNECT_ID
-        /// </summary>
-        public const uint CONNECT = 65532;
-
-        /// <summary>
-        ///     DISCONNECT_ID
-        /// </summary>
-        public const uint DISCONNECT = 65531;
-
-        /// <summary>
-        ///     PING_ID
-        /// </summary>
-        public const uint PING = 65530;
-    }
+    /// <typeparam name="T">Socket|EndPoint</typeparam>
+    /// <param name="arg0"></param>
+    /// <param name="reason">reason</param>
+    public delegate void ClientDisconnectHandler<in T>(T arg0, DisconnectReason reason) where T : class;
 }

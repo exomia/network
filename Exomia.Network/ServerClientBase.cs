@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,8 @@ namespace Exomia.Network
         ///     Socket|Endpoint
         /// </summary>
         protected T _arg0;
-        
-        private DateTime _lastReceivedPacketTimeStamp = DateTime.Now;
+
+        private DateTime _lastReceivedPacketTimeStamp;
 
         /// <summary>
         ///     LastReceivedPacketTimeStamp

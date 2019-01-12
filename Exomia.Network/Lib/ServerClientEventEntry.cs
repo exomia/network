@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,10 +28,10 @@ namespace Exomia.Network.Lib
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        internal readonly DeserializePacket<object> _deserialize;
+        internal readonly DeserializePacketHandler<object> _deserialize;
         private readonly Event<ClientDataReceivedHandler<T, TServerClient>> _dataReceived;
 
-        public ServerClientEventEntry(DeserializePacket<object> deserialize)
+        public ServerClientEventEntry(DeserializePacketHandler<object> deserialize)
         {
             _dataReceived = new Event<ClientDataReceivedHandler<T, TServerClient>>();
             _deserialize  = deserialize;

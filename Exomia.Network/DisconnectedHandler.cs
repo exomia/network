@@ -25,33 +25,9 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     CommandID
+    ///     DisconnectedHandler callback
     /// </summary>
-    public static class CommandID
-    {
-        /// <summary>
-        ///     RESPONSE_ID
-        /// </summary>
-        public const uint RESPONSE = 65534;
-
-        /// <summary>
-        ///     CLIENTINFO_ID
-        /// </summary>
-        public const uint CLIENTINFO = 65533;
-
-        /// <summary>
-        ///     CONNECT_ID
-        /// </summary>
-        public const uint CONNECT = 65532;
-
-        /// <summary>
-        ///     DISCONNECT_ID
-        /// </summary>
-        public const uint DISCONNECT = 65531;
-
-        /// <summary>
-        ///     PING_ID
-        /// </summary>
-        public const uint PING = 65530;
-    }
+    /// <param name="client">client</param>
+    /// <param name="reason">reason</param>
+    public delegate void DisconnectedHandler(IClient client, DisconnectReason reason);
 }
