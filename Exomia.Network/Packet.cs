@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,18 +25,22 @@
 namespace Exomia.Network
 {
     /// <summary>
+    ///     Packet readonly struct
     /// </summary>
     public readonly struct Packet
     {
         /// <summary>
+        ///     Buffer
         /// </summary>
         public readonly byte[] Buffer;
 
         /// <summary>
+        ///     Offset
         /// </summary>
         public readonly int Offset;
 
         /// <summary>
+        ///     Length
         /// </summary>
         public readonly int Length;
 

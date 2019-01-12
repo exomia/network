@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@
 #endregion
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -76,7 +77,7 @@ namespace Exomia.Network.Native
         /// <param name="capacity">capacity (pow2)</param>
         public CircularBuffer(int capacity = 1024)
         {
-            _lock = new SpinLock(System.Diagnostics.Debugger.IsAttached);
+            _lock = new SpinLock(Debugger.IsAttached);
 
             if (capacity <= 0)
             {
@@ -389,15 +390,14 @@ namespace Exomia.Network.Native
 
                 // 8bit
                 // 
-                // | UNUSED BIT   | RESPONSE BIT | COMPRESSED BIT | ENCRYPT BIT | ENCRYPT MODE |
-                // | 7            | 6            | 5              | 4           | 3  2  1  0   |
-                // | VR: 0/1      | VR: 0/1      | VR: 0/1        | VR: 0/1     | VR: 0-15     | VR = VALUE RANGE
-                // -------------------------------------------------------------------------------------------------------------
-                // | 0            | 0            | 0              | 0           | 1  1  1  1   | ENCRYPT_MODE_MASK    0b00001111
-                // | 0            | 0            | 0              | 1           | 0  0  0  0   | ENCRYPT_BIT_MASK     0b00010000
-                // | 0            | 0            | 1              | 0           | 0  0  0  0   | COMPRESSED_BIT_MASK  0b00100000
-                // | 0            | 1            | 0              | 0           | 0  0  0  0   | RESPONSE_BIT_MASK    0b01000000
-                // | 1            | 0            | 0              | 0           | 0  0  0  0   | UNUSED_BIT_MASK      0b10000000
+                // | UNUSED BIT   | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
+                // | 7            | 6            | 5  4  3         | 2  1  0      |
+                // | VR: 0/1      | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
+                // ---------------------------------------------------------------------------------------------------------------------
+                // | 0            | 0            | 0  0  0         | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
+                // | 0            | 0            | 1  1  1         | 0  0  0      | COMPRESSED_MODE_MASK 0b00111000
+                // | 0            | 1            | 0  0  0         | 0  0  0      | RESPONSE_BIT_MASK    0b01000000
+                // | 1            | 0            | 0  0  0         | 0  0  0      | UNUSED_BIT_MASK      0b10000000
 
                 // 32bit
                 // 
@@ -415,7 +415,7 @@ namespace Exomia.Network.Native
                     packetHeader = *(_ptr + _tail + skip);
                     uint h2 = *(uint*)(_ptr + _tail + skip + 1);
                     commandID  = h2 >> Serialization.Serialization.COMMAND_ID_SHIFT;
-                    dataLength = (int)(h2 & Serialization.Serialization.COMMAND_ID_SHIFT);
+                    dataLength = (int)(h2 & Serialization.Serialization.DATA_LENGTH_MASK);
                     checksum   = *(ushort*)(_ptr + _tail + skip + 5);
                 }
                 else if (_tail + skip < _capacity)

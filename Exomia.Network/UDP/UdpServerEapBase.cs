@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -211,29 +211,31 @@ namespace Exomia.Network.UDP
                         offset     = 4;
                     }
                     byte[] payload;
-                    if ((packetHeader & Serialization.Serialization.COMPRESSED_BIT_MASK) != 0)
+                    switch ((CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK))
                     {
-                        int l = *(int*)(src + offset);
-                        offset += 4;
+                        case CompressionMode.Lz4:
+                            int l = *(int*)(src + offset);
+                            offset += 4;
 
-                        payload = ByteArrayPool.Rent(l);
-                        int s = LZ4Codec.Decode(
-                            e.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l, true);
-                        if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                            payload = ByteArrayPool.Rent(l);
+                            int s = LZ4Codec.Decode(
+                                e.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l, true);
+                            if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
 
-                        DeserializeData(ep, commandID, payload, 0, l, responseID);
-                    }
-                    else
-                    {
-                        dataLength -= offset;
-                        payload    =  ByteArrayPool.Rent(dataLength);
+                            DeserializeData(ep, commandID, payload, 0, l, responseID);
+                            break;
+                        case CompressionMode.None:
+                        default:
+                            dataLength -= offset;
+                            payload    =  ByteArrayPool.Rent(dataLength);
 
-                        fixed (byte* dest = payload)
-                        {
-                            Mem.Cpy(dest, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
-                        }
+                            fixed (byte* dest = payload)
+                            {
+                                Mem.Cpy(dest, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
+                            }
 
-                        DeserializeData(ep, commandID, payload, 0, dataLength, responseID);
+                            DeserializeData(ep, commandID, payload, 0, dataLength, responseID);
+                            break;
                     }
                 }
             }

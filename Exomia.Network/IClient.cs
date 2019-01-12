@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@ namespace Exomia.Network
         /// <param name="serverAddress"></param>
         /// <param name="port"></param>
         /// <param name="timeout"></param>
-        /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
+        /// <returns><b>true</b> if connect was successful; <b>false</b> otherwise</returns>
         bool Connect(string serverAddress, int port, int timeout = 10);
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace Exomia.Network
         /// <param name="ipAddresses"></param>
         /// <param name="port"></param>
         /// <param name="timeout"></param>
-        /// <returns><b>true</b> if connect was succesfull; <b>false</b> otherwise</returns>
+        /// <returns><b>true</b> if connect was successful; <b>false</b> otherwise</returns>
         bool Connect(IPAddress[] ipAddresses, int port, int timeout = 10);
 
         /// <summary>

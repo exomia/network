@@ -12,7 +12,7 @@
 
 ### Async IO
 
-- [ ] build client & server classes which use \*\*\*Async instead of Begin\*\*\* and End\*\*\*
+- [x] build client & server classes which use \*\*\*Async instead of Begin\*\*\* and End\*\*\*
 
 ### Security
 

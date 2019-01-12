@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -55,7 +55,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     <c>true</c> if no SendError occured; <c>false</c> otherwise
+        ///     implicit operator TResult
         /// </summary>
         /// <param name="r">instance of Response{TResult}</param>
         public static implicit operator TResult(in Response<TResult> r)

@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,8 @@ namespace Exomia.Network.Native
         /// <param name="src">source ptr</param>
         /// <param name="count">count of bytes to copy</param>
         [SuppressUnmanagedCodeSecurity]
-        [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        [DllImport(
+            "msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern void Cpy(
             void* dest,
             void* src,
@@ -53,7 +54,8 @@ namespace Exomia.Network.Native
         /// <param name="value">value to be set</param>
         /// <param name="count">count of bytes</param>
         [SuppressUnmanagedCodeSecurity]
-        [DllImport("msvcrt.dll", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        [DllImport(
+            "msvcrt.dll", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern void* Set(
             void* dest,
             int value,

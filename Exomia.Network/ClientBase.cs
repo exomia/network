@@ -1,6 +1,6 @@
 ﻿#region MIT License
 
-// Copyright (c) 2018 exomia - Daniel Bätz
+// Copyright (c) 2019 exomia - Daniel Bätz
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -118,8 +119,8 @@ namespace Exomia.Network
             _taskCompletionSources =
                 new Dictionary<uint, TaskCompletionSource<Packet>>(INITIAL_TASK_COMPLETION_QUEUE_SIZE);
 
-            _lockTaskCompletionSources = new SpinLock(System.Diagnostics.Debugger.IsAttached);
-            _dataReceivedCallbacksLock = new SpinLock(System.Diagnostics.Debugger.IsAttached);
+            _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
+            _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
             _responseID                = 1;
 
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
