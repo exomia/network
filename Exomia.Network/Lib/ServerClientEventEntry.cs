@@ -28,10 +28,10 @@ namespace Exomia.Network.Lib
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        internal readonly DeserializePacket<object> _deserialize;
+        internal readonly DeserializePacketHandler<object> _deserialize;
         private readonly Event<ClientDataReceivedHandler<T, TServerClient>> _dataReceived;
 
-        public ServerClientEventEntry(DeserializePacket<object> deserialize)
+        public ServerClientEventEntry(DeserializePacketHandler<object> deserialize)
         {
             _dataReceived = new Event<ClientDataReceivedHandler<T, TServerClient>>();
             _deserialize  = deserialize;

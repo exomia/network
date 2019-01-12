@@ -307,7 +307,7 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandid">command id</param>
         /// <param name="deserialize"></param>
-        public void AddCommand(uint commandid, DeserializePacket<object> deserialize)
+        public void AddCommand(uint commandid, DeserializePacketHandler<object> deserialize)
         {
             if (commandid > Constants.USER_COMMAND_LIMIT)
             {
@@ -426,7 +426,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length,
-            DeserializePacket<TResult> deserialize)
+            DeserializePacketHandler<TResult> deserialize)
         {
             return SendR(commandid, data, offset, length, deserialize, s_defaultTimeout);
         }
@@ -441,7 +441,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public async Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length,
-            DeserializePacket<TResult> deserialize, TimeSpan timeout)
+            DeserializePacketHandler<TResult> deserialize, TimeSpan timeout)
         {
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
 
@@ -520,7 +520,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable,
-            DeserializePacket<TResult> deserialize)
+            DeserializePacketHandler<TResult> deserialize)
         {
             byte[] dataB = serializable.Serialize(out int length);
             return SendR(commandid, dataB, 0, length, deserialize, s_defaultTimeout);
@@ -536,7 +536,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable,
-            DeserializePacket<TResult> deserialize, TimeSpan timeout)
+            DeserializePacketHandler<TResult> deserialize, TimeSpan timeout)
         {
             byte[] dataB = serializable.Serialize(out int length);
             return SendR(commandid, dataB, 0, length, deserialize, timeout);
@@ -560,7 +560,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data,
-            DeserializePacket<TResult> deserialize) where T : unmanaged
+            DeserializePacketHandler<TResult> deserialize) where T : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
             return SendR(commandid, dataB, 0, length, deserialize, s_defaultTimeout);
@@ -577,7 +577,7 @@ namespace Exomia.Network
 
         /// <inheritdoc />
         public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data,
-            DeserializePacket<TResult> deserialize, TimeSpan timeout) where T : unmanaged
+            DeserializePacketHandler<TResult> deserialize, TimeSpan timeout) where T : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
             return SendR(commandid, dataB, 0, length, deserialize, timeout);

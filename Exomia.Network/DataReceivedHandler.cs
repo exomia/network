@@ -22,38 +22,13 @@
 
 #endregion
 
-namespace Exomia.Network.Lib
+namespace Exomia.Network
 {
-    sealed class ClientEventEntry
-    {
-        internal readonly DeserializePacketHandler<object> _deserialize;
-        private readonly Event<DataReceivedHandler> _dataReceived;
-
-        public ClientEventEntry(DeserializePacketHandler<object> deserialize)
-        {
-            _dataReceived = new Event<DataReceivedHandler>();
-            _deserialize  = deserialize;
-        }
-
-        public void Add(DataReceivedHandler callback)
-        {
-            _dataReceived.Add(callback);
-        }
-
-        public void Remove(DataReceivedHandler callback)
-        {
-            _dataReceived.Remove(callback);
-        }
-
-        public void Raise(IClient client, object result)
-        {
-            for (int i = _dataReceived.Count - 1; i >= 0; --i)
-            {
-                if (!_dataReceived[i].Invoke(client, result))
-                {
-                    _dataReceived.Remove(i);
-                }
-            }
-        }
-    }
+    /// <summary>
+    ///     DataReceivedHandler callback
+    /// </summary>
+    /// <param name="client">IClient</param>
+    /// <param name="data">data</param>
+    /// <returns></returns>
+    public delegate bool DataReceivedHandler(IClient client, object data);
 }

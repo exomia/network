@@ -25,6 +25,14 @@
 namespace Exomia.Network
 {
     /// <summary>
+    ///     DeserializePacket callback
+    /// </summary>
+    /// <typeparam name="TResult"></typeparam>
+    /// <param name="packet"></param>
+    /// <returns></returns>
+    public delegate TResult DeserializePacketHandler<out TResult>(in Packet packet);
+
+    /// <summary>
     ///     Packet readonly struct
     /// </summary>
     public readonly struct Packet
