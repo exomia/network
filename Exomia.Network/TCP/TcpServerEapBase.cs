@@ -26,6 +26,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
+using Exomia.Network.Encoding;
 using Exomia.Network.Native;
 using LZ4;
 
@@ -277,7 +278,7 @@ namespace Exomia.Network.TCP
                         }
 
                         byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
-                        if (Serialization.Serialization.S2E(
+                        if (PayloadEncoding.Decode(
                                 ptr, offset, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
                         {
                             switch (compressionMode)

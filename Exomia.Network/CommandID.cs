@@ -30,28 +30,18 @@ namespace Exomia.Network
     public static class CommandID
     {
         /// <summary>
-        ///     RESPONSE_ID
-        /// </summary>
-        public const uint RESPONSE = 65534;
-
-        /// <summary>
-        ///     CLIENTINFO_ID
-        /// </summary>
-        public const uint CLIENTINFO = 65533;
-
-        /// <summary>
         ///     CONNECT_ID
         /// </summary>
-        public const uint CONNECT = 65532;
+        public const uint CONNECT = 65534;
 
         /// <summary>
         ///     DISCONNECT_ID
         /// </summary>
-        public const uint DISCONNECT = 65531;
+        public const uint DISCONNECT = 65533;
 
         /// <summary>
         ///     PING_ID
         /// </summary>
-        public const uint PING = 65530;
+        public const uint PING = 65532;
     }
 }

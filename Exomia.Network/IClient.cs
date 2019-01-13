@@ -203,7 +203,8 @@ namespace Exomia.Network
         /// <param name="data">struct data</param>
         /// <param name="deserialize"></param>
         /// <returns>task of Response{TResult}</returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, DeserializePacketHandler<TResult> deserialize)
+        Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data,
+            DeserializePacketHandler<TResult> deserialize)
             where T : unmanaged;
 
         /// <summary>
@@ -229,7 +230,8 @@ namespace Exomia.Network
         /// <param name="deserialize"></param>
         /// <param name="timeout">timeout</param>
         /// <returns>task of Response{TResult}</returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, DeserializePacketHandler<TResult> deserialize,
+        Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data,
+            DeserializePacketHandler<TResult> deserialize,
             TimeSpan timeout)
             where T : unmanaged;
 
