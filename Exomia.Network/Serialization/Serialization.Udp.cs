@@ -29,18 +29,49 @@ using LZ4;
 
 namespace Exomia.Network.Serialization
 {
+    /// <content>
+    ///     A serialization.
+    /// </content>
     static unsafe partial class Serialization
     {
+        /// <summary>
+        ///     Serialize UDP.
+        /// </summary>
+        /// <param name="commandID">      [out] Identifier for the command. </param>
+        /// <param name="data">           The data. </param>
+        /// <param name="offset">         The offset. </param>
+        /// <param name="length">         The length. </param>
+        /// <param name="responseID">     Identifier for the response. </param>
+        /// <param name="encryptionMode"> The encryption mode. </param>
+        /// <param name="send">           [out] The send. </param>
+        /// <param name="size">           [out] The size. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeUdp(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode, out byte[] send, out int size)
+        internal static void SerializeUdp(uint           commandID, byte[] data, int offset, int length,
+                                          uint           responseID,
+                                          EncryptionMode encryptionMode, out byte[] send, out int size)
         {
             send = ByteArrayPool.Rent(Constants.UDP_HEADER_SIZE + 8 + length);
             SerializeUdp(commandID, data, offset, length, responseID, encryptionMode, send, out size);
         }
 
-        internal static void SerializeUdp(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode, byte[] send, out int size)
+        /// <summary>
+        ///     Serialize UDP.
+        /// </summary>
+        /// <param name="commandID">      [out] Identifier for the command. </param>
+        /// <param name="data">           The data. </param>
+        /// <param name="offset">         The offset. </param>
+        /// <param name="length">         The length. </param>
+        /// <param name="responseID">     Identifier for the response. </param>
+        /// <param name="encryptionMode"> The encryption mode. </param>
+        /// <param name="send">           The send. </param>
+        /// <param name="size">           [out] The size. </param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        internal static void SerializeUdp(uint           commandID, byte[] data, int offset, int length,
+                                          uint           responseID,
+                                          EncryptionMode encryptionMode, byte[] send, out int size)
         {
             // 8bit
             // 
@@ -85,7 +116,7 @@ namespace Exomia.Network.Serialization
                                 ((uint)(s + 8) & DATA_LENGTH_MASK) |
                                 (commandID << COMMAND_ID_SHIFT);
                             *(uint*)(ptr + 5) = responseID;
-                            *(int*)(ptr + 9)  = length;
+                            *(int*)(ptr  + 9) = length;
                         }
                         return;
                     }
@@ -140,9 +171,16 @@ namespace Exomia.Network.Serialization
             }
         }
 
+        /// <summary>
+        ///     A byte[] extension method that gets header UDP.
+        /// </summary>
+        /// <param name="header">       The header to act on. </param>
+        /// <param name="packetHeader"> [out] The packet header. </param>
+        /// <param name="commandID">    [out] Identifier for the command. </param>
+        /// <param name="dataLength">   [out] Length of the data. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void GetHeaderUdp(this byte[] header, out byte packetHeader, out uint commandID,
-            out int dataLength)
+                                          out  int    dataLength)
         {
             // 8bit
             // 

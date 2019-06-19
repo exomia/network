@@ -25,8 +25,8 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     EncryptionMode
-    ///     MASK 0b00000111
+    ///     Values that represent EncryptionMode.
+    ///     MASK 0b00000111.
     /// </summary>
     public enum EncryptionMode : byte
     {

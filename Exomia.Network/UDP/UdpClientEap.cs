@@ -22,8 +22,6 @@
 
 #endregion
 
-#pragma warning disable 1574
-
 using System;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
@@ -33,15 +31,24 @@ using LZ4;
 
 namespace Exomia.Network.UDP
 {
-    /// <inheritdoc cref="ClientBase" />
     /// <summary>
     ///     A UDP-Client build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>
     public sealed class UdpClientEap : ClientBase
     {
+        /// <summary>
+        ///     Size of the maximum packet.
+        /// </summary>
         private readonly int _maxPacketSize;
 
+        /// <summary>
+        ///     Socket asynchronous event information.
+        /// </summary>
         private readonly SocketAsyncEventArgs _receiveEventArgs;
+
+        /// <summary>
+        ///     The send event arguments pool.
+        /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <inheritdoc />
@@ -55,9 +62,16 @@ namespace Exomia.Network.UDP
             _receiveEventArgs.Completed += ReceiveAsyncCompleted;
             _receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
 
-            _sendEventArgsPool = new SocketAsyncEventArgsPool(32);
+            _sendEventArgsPool = new SocketAsyncEventArgsPool();
         }
 
+        /// <summary>
+        ///     Attempts to create socket.
+        /// </summary>
+        /// <param name="socket"> [out] The socket. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         private protected override bool TryCreateSocket(out Socket socket)
         {
             try
@@ -85,6 +99,9 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <summary>
+        ///     Receive asynchronous.
+        /// </summary>
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -102,8 +119,19 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <summary>
+        ///     Begins send data.
+        /// </summary>
+        /// <param name="commandid">  The commandid. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="offset">     The offset. </param>
+        /// <param name="length">     The length. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
+        /// <returns>
+        ///     A SendError.
+        /// </returns>
         private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
-            uint responseID)
+                                                           uint responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -116,7 +144,8 @@ namespace Exomia.Network.UDP
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
                 Serialization.Serialization.SerializeUdp(
-                    commandid, data, offset, length, responseID, EncryptionMode.None, sendEventArgs.Buffer,
+                    commandid, data, offset, length, responseID, EncryptionMode.None,
+                    sendEventArgs.Buffer,
                     out int size);
                 sendEventArgs.SetBuffer(0, size);
 
@@ -150,6 +179,12 @@ namespace Exomia.Network.UDP
             return SendError.Invalid;
         }
 
+        /// <summary>
+        ///     Receive asynchronous completed.
+        /// </summary>
+        /// <param name="sender"> Source of the event. </param>
+        /// <param name="e">      Socket asynchronous event information. </param>
+        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private unsafe void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
@@ -168,7 +203,7 @@ namespace Exomia.Network.UDP
             if (e.BytesTransferred == dataLength + Constants.UDP_HEADER_SIZE)
             {
                 uint responseID = 0;
-                int offset = 0;
+                int  offset     = 0;
                 fixed (byte* src = e.Buffer)
                 {
                     if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
@@ -211,6 +246,11 @@ namespace Exomia.Network.UDP
             ReceiveAsync();
         }
 
+        /// <summary>
+        ///     Sends an asynchronous completed.
+        /// </summary>
+        /// <param name="sender"> Source of the event. </param>
+        /// <param name="e">      Socket asynchronous event information. </param>
         private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)

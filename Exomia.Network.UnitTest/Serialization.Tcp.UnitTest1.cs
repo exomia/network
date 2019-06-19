@@ -72,7 +72,8 @@ namespace Exomia.Network.UnitTest
             byte[] data = { 0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000 };
 
             Serialization.Serialization.SerializeTcp(
-                1337u, data, 0, data.Length, 654584478, EncryptionMode.None, out byte[] send, out int size);
+                1337u, data, 0, data.Length, 654584478, EncryptionMode.None, out byte[] send,
+                out int size);
             Assert.AreEqual(size, Constants.TCP_HEADER_SIZE + 4 + data.Length + 1 + 1);
 
             CircularBuffer cb = new CircularBuffer();
@@ -103,7 +104,7 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void SerializeTcpNoResponseBigPayloadTest()
         {
-            Random rnd = new Random(7576);
+            Random rnd  = new Random(7576);
             byte[] data = new byte[(1 << 12) + 200];
 
             //rnd.NextBytes(data);

@@ -25,22 +25,22 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     CommandID
+    ///     CommandID.
     /// </summary>
     public static class CommandID
     {
         /// <summary>
-        ///     CONNECT_ID
+        ///     CONNECT_ID.
         /// </summary>
         public const uint CONNECT = 65534;
 
         /// <summary>
-        ///     DISCONNECT_ID
+        ///     DISCONNECT_ID.
         /// </summary>
         public const uint DISCONNECT = 65533;
 
         /// <summary>
-        ///     PING_ID
+        ///     PING_ID.
         /// </summary>
         public const uint PING = 65532;
     }

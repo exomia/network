@@ -25,9 +25,9 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     DisconnectedHandler callback
+    ///     DisconnectedHandler callback.
     /// </summary>
-    /// <param name="client">client</param>
-    /// <param name="reason">reason</param>
+    /// <param name="client"> The client. </param>
+    /// <param name="reason"> The reason. </param>
     public delegate void DisconnectedHandler(IClient client, DisconnectReason reason);
 }

@@ -328,7 +328,7 @@ SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where 
 ## License
 
 MIT License
-Copyright (c) 2018 exomia
+Copyright (c) 2019 exomia
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -32,16 +32,15 @@ using LZ4;
 
 namespace Exomia.Network.TCP
 {
-    /// <inheritdoc />
     /// <summary>
     ///     A TCP-Server build with the "Asynchronous Programming Model" (APM)
     /// </summary>
-    /// <typeparam name="TServerClient">TServerClient</typeparam>
+    /// <typeparam name="TServerClient"> TServerClient. </typeparam>
     public abstract class TcpServerApmBase<TServerClient> : ServerBase<Socket, TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
         /// <summary>
-        ///     _maxPacketSize
+        ///     _maxPacketSize.
         /// </summary>
         protected readonly int _maxPacketSize;
 
@@ -55,13 +54,14 @@ namespace Exomia.Network.TCP
 
         /// <inheritdoc />
         public override SendError SendTo(Socket arg0, uint commandid, byte[] data, int offset, int length,
-            uint responseid)
+                                         uint   responseid)
         {
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
             {
                 Serialization.Serialization.SerializeTcp(
-                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
+                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send,
+                    out int size);
                 try
                 {
                     SendStateObject state;
@@ -94,6 +94,14 @@ namespace Exomia.Network.TCP
             return SendError.Invalid;
         }
 
+        /// <summary>
+        ///     Executes the run action.
+        /// </summary>
+        /// <param name="port">     The port. </param>
+        /// <param name="listener"> [out] The listener. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         private protected override bool OnRun(int port, out Socket listener)
         {
             try
@@ -125,6 +133,9 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <summary>
+        ///     Listen asynchronous.
+        /// </summary>
         private protected override void ListenAsync()
         {
             try
@@ -155,6 +166,10 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of begin send callback.
+        /// </summary>
+        /// <param name="iar"> The iar. </param>
         private void BeginSendCallback(IAsyncResult iar)
         {
             SendStateObject state = (SendStateObject)iar.AsyncState;
@@ -175,6 +190,10 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of accept callback.
+        /// </summary>
+        /// <param name="ar"> The archive. </param>
         private void AcceptCallback(IAsyncResult ar)
         {
             try
@@ -204,6 +223,10 @@ namespace Exomia.Network.TCP
             ListenAsync();
         }
 
+        /// <summary>
+        ///     Receive asynchronous.
+        /// </summary>
+        /// <param name="state"> The state. </param>
         private void ReceiveAsync(ServerClientStateObject state)
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -211,7 +234,8 @@ namespace Exomia.Network.TCP
                 try
                 {
                     state.Socket.BeginReceive(
-                        state.BufferWrite, 0, state.BufferWrite.Length, SocketFlags.None, ReceiveDataCallback, state);
+                        state.BufferWrite, 0, state.BufferWrite.Length, SocketFlags.None, ReceiveDataCallback,
+                        state);
                 }
                 catch (ObjectDisposedException) { InvokeClientDisconnect(state.Socket, DisconnectReason.Aborted); }
                 catch (SocketException) { InvokeClientDisconnect(state.Socket, DisconnectReason.Error); }
@@ -219,10 +243,15 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of receive data callback.
+        /// </summary>
+        /// <param name="iar"> The iar. </param>
+        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private unsafe void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
-            int length;
+            int                     length;
             try
             {
                 if ((length = state.Socket.EndReceive(iar)) <= 0)
@@ -248,10 +277,10 @@ namespace Exomia.Network.TCP
             }
 
             CircularBuffer circularBuffer = state.CircularBuffer;
-            int size = circularBuffer.Write(state.BufferWrite, 0, length);
+            int            size           = circularBuffer.Write(state.BufferWrite, 0, length);
             while (circularBuffer.PeekHeader(
                        0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
-                   && dataLength <= circularBuffer.Count - Constants.TCP_HEADER_SIZE)
+                && dataLength <= circularBuffer.Count - Constants.TCP_HEADER_SIZE)
             {
                 if (circularBuffer.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b) &&
                     b == Constants.ZERO_BYTE)
@@ -265,7 +294,7 @@ namespace Exomia.Network.TCP
                         }
 
                         uint responseID = 0;
-                        int offset = 0;
+                        int  offset     = 0;
                         if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                         {
                             responseID = *(uint*)ptr;
@@ -316,17 +345,45 @@ namespace Exomia.Network.TCP
             ReceiveAsync(state);
         }
 
+        /// <summary>
+        ///     A send state object.
+        /// </summary>
         private struct SendStateObject
         {
+            /// <summary>
+            ///     The buffer.
+            /// </summary>
             public byte[] Buffer;
+
+            /// <summary>
+            ///     The socket.
+            /// </summary>
             public Socket Socket;
         }
 
+        /// <summary>
+        ///     A server client state object. This class cannot be inherited.
+        /// </summary>
         private sealed class ServerClientStateObject
         {
+            /// <summary>
+            ///     The buffer write.
+            /// </summary>
             public byte[] BufferWrite;
+
+            /// <summary>
+            ///     The buffer read.
+            /// </summary>
             public byte[] BufferRead;
+
+            /// <summary>
+            ///     Buffer for circular data.
+            /// </summary>
             public CircularBuffer CircularBuffer;
+
+            /// <summary>
+            ///     The socket.
+            /// </summary>
             public Socket Socket;
         }
     }

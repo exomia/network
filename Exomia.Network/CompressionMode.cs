@@ -25,8 +25,8 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     CompressionMode
-    ///     MASK 0b00111000
+    ///     Values that represent CompressionMode.
+    ///     MASK 0b00111000.
     /// </summary>
     public enum CompressionMode : byte
     {

@@ -25,9 +25,9 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     ClientActionHandler callback
+    ///     ClientActionHandler callback.
     /// </summary>
-    /// <typeparam name="T">Socket|EndPoint</typeparam>
-    /// <param name="arg0"></param>
+    /// <typeparam name="T"> Socket|EndPoint. </typeparam>
+    /// <param name="arg0"> . </param>
     public delegate void ClientActionHandler<in T>(T arg0) where T : class;
 }

@@ -27,23 +27,23 @@ using System.Runtime.InteropServices;
 namespace Exomia.Network.DefaultPackets
 {
     /// <summary>
-    ///     PingPacket
+    ///     A ping packet.
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Size = 8)]
     public struct PingPacket
     {
         /// <summary>
-        ///     TimeStamp
+        ///     Timestamp.
         /// </summary>
-        public long TimeStamp;
+        public long Timestamp;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="PingPacket" /> struct.
         /// </summary>
-        /// <param name="timeStamp"></param>
-        public PingPacket(long timeStamp)
+        /// <param name="timestamp"> The timestamp. </param>
+        public PingPacket(long timestamp)
         {
-            TimeStamp = timeStamp;
+            Timestamp = timestamp;
         }
     }
 }

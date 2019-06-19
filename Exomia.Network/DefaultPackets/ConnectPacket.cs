@@ -27,7 +27,7 @@ using System.Runtime.InteropServices;
 namespace Exomia.Network.DefaultPackets
 {
     /// <summary>
-    ///     ConnectPacket
+    ///     A connect packet.
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Size = 16)]
     public unsafe struct ConnectPacket
@@ -35,6 +35,9 @@ namespace Exomia.Network.DefaultPackets
         /// <summary>
         ///     Checksum(16)
         /// </summary>
+        /// <value>
+        ///     The checksum[ 16].
+        /// </value>
         public fixed byte Checksum[16];
     }
 }

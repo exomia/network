@@ -29,17 +29,19 @@ using System.Runtime.InteropServices;
 namespace Exomia.Network.Extensions.Struct
 {
     /// <summary>
-    ///     ToBytesExtensions class
+    ///     to bytes extensions.
     /// </summary>
     public static class ToBytesExtensions
     {
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="length">out the size of T</param>
-        /// <returns>byte array</returns>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="length"> [out] out the size of T. </param>
+        /// <returns>
+        ///     byte array.
+        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe byte[] ToBytesUnsafe<T>(this T data, out int length) where T : struct
         {
@@ -53,12 +55,12 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="arr">out byte array</param>
-        /// <param name="length">out the size of T</param>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="arr">    [out] out byte array. </param>
+        /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void ToBytesUnsafe<T>(this T data, out byte[] arr, out int length) where T : struct
         {
@@ -71,13 +73,13 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="arr">out byte array</param>
-        /// <param name="offset">offset</param>
-        /// <param name="length">out the size of T</param>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="arr">    [in,out] out byte array. </param>
+        /// <param name="offset"> offset. </param>
+        /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void ToBytesUnsafe<T>(this T data, ref byte[] arr, int offset, out int length)
             where T : struct
@@ -90,12 +92,14 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="length">out the size of T</param>
-        /// <returns>byte array</returns>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="length"> [out] out the size of T. </param>
+        /// <returns>
+        ///     byte array.
+        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe byte[] ToBytesUnsafe2<T>(this T data, out int length) where T : unmanaged
         {
@@ -109,12 +113,12 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="arr">out byte array</param>
-        /// <param name="length">out the size of T</param>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="arr">    [out] out byte array. </param>
+        /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void ToBytesUnsafe2<T>(this T data, out byte[] arr, out int length) where T : unmanaged
         {
@@ -127,13 +131,13 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="arr">out byte array</param>
-        /// <param name="offset">offset</param>
-        /// <param name="length">out the size of T</param>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="arr">    [in,out] out byte array. </param>
+        /// <param name="offset"> offset. </param>
+        /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void ToBytesUnsafe2<T>(this T data, ref byte[] arr, int offset, out int length)
             where T : unmanaged
@@ -146,17 +150,19 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="length">out the size of T</param>
-        /// <returns>byte array</returns>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="length"> [out] out the size of T. </param>
+        /// <returns>
+        ///     byte array.
+        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte[] ToBytes<T>(this T data, out int length) where T : struct
         {
             length = Marshal.SizeOf(typeof(T));
-            byte[] arr = new byte[length];
+            byte[]   arr    = new byte[length];
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {
@@ -170,12 +176,12 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="arr">out byte array</param>
-        /// <param name="length">out the size of T</param>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="arr">    [out] out byte array. </param>
+        /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ToBytes<T>(this T data, out byte[] arr, out int length) where T : struct
         {
@@ -193,13 +199,13 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     converts a struct into a byte array
+        ///     converts a struct into a byte array.
         /// </summary>
-        /// <typeparam name="T">struct type</typeparam>
-        /// <param name="data">data</param>
-        /// <param name="arr">ref byte array</param>
-        /// <param name="offset">offset</param>
-        /// <param name="length">out the size of T</param>
+        /// <typeparam name="T"> struct type. </typeparam>
+        /// <param name="data">   data. </param>
+        /// <param name="arr">    [in,out] ref byte array. </param>
+        /// <param name="offset"> offset. </param>
+        /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ToBytes<T>(this T data, ref byte[] arr, int offset, out int length) where T : struct
         {

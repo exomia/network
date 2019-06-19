@@ -25,20 +25,26 @@
 namespace Exomia.Network
 {
     /// <summary>
+    ///     A response.
     /// </summary>
-    /// <typeparam name="TResult"></typeparam>
+    /// <typeparam name="TResult"> Type of the result. </typeparam>
     public readonly struct Response<TResult>
     {
         /// <summary>
-        ///     Result
+        ///     Result.
         /// </summary>
         public readonly TResult Result;
 
         /// <summary>
-        ///     SendError
+        ///     SendError.
         /// </summary>
         public readonly SendError SendError;
 
+        /// <summary>
+        ///     Initializes a new instance of the &lt;see cref="Response&lt;TResult&gt;"/&gt; struct.
+        /// </summary>
+        /// <param name="result">    Result. </param>
+        /// <param name="sendError"> SendError. </param>
         internal Response(in TResult result, SendError sendError)
         {
             Result    = result;
@@ -46,18 +52,24 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     <c>true</c> if no SendError occured; <c>false</c> otherwise
+        ///     <c>true</c> if no SendError occured; <c>false</c> otherwise.
         /// </summary>
-        /// <param name="r">instance of Response{TResult}</param>
+        /// <param name="r"> instance of Response{TResult} </param>
+        /// <returns>
+        ///     The result of the operation.
+        /// </returns>
         public static implicit operator bool(in Response<TResult> r)
         {
             return r.SendError == SendError.None;
         }
 
         /// <summary>
-        ///     implicit operator TResult
+        ///     implicit operator TResult.
         /// </summary>
-        /// <param name="r">instance of Response{TResult}</param>
+        /// <param name="r"> instance of Response{TResult} </param>
+        /// <returns>
+        ///     The result of the operation.
+        /// </returns>
         public static implicit operator TResult(in Response<TResult> r)
         {
             return r.Result;

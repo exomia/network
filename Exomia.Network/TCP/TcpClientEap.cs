@@ -29,22 +29,36 @@ using Exomia.Network.Encoding;
 using Exomia.Network.Native;
 using LZ4;
 
-#pragma warning disable 1574
-
 namespace Exomia.Network.TCP
 {
-    /// <inheritdoc cref="ClientBase" />
     /// <summary>
     ///     A TCP-Client build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>
     public sealed class TcpClientEap : ClientBase
     {
+        /// <summary>
+        ///     Size of the maximum packet.
+        /// </summary>
         private readonly int _maxPacketSize;
 
+        /// <summary>
+        ///     Buffer for circular data.
+        /// </summary>
         private readonly CircularBuffer _circularBuffer;
+
+        /// <summary>
+        ///     The buffer read.
+        /// </summary>
         private readonly byte[] _bufferRead;
 
+        /// <summary>
+        ///     Socket asynchronous event information.
+        /// </summary>
         private readonly SocketAsyncEventArgs _receiveEventArgs;
+
+        /// <summary>
+        ///     The send event arguments pool.
+        /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <inheritdoc />
@@ -60,9 +74,16 @@ namespace Exomia.Network.TCP
             _receiveEventArgs.Completed += ReceiveAsyncCompleted;
             _receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
 
-            _sendEventArgsPool = new SocketAsyncEventArgsPool(32);
+            _sendEventArgsPool = new SocketAsyncEventArgsPool();
         }
 
+        /// <summary>
+        ///     Attempts to create socket.
+        /// </summary>
+        /// <param name="socket"> [out] The socket. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         private protected override bool TryCreateSocket(out Socket socket)
         {
             try
@@ -90,6 +111,9 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <summary>
+        ///     Receive asynchronous.
+        /// </summary>
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -107,8 +131,19 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <summary>
+        ///     Begins send data.
+        /// </summary>
+        /// <param name="commandid">  The commandid. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="offset">     The offset. </param>
+        /// <param name="length">     The length. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
+        /// <returns>
+        ///     A SendError.
+        /// </returns>
         private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
-            uint responseID)
+                                                           uint responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -121,7 +156,8 @@ namespace Exomia.Network.TCP
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
                 Serialization.Serialization.SerializeTcp(
-                    commandid, data, offset, length, responseID, EncryptionMode.None, sendEventArgs.Buffer,
+                    commandid, data, offset, length, responseID, EncryptionMode.None,
+                    sendEventArgs.Buffer,
                     out int size);
                 sendEventArgs.SetBuffer(0, size);
 
@@ -158,6 +194,12 @@ namespace Exomia.Network.TCP
             _circularBuffer.Dispose();
         }
 
+        /// <summary>
+        ///     Receive asynchronous completed.
+        /// </summary>
+        /// <param name="sender"> Source of the event. </param>
+        /// <param name="e">      Socket asynchronous event information. </param>
+        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private unsafe void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
@@ -176,7 +218,7 @@ namespace Exomia.Network.TCP
             int size = _circularBuffer.Write(e.Buffer, 0, length);
             while (_circularBuffer.PeekHeader(
                        0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
-                   && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
+                && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
             {
                 if (_circularBuffer.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b) &&
                     b == Constants.ZERO_BYTE)
@@ -190,7 +232,7 @@ namespace Exomia.Network.TCP
                         }
 
                         uint responseID = 0;
-                        int offset = 0;
+                        int  offset     = 0;
                         if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                         {
                             responseID = *(uint*)ptr;
@@ -241,6 +283,11 @@ namespace Exomia.Network.TCP
             ReceiveAsync();
         }
 
+        /// <summary>
+        ///     Sends an asynchronous completed.
+        /// </summary>
+        /// <param name="sender"> Source of the event. </param>
+        /// <param name="e">      Socket asynchronous event information. </param>
         private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)

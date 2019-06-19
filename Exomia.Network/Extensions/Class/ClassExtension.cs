@@ -28,16 +28,16 @@ using Exomia.Network.Serialization;
 namespace Exomia.Network.Extensions.Class
 {
     /// <summary>
-    ///     ClassExt class
+    ///     The class extensions.
     /// </summary>
     public static class ClassExtensions
     {
         /// <summary>
-        ///     returns a new deserialized object from a byte array
+        ///     returns a new deserialized object from a byte array.
         /// </summary>
-        /// <typeparam name="T">ISerializable</typeparam>
-        /// <param name="arr">byte array</param>
-        /// <param name="obj">out object</param>
+        /// <typeparam name="T"> ISerializable. </typeparam>
+        /// <param name="arr"> byte array. </param>
+        /// <param name="obj"> [out] out object. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FromBytes<T>(this byte[] arr, out T obj)
             where T : ISerializable, new()
@@ -47,11 +47,13 @@ namespace Exomia.Network.Extensions.Class
         }
 
         /// <summary>
-        ///     returns a new deserialized object from a byte array
+        ///     returns a new deserialized object from a byte array.
         /// </summary>
-        /// <typeparam name="T">ISerializable</typeparam>
-        /// <param name="arr">byte array</param>
-        /// <returns>returns a new deserialized object from a byte array</returns>
+        /// <typeparam name="T"> ISerializable. </typeparam>
+        /// <param name="arr"> byte array. </param>
+        /// <returns>
+        ///     returns a new deserialized object from a byte array.
+        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FromBytes<T>(this byte[] arr)
             where T : ISerializable, new()

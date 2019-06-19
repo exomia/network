@@ -25,7 +25,7 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     SendError enum
+    ///     Values that represent SendError.
     /// </summary>
     public enum SendError
     {

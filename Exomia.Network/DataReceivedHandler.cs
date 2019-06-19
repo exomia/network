@@ -25,10 +25,12 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     DataReceivedHandler callback
+    ///     DataReceivedHandler callback.
     /// </summary>
-    /// <param name="client">IClient</param>
-    /// <param name="data">data</param>
-    /// <returns></returns>
+    /// <param name="client"> IClient. </param>
+    /// <param name="data">   data. </param>
+    /// <returns>
+    ///     A bool.
+    /// </returns>
     public delegate bool DataReceivedHandler(IClient client, object data);
 }

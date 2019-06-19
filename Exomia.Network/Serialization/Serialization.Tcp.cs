@@ -31,20 +31,50 @@ using LZ4;
 
 namespace Exomia.Network.Serialization
 {
-    //TODO: UNIT TEST
+    /// <content>
+    ///     A serialization.
+    /// </content>
     static unsafe partial class Serialization
     {
+        /// <summary>
+        ///     Serialize TCP.
+        /// </summary>
+        /// <param name="commandID">      Identifier for the command. </param>
+        /// <param name="data">           The data. </param>
+        /// <param name="offset">         The offset. </param>
+        /// <param name="length">         The length. </param>
+        /// <param name="responseID">     Identifier for the response. </param>
+        /// <param name="encryptionMode"> The encryption mode. </param>
+        /// <param name="send">           [out] The send. </param>
+        /// <param name="size">           [out] The size. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeTcp(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode, out byte[] send, out int size)
+        internal static void SerializeTcp(uint           commandID, byte[] data, int offset, int length,
+                                          uint           responseID,
+                                          EncryptionMode encryptionMode, out byte[] send, out int size)
         {
             send = ByteArrayPool.Rent(Constants.TCP_HEADER_SIZE + 9 + length + Math2.Ceiling(length / 7.0f));
             SerializeTcp(commandID, data, offset, length, responseID, encryptionMode, send, out size);
         }
 
+        /// <summary>
+        ///     Serialize TCP.
+        /// </summary>
+        /// <param name="commandID">      Identifier for the command. </param>
+        /// <param name="data">           The data. </param>
+        /// <param name="offset">         The offset. </param>
+        /// <param name="length">         The length. </param>
+        /// <param name="responseID">     Identifier for the response. </param>
+        /// <param name="encryptionMode"> The encryption mode. </param>
+        /// <param name="send">           The send. </param>
+        /// <param name="size">           [out] The size. </param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeTcp(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode, byte[] send, out int size)
+        internal static void SerializeTcp(uint           commandID, byte[] data, int offset, int length,
+                                          uint           responseID,
+                                          EncryptionMode encryptionMode, byte[] send, out int size)
         {
             // 8bit
             // 
@@ -68,7 +98,7 @@ namespace Exomia.Network.Serialization
 
             // 16bit   -    CHECKSUM
 
-            int l;
+            int    l;
             ushort checksum;
 
             if (responseID != 0)
@@ -93,11 +123,11 @@ namespace Exomia.Network.Serialization
                             *ptr = (byte)(RESPONSE_1_BIT | (byte)CompressionMode.Lz4 | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 9) & DATA_LENGTH_MASK)
-                                | (commandID << COMMAND_ID_SHIFT);
-                            *(ushort*)(ptr + 5)                              = checksum;
-                            *(uint*)(ptr + 7)                                = responseID;
-                            *(int*)(ptr + 11)                                = length;
-                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 8) = Constants.ZERO_BYTE;
+                              | (commandID << COMMAND_ID_SHIFT);
+                            *(ushort*)(ptr                              + 5)  = checksum;
+                            *(uint*)(ptr                                + 7)  = responseID;
+                            *(int*)(ptr                                 + 11) = length;
+                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 8)  = Constants.ZERO_BYTE;
                         }
                         return;
                     }
@@ -111,9 +141,9 @@ namespace Exomia.Network.Serialization
                     *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
                     *(uint*)(ptr + 1) =
                         ((uint)(l + 5) & DATA_LENGTH_MASK)
-                        | (commandID << COMMAND_ID_SHIFT);
-                    *(ushort*)(ptr + 5)                              = checksum;
-                    *(uint*)(ptr + 7)                                = responseID;
+                      | (commandID << COMMAND_ID_SHIFT);
+                    *(ushort*)(ptr                              + 5) = checksum;
+                    *(uint*)(ptr                                + 7) = responseID;
                     *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
                 }
             }
@@ -138,9 +168,9 @@ namespace Exomia.Network.Serialization
                             *ptr = (byte)((byte)CompressionMode.Lz4 | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 5) & DATA_LENGTH_MASK)
-                                | (commandID << COMMAND_ID_SHIFT);
-                            *(ushort*)(ptr + 5)                              = checksum;
-                            *(int*)(ptr + 7)                                 = length;
+                              | (commandID << COMMAND_ID_SHIFT);
+                            *(ushort*)(ptr                              + 5) = checksum;
+                            *(int*)(ptr                                 + 7) = length;
                             *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
                         }
                         return;
@@ -155,8 +185,8 @@ namespace Exomia.Network.Serialization
                     *ptr = (byte)encryptionMode;
                     *(uint*)(ptr + 1) =
                         ((uint)(l + 1) & DATA_LENGTH_MASK)
-                        | (commandID << COMMAND_ID_SHIFT);
-                    *(ushort*)(ptr + 5)                          = checksum;
+                      | (commandID << COMMAND_ID_SHIFT);
+                    *(ushort*)(ptr                          + 5) = checksum;
                     *(int*)(ptr + Constants.TCP_HEADER_SIZE + l) = Constants.ZERO_BYTE;
                 }
             }

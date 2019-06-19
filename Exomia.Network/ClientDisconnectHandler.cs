@@ -25,10 +25,10 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     ClientDisconnectHandler callback
+    ///     ClientDisconnectHandler callback.
     /// </summary>
-    /// <typeparam name="T">Socket|EndPoint</typeparam>
-    /// <param name="arg0"></param>
-    /// <param name="reason">reason</param>
+    /// <typeparam name="T"> Socket|EndPoint. </typeparam>
+    /// <param name="arg0">   The args. </param>
+    /// <param name="reason"> The reason. </param>
     public delegate void ClientDisconnectHandler<in T>(T arg0, DisconnectReason reason) where T : class;
 }

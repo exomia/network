@@ -34,14 +34,16 @@ using LZ4;
 
 namespace Exomia.Network.UDP
 {
-    /// <inheritdoc />
     /// <summary>
     ///     A UDP-Server build with the "Asynchronous Programming Model" (APM)
     /// </summary>
-    /// <typeparam name="TServerClient">TServerClient</typeparam>
+    /// <typeparam name="TServerClient"> TServerClient. </typeparam>
     public abstract class UdpServerApmBase<TServerClient> : ServerBase<EndPoint, TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
+        /// <summary>
+        ///     The pool.
+        /// </summary>
         private readonly ServerClientStateObjectPool _pool;
 
         /// <inheritdoc />
@@ -52,13 +54,14 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         public override SendError SendTo(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
-            uint responseid)
+                                         uint     responseid)
         {
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
             {
                 Serialization.Serialization.SerializeUdp(
-                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send, out int size);
+                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send,
+                    out int size);
                 try
                 {
                     _listener.BeginSendTo(send, 0, size, SocketFlags.None, arg0, SendDataToCallback, send);
@@ -86,6 +89,14 @@ namespace Exomia.Network.UDP
             return SendError.Invalid;
         }
 
+        /// <summary>
+        ///     Executes the run action.
+        /// </summary>
+        /// <param name="port">     The port. </param>
+        /// <param name="listener"> [out] The listener. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         private protected override bool OnRun(int port, out Socket listener)
         {
             try
@@ -115,6 +126,9 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <summary>
+        ///     Listen asynchronous.
+        /// </summary>
         private protected override void ListenAsync()
         {
             ServerClientStateObject state = _pool.Rent();
@@ -135,6 +149,10 @@ namespace Exomia.Network.UDP
             catch { InvokeClientDisconnect(state.EndPoint, DisconnectReason.Unspecified); }
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of send data to callback.
+        /// </summary>
+        /// <param name="iar"> The iar. </param>
         private void SendDataToCallback(IAsyncResult iar)
         {
             try
@@ -148,6 +166,11 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of receive data callback.
+        /// </summary>
+        /// <param name="iar"> The iar. </param>
+        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private unsafe void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
@@ -186,7 +209,7 @@ namespace Exomia.Network.UDP
                 EndPoint ep = state.EndPoint;
 
                 uint responseID = 0;
-                int offset = 0;
+                int  offset     = 0;
                 fixed (byte* src = state.Buffer)
                 {
                     if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
@@ -228,20 +251,52 @@ namespace Exomia.Network.UDP
             _pool.Return(state);
         }
 
+        /// <summary>
+        ///     A server client state object. This class cannot be inherited.
+        /// </summary>
         private sealed class ServerClientStateObject
         {
+            /// <summary>
+            ///     The buffer.
+            /// </summary>
             public byte[] Buffer;
+
+            /// <summary>
+            ///     The end point.
+            /// </summary>
             public EndPoint EndPoint;
         }
 
+        /// <summary>
+        ///     A server client state object pool.
+        /// </summary>
         private class ServerClientStateObjectPool
         {
+            /// <summary>
+            ///     The buffers.
+            /// </summary>
             private readonly ServerClientStateObject[] _buffers;
+
+            /// <summary>
+            ///     Size of the maximum packet.
+            /// </summary>
             private readonly int _maxPacketSize;
 
+            /// <summary>
+            ///     The index.
+            /// </summary>
             private int _index;
+
+            /// <summary>
+            ///     The lock.
+            /// </summary>
             private SpinLock _lock;
 
+            /// <summary>
+            ///     Initializes a new instance of the <see cref="ServerClientStateObjectPool" /> class.
+            /// </summary>
+            /// <param name="maxClients">    The maximum clients. </param>
+            /// <param name="maxPacketSize"> Size of the maximum packet. </param>
             public ServerClientStateObjectPool(uint maxClients, int maxPacketSize)
             {
                 _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
@@ -251,10 +306,16 @@ namespace Exomia.Network.UDP
                 _buffers = new ServerClientStateObject[maxClients != 0 ? maxClients + 1u : 33];
             }
 
+            /// <summary>
+            ///     Gets the rent.
+            /// </summary>
+            /// <returns>
+            ///     A ServerClientStateObject.
+            /// </returns>
             internal ServerClientStateObject Rent()
             {
-                ServerClientStateObject buffer = null;
-                bool lockTaken = false;
+                ServerClientStateObject buffer    = null;
+                bool                    lockTaken = false;
                 try
                 {
                     _lock.Enter(ref lockTaken);
@@ -279,6 +340,10 @@ namespace Exomia.Network.UDP
                 };
             }
 
+            /// <summary>
+            ///     Returns the given object.
+            /// </summary>
+            /// <param name="obj"> The Object to return. </param>
             internal void Return(ServerClientStateObject obj)
             {
                 bool lockTaken = false;
