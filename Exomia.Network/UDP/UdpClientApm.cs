@@ -1,28 +1,12 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
-
-#pragma warning disable 1574
 
 using System;
 using System.Net.Sockets;
@@ -33,12 +17,14 @@ using LZ4;
 
 namespace Exomia.Network.UDP
 {
-    /// <inheritdoc cref="ClientBase" />
     /// <summary>
     ///     A UDP-Client build with the "Asynchronous Programming Model" (APM)
     /// </summary>
     public sealed class UdpClientApm : ClientBase
     {
+        /// <summary>
+        ///     The state object.
+        /// </summary>
         private readonly ClientStateObject _stateObj;
 
         /// <inheritdoc />
@@ -50,6 +36,13 @@ namespace Exomia.Network.UDP
                     : Constants.UDP_PACKET_SIZE_MAX]);
         }
 
+        /// <summary>
+        ///     Attempts to create socket.
+        /// </summary>
+        /// <param name="socket"> [out] The socket. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         private protected override bool TryCreateSocket(out Socket socket)
         {
             try
@@ -77,6 +70,9 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <summary>
+        ///     Receive asynchronous.
+        /// </summary>
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -92,14 +88,26 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <summary>
+        ///     Begins send data.
+        /// </summary>
+        /// <param name="commandid">  The commandid. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="offset">     The offset. </param>
+        /// <param name="length">     The length. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
+        /// <returns>
+        ///     A SendError.
+        /// </returns>
         private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
-            uint responseID)
+                                                           uint responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
             {
                 Serialization.Serialization.SerializeUdp(
-                    commandid, data, offset, length, responseID, EncryptionMode.None, out byte[] send, out int size);
+                    commandid, data, offset, length, responseID, EncryptionMode.None, out byte[] send,
+                    out int size);
                 try
                 {
                     _clientSocket.BeginSend(
@@ -128,6 +136,11 @@ namespace Exomia.Network.UDP
             return SendError.Invalid;
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of receive Asynchronous callback.
+        /// </summary>
+        /// <param name="iar"> The iar. </param>
+        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private unsafe void ReceiveAsyncCallback(IAsyncResult iar)
         {
             int length;
@@ -160,7 +173,7 @@ namespace Exomia.Network.UDP
             if (length == dataLength + Constants.UDP_HEADER_SIZE)
             {
                 uint responseID = 0;
-                int offset = 0;
+                int  offset     = 0;
                 fixed (byte* src = _stateObj.Buffer)
                 {
                     if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
@@ -206,6 +219,10 @@ namespace Exomia.Network.UDP
             ReceiveAsync();
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of send data callback.
+        /// </summary>
+        /// <param name="iar"> The iar. </param>
         private void SendDataCallback(IAsyncResult iar)
         {
             try
@@ -223,10 +240,20 @@ namespace Exomia.Network.UDP
             ByteArrayPool.Return(send);
         }
 
+        /// <summary>
+        ///     A client state object.
+        /// </summary>
         private struct ClientStateObject
         {
+            /// <summary>
+            ///     The buffer.
+            /// </summary>
             public readonly byte[] Buffer;
 
+            /// <summary>
+            ///     Initializes a new instance of the <see cref="UdpClientApm" /> class.
+            /// </summary>
+            /// <param name="buffer"> The buffer. </param>
             public ClientStateObject(byte[] buffer)
             {
                 Buffer = buffer;

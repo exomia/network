@@ -1,45 +1,40 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
-
-#pragma warning disable 1574
 
 using System;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
+using Exomia.Network.Encoding;
 using Exomia.Network.Native;
 using LZ4;
 
 namespace Exomia.Network.TCP
 {
-    /// <inheritdoc cref="ClientBase" />
     /// <summary>
     ///     A TCP/UDP-Client build with the "Asynchronous Programming Model" (APM)
     /// </summary>
     public sealed class TcpClientApm : ClientBase
     {
+        /// <summary>
+        ///     Buffer for circular data.
+        /// </summary>
         private readonly CircularBuffer _circularBuffer;
+
+        /// <summary>
+        ///     The buffer write.
+        /// </summary>
         private readonly byte[] _bufferWrite;
+
+        /// <summary>
+        ///     The buffer read.
+        /// </summary>
         private readonly byte[] _bufferRead;
 
         /// <inheritdoc />
@@ -52,6 +47,13 @@ namespace Exomia.Network.TCP
             _circularBuffer = new CircularBuffer(_bufferWrite.Length * 2);
         }
 
+        /// <summary>
+        ///     Attempts to create socket.
+        /// </summary>
+        /// <param name="socket"> [out] The socket. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         private protected override bool TryCreateSocket(out Socket socket)
         {
             try
@@ -79,6 +81,9 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <summary>
+        ///     Receive asynchronous.
+        /// </summary>
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -94,14 +99,26 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <summary>
+        ///     Begins send data.
+        /// </summary>
+        /// <param name="commandid">  The commandid. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="offset">     The offset. </param>
+        /// <param name="length">     The length. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
+        /// <returns>
+        ///     A SendError.
+        /// </returns>
         private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
-            uint responseID)
+                                                           uint responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
             {
                 Serialization.Serialization.SerializeTcp(
-                    commandid, data, offset, length, responseID, EncryptionMode.None, out byte[] send, out int size);
+                    commandid, data, offset, length, responseID, EncryptionMode.None, out byte[] send,
+                    out int size);
                 try
                 {
                     _clientSocket.BeginSend(
@@ -136,6 +153,11 @@ namespace Exomia.Network.TCP
             _circularBuffer.Dispose();
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of receive Asynchronous callback.
+        /// </summary>
+        /// <param name="iar"> The iar. </param>
+        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private unsafe void ReceiveAsyncCallback(IAsyncResult iar)
         {
             int length;
@@ -166,7 +188,7 @@ namespace Exomia.Network.TCP
             int size = _circularBuffer.Write(_bufferWrite, 0, length);
             while (_circularBuffer.PeekHeader(
                        0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
-                   && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
+                && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
             {
                 if (_circularBuffer.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b) &&
                     b == Constants.ZERO_BYTE)
@@ -180,7 +202,7 @@ namespace Exomia.Network.TCP
                         }
 
                         uint responseID = 0;
-                        int offset = 0;
+                        int  offset     = 0;
                         if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
                         {
                             responseID = *(uint*)ptr;
@@ -195,7 +217,7 @@ namespace Exomia.Network.TCP
                         }
 
                         byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
-                        if (Serialization.Serialization.S2E(
+                        if (PayloadEncoding.Decode(
                                 ptr, offset, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
                         {
                             switch (compressionMode)
@@ -231,6 +253,10 @@ namespace Exomia.Network.TCP
             ReceiveAsync();
         }
 
+        /// <summary>
+        ///     Async callback, called on completion of send data callback.
+        /// </summary>
+        /// <param name="iar"> The iar. </param>
         private void SendDataCallback(IAsyncResult iar)
         {
             try

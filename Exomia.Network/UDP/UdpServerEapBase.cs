@@ -1,24 +1,10 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
 
@@ -32,20 +18,26 @@ using LZ4;
 
 namespace Exomia.Network.UDP
 {
-    /// <inheritdoc />
     /// <summary>
     ///     A UDP-Server build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>
-    /// <typeparam name="TServerClient">TServerClient</typeparam>
+    /// <typeparam name="TServerClient"> TServerClient. </typeparam>
     public abstract class UdpServerEapBase<TServerClient> : ServerBase<EndPoint, TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
         /// <summary>
-        ///     _maxPacketSize
+        ///     _maxPacketSize.
         /// </summary>
         protected readonly int _maxPacketSize;
 
+        /// <summary>
+        ///     The receive event arguments pool.
+        /// </summary>
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
+
+        /// <summary>
+        ///     The send event arguments pool.
+        /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <inheritdoc />
@@ -60,7 +52,7 @@ namespace Exomia.Network.UDP
 
         /// <inheritdoc />
         public override SendError SendTo(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
-            uint responseid)
+                                         uint     responseid)
         {
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -73,7 +65,8 @@ namespace Exomia.Network.UDP
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
                 Serialization.Serialization.SerializeUdp(
-                    commandid, data, offset, length, responseid, EncryptionMode.None, sendEventArgs.Buffer,
+                    commandid, data, offset, length, responseid, EncryptionMode.None,
+                    sendEventArgs.Buffer,
                     out int size);
                 sendEventArgs.SetBuffer(0, size);
                 sendEventArgs.RemoteEndPoint = arg0;
@@ -108,6 +101,14 @@ namespace Exomia.Network.UDP
             return SendError.Invalid;
         }
 
+        /// <summary>
+        ///     Executes the run action.
+        /// </summary>
+        /// <param name="port">     The port. </param>
+        /// <param name="listener"> [out] The listener. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         private protected override bool OnRun(int port, out Socket listener)
         {
             try
@@ -137,6 +138,9 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <summary>
+        ///     Listen asynchronous.
+        /// </summary>
         private protected override void ListenAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -180,6 +184,12 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <summary>
+        ///     Receive from asynchronous completed.
+        /// </summary>
+        /// <param name="sender"> Source of the event. </param>
+        /// <param name="e">      Socket asynchronous event information. </param>
+        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private unsafe void ReceiveFromAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
@@ -202,7 +212,7 @@ namespace Exomia.Network.UDP
                 EndPoint ep = e.RemoteEndPoint;
 
                 uint responseID = 0;
-                int offset = 0;
+                int  offset     = 0;
                 fixed (byte* src = e.Buffer)
                 {
                     if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
@@ -243,6 +253,11 @@ namespace Exomia.Network.UDP
             _receiveEventArgsPool.Return(e);
         }
 
+        /// <summary>
+        ///     Sends to asynchronous completed.
+        /// </summary>
+        /// <param name="sender"> Source of the event. </param>
+        /// <param name="e">      Socket asynchronous event information. </param>
         private void SendToAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)

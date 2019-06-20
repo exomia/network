@@ -3,7 +3,7 @@
 - [x] add a disconnect reason [graceful, aborted, error, unspecified] to all disconnect handlers
 - [x] use a flag system (Interlocked/atomic to set states of the socket like sending or disconnected that you cant send anymore instead of null check of socket)
 - [ ] unit tests
-- [ ] renaming / move classes like ('Serilization')
+- [x] renaming / move classes like ('Serilization')
 - [x] 'DELEGATES.cs' remove
 - [ ] performance measurement / benchmarking
 - [ ] little / big endian conversion?

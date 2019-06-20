@@ -1,24 +1,10 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
 
@@ -30,19 +16,32 @@ using System.Threading;
 namespace Exomia.Network.Lib
 {
     /// <summary>
-    ///     custom event class for faster raise, add, remove operations
+    ///     custom event class for faster raise, add, remove operations.
     /// </summary>
-    /// <typeparam name="T">typeof delegate</typeparam>
+    /// <typeparam name="T"> typeof delegate. </typeparam>
     sealed class Event<T> where T : Delegate
     {
+        /// <summary>
+        ///     The callbacks.
+        /// </summary>
         private T[] _callbacks;
+
+        /// <summary>
+        ///     Number of.
+        /// </summary>
         private int _count;
 
+        /// <summary>
+        ///     The lock.
+        /// </summary>
         private SpinLock _lock;
 
         /// <summary>
-        ///     the count of registered callbacks
+        ///     the count of registered callbacks.
         /// </summary>
+        /// <value>
+        ///     The count.
+        /// </value>
         public int Count
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -50,9 +49,13 @@ namespace Exomia.Network.Lib
         }
 
         /// <summary>
-        ///     the event list
-        ///     Attention: do not use Callbacks.Length use the <see cref="Count" /> Property instead
+        ///     the event list Attention: do not use Callbacks.Length use the <see cref="Count" />
+        ///     Property instead.
         /// </summary>
+        /// <param name="index"> Zero-based index of the entry to access. </param>
+        /// <returns>
+        ///     The indexed item.
+        /// </returns>
         public T this[int index]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -62,7 +65,7 @@ namespace Exomia.Network.Lib
         /// <summary>
         ///     Initializes a new instance of the <see cref="Event{T}" /> class.
         /// </summary>
-        /// <param name="capacity">initial capacity</param>
+        /// <param name="capacity"> (Optional) initial capacity. </param>
         public Event(int capacity = 4)
         {
             _callbacks = new T[capacity];
@@ -70,9 +73,9 @@ namespace Exomia.Network.Lib
         }
 
         /// <summary>
-        ///     adds a new callback to the event list
+        ///     adds a new callback to the event list.
         /// </summary>
-        /// <param name="callback">callback</param>
+        /// <param name="callback"> callback. </param>
         public void Add(T callback)
         {
             bool lockTaken = false;
@@ -94,9 +97,9 @@ namespace Exomia.Network.Lib
         }
 
         /// <summary>
-        ///     removes a callback at the given index from the event list
+        ///     removes a callback at the given index from the event list.
         /// </summary>
-        /// <param name="index">index</param>
+        /// <param name="index"> index. </param>
         public void Remove(int index)
         {
             bool lockTaken = false;
@@ -113,9 +116,12 @@ namespace Exomia.Network.Lib
         }
 
         /// <summary>
-        ///     removes a callback at the given index from the event list
+        ///     removes a callback at the given index from the event list.
         /// </summary>
-        /// <param name="item">callback to remove</param>
+        /// <param name="item"> callback to remove. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         public bool Remove(T item)
         {
             bool lockTaken = false;

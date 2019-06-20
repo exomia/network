@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net471</TargetFramework>
+    <TargetFrameworks>net471;net472;netstandard2.0;netcoreapp2.2</TargetFrameworks>
     <Authors>exomia</Authors>
     <Description>tcp / udp client and server</Description>
-    <Copyright>Copyright © 2018 exomia</Copyright>
-    <Version>1.2.2.6</Version>
+	<Copyright>Copyright © $([System.DateTime]::Now.Year) exomia</Copyright>
+    <Version>1.2.2.8</Version>
     <PackageLicenseUrl>https://raw.githubusercontent.com/exomia/network/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/exomia/network</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>

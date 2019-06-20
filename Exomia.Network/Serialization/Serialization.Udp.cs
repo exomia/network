@@ -1,24 +1,10 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
 
@@ -29,18 +15,49 @@ using LZ4;
 
 namespace Exomia.Network.Serialization
 {
+    /// <content>
+    ///     A serialization.
+    /// </content>
     static unsafe partial class Serialization
     {
+        /// <summary>
+        ///     Serialize UDP.
+        /// </summary>
+        /// <param name="commandID">      [out] Identifier for the command. </param>
+        /// <param name="data">           The data. </param>
+        /// <param name="offset">         The offset. </param>
+        /// <param name="length">         The length. </param>
+        /// <param name="responseID">     Identifier for the response. </param>
+        /// <param name="encryptionMode"> The encryption mode. </param>
+        /// <param name="send">           [out] The send. </param>
+        /// <param name="size">           [out] The size. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeUdp(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode, out byte[] send, out int size)
+        internal static void SerializeUdp(uint           commandID, byte[] data, int offset, int length,
+                                          uint           responseID,
+                                          EncryptionMode encryptionMode, out byte[] send, out int size)
         {
             send = ByteArrayPool.Rent(Constants.UDP_HEADER_SIZE + 8 + length);
             SerializeUdp(commandID, data, offset, length, responseID, encryptionMode, send, out size);
         }
 
-        internal static void SerializeUdp(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode, byte[] send, out int size)
+        /// <summary>
+        ///     Serialize UDP.
+        /// </summary>
+        /// <param name="commandID">      [out] Identifier for the command. </param>
+        /// <param name="data">           The data. </param>
+        /// <param name="offset">         The offset. </param>
+        /// <param name="length">         The length. </param>
+        /// <param name="responseID">     Identifier for the response. </param>
+        /// <param name="encryptionMode"> The encryption mode. </param>
+        /// <param name="send">           The send. </param>
+        /// <param name="size">           [out] The size. </param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        internal static void SerializeUdp(uint           commandID, byte[] data, int offset, int length,
+                                          uint           responseID,
+                                          EncryptionMode encryptionMode, byte[] send, out int size)
         {
             // 8bit
             // 
@@ -85,7 +102,7 @@ namespace Exomia.Network.Serialization
                                 ((uint)(s + 8) & DATA_LENGTH_MASK) |
                                 (commandID << COMMAND_ID_SHIFT);
                             *(uint*)(ptr + 5) = responseID;
-                            *(int*)(ptr + 9)  = length;
+                            *(int*)(ptr  + 9) = length;
                         }
                         return;
                     }
@@ -140,9 +157,16 @@ namespace Exomia.Network.Serialization
             }
         }
 
+        /// <summary>
+        ///     A byte[] extension method that gets header UDP.
+        /// </summary>
+        /// <param name="header">       The header to act on. </param>
+        /// <param name="packetHeader"> [out] The packet header. </param>
+        /// <param name="commandID">    [out] Identifier for the command. </param>
+        /// <param name="dataLength">   [out] Length of the data. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void GetHeaderUdp(this byte[] header, out byte packetHeader, out uint commandID,
-            out int dataLength)
+                                          out  int    dataLength)
         {
             // 8bit
             // 

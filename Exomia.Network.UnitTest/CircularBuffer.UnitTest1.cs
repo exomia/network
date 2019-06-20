@@ -1,24 +1,10 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
 
@@ -82,8 +68,8 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void SafeWriteTest()
         {
-            CircularBuffer cb = new CircularBuffer(1024);
-            byte[] buffer = { 45, 48, 72, 15 };
+            CircularBuffer cb     = new CircularBuffer();
+            byte[]         buffer = { 45, 48, 72, 15 };
             cb.Write(buffer, 0, buffer.Length);
 
             Assert.AreEqual(cb.Count, 4);
@@ -100,8 +86,8 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void UnsafeWriteTest()
         {
-            CircularBuffer cb = new CircularBuffer(1024);
-            byte[] buffer = { 45, 48, 72, 15 };
+            CircularBuffer cb     = new CircularBuffer();
+            byte[]         buffer = { 45, 48, 72, 15 };
             fixed (byte* src = buffer)
             {
                 cb.Write(src, 0, 4);
@@ -121,7 +107,7 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void SafeReadTest()
         {
-            CircularBuffer cb = new CircularBuffer(1024);
+            CircularBuffer cb = new CircularBuffer();
 
             byte[] buffer = { 45, 48, 72, 15 };
             cb.Write(buffer, 0, buffer.Length);
@@ -153,7 +139,7 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void UnsafeReadTest()
         {
-            CircularBuffer cb = new CircularBuffer(1024);
+            CircularBuffer cb = new CircularBuffer();
 
             byte[] buffer = { 45, 48, 72, 15 };
             cb.Write(buffer, 0, buffer.Length);
@@ -246,8 +232,8 @@ namespace Exomia.Network.UnitTest
             byte[] buffer = new byte[9];
             rnd.NextBytes(buffer);
 
-            CircularBuffer cb = new CircularBuffer(16);
-            byte[] dummy = new byte[100];
+            CircularBuffer cb    = new CircularBuffer(16);
+            byte[]         dummy = new byte[100];
             Assert.AreEqual(0, cb.Read(dummy, 0, 78, 0));
 
             cb.Write(buffer, 0, buffer.Length);
@@ -315,8 +301,8 @@ namespace Exomia.Network.UnitTest
             byte[] buffer = new byte[9];
             rnd.NextBytes(buffer);
 
-            CircularBuffer cb = new CircularBuffer(16);
-            byte[] dummy = new byte[100];
+            CircularBuffer cb    = new CircularBuffer(16);
+            byte[]         dummy = new byte[100];
             fixed (byte* src = dummy)
             {
                 Assert.AreEqual(0, cb.Read(src, 0, 78, 0));
@@ -395,7 +381,7 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void SafePeekTest()
         {
-            CircularBuffer cb = new CircularBuffer(1024);
+            CircularBuffer cb = new CircularBuffer();
 
             byte[] buffer = { 45, 48, 72, 15 };
             cb.Write(buffer, 0, buffer.Length);
@@ -427,7 +413,7 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void UnsafePeekTest()
         {
-            CircularBuffer cb = new CircularBuffer(1024);
+            CircularBuffer cb = new CircularBuffer();
 
             byte[] buffer = { 45, 48, 72, 15 };
             cb.Write(buffer, 0, buffer.Length);
@@ -470,8 +456,8 @@ namespace Exomia.Network.UnitTest
             byte[] buffer = new byte[9];
             rnd.NextBytes(buffer);
 
-            CircularBuffer cb = new CircularBuffer(16);
-            byte[] dummy = new byte[100];
+            CircularBuffer cb    = new CircularBuffer(16);
+            byte[]         dummy = new byte[100];
             Assert.AreEqual(0, cb.Peek(dummy, 0, 78, 0));
 
             cb.Write(buffer, 0, buffer.Length);
@@ -539,8 +525,8 @@ namespace Exomia.Network.UnitTest
             byte[] buffer = new byte[9];
             rnd.NextBytes(buffer);
 
-            CircularBuffer cb = new CircularBuffer(16);
-            byte[] dummy = new byte[100];
+            CircularBuffer cb    = new CircularBuffer(16);
+            byte[]         dummy = new byte[100];
 
             fixed (byte* src = dummy)
             {
@@ -617,7 +603,7 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void PeekByteTest()
         {
-            CircularBuffer cb = new CircularBuffer(1024);
+            CircularBuffer cb = new CircularBuffer();
 
             byte[] buffer = { 45, 48, 72, 15 };
             cb.Write(buffer, 0, buffer.Length);
@@ -636,7 +622,7 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void SkipUntilTest()
         {
-            CircularBuffer cb = new CircularBuffer(1024);
+            CircularBuffer cb = new CircularBuffer();
             Assert.IsFalse(cb.SkipUntil(0, 0));
 
             byte[] buffer = { 45, 48, 72, 15 };
@@ -679,7 +665,7 @@ namespace Exomia.Network.UnitTest
             Assert.AreEqual(dataLength, (buffer[2] << 8) | buffer[1]);
             Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
 
-            cb.Write(buffer, 0, buffer.Length); // 14
+            cb.Write(buffer, 0, buffer.Length);                     // 14
             Assert.AreEqual(2, cb.Write(buffer, 0, buffer.Length)); // 16
 
             Assert.IsTrue(cb.PeekHeader(7, out packetHeader, out commandID, out dataLength, out checksum));

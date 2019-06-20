@@ -1,24 +1,10 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
 
@@ -29,15 +15,39 @@ using System.Threading;
 
 namespace Exomia.Network.Buffers
 {
+    /// <summary>
+    ///     A byte array pool.
+    /// </summary>
     static class ByteArrayPool
     {
+        /// <summary>
+        ///     The lock.
+        /// </summary>
         private static SpinLock s_lock;
 
+        /// <summary>
+        ///     The buffers.
+        /// </summary>
         private static readonly byte[][][] s_buffers;
+
+        /// <summary>
+        ///     The index.
+        /// </summary>
         private static readonly uint[] s_index;
+
+        /// <summary>
+        ///     Length of the buffer.
+        /// </summary>
         private static readonly int[] s_bufferLength;
+
+        /// <summary>
+        ///     Number of buffers.
+        /// </summary>
         private static readonly int[] s_bufferCount;
 
+        /// <summary>
+        ///     Initializes static members of the <see cref="ByteArrayPool" /> class.
+        /// </summary>
         static ByteArrayPool()
         {
             s_lock = new SpinLock(Debugger.IsAttached);
@@ -51,12 +61,19 @@ namespace Exomia.Network.Buffers
             s_buffers     = new byte[s_bufferLength.Length][][];
         }
 
+        /// <summary>
+        ///     Rents an byte array.
+        /// </summary>
+        /// <param name="size"> The size. </param>
+        /// <returns>
+        ///     A byte[].
+        /// </returns>
         internal static byte[] Rent(int size)
         {
             int bucketIndex = SelectBucketIndex(size);
 
-            byte[] buffer = null;
-            bool lockTaken = false;
+            byte[] buffer    = null;
+            bool   lockTaken = false;
             try
             {
                 s_lock.Enter(ref lockTaken);
@@ -81,6 +98,12 @@ namespace Exomia.Network.Buffers
             return buffer ?? new byte[s_bufferLength[bucketIndex]];
         }
 
+        /// <summary>
+        ///     Returns the given array.
+        /// </summary>
+        /// <param name="array"> The array to return. </param>
+        /// <exception cref="ArgumentException"> Thrown when one or more arguments have unsupported or
+        ///                                      illegal values. </exception>
         internal static void Return(byte[] array)
         {
             int bucketIndex = SelectBucketIndex(array.Length);
@@ -105,6 +128,13 @@ namespace Exomia.Network.Buffers
             }
         }
 
+        /// <summary>
+        ///     Select bucket index.
+        /// </summary>
+        /// <param name="size"> The size. </param>
+        /// <returns>
+        ///     An int.
+        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int SelectBucketIndex(int size)
         {

@@ -1,24 +1,10 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
 
@@ -72,7 +58,8 @@ namespace Exomia.Network.UnitTest
             byte[] data = { 0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000 };
 
             Serialization.Serialization.SerializeTcp(
-                1337u, data, 0, data.Length, 654584478, EncryptionMode.None, out byte[] send, out int size);
+                1337u, data, 0, data.Length, 654584478, EncryptionMode.None, out byte[] send,
+                out int size);
             Assert.AreEqual(size, Constants.TCP_HEADER_SIZE + 4 + data.Length + 1 + 1);
 
             CircularBuffer cb = new CircularBuffer();
@@ -103,7 +90,7 @@ namespace Exomia.Network.UnitTest
         [TestMethod]
         public void SerializeTcpNoResponseBigPayloadTest()
         {
-            Random rnd = new Random(7576);
+            Random rnd  = new Random(7576);
             byte[] data = new byte[(1 << 12) + 200];
 
             //rnd.NextBytes(data);

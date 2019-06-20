@@ -1,61 +1,66 @@
-﻿#region MIT License
+﻿#region License
 
-// Copyright (c) 2019 exomia - Daniel Bätz
+// Copyright (c) 2018-2019, exomia
+// All rights reserved.
 // 
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
 
 #endregion
 
 using System;
 using System.Runtime.CompilerServices;
 using Exomia.Network.Buffers;
+using Exomia.Network.Encoding;
 using Exomia.Network.Lib;
 using LZ4;
 
 namespace Exomia.Network.Serialization
 {
-    //TODO: UNIT TEST
+    /// <content>
+    ///     A serialization.
+    /// </content>
     static unsafe partial class Serialization
     {
-        private const ushort CONE = 0b1000_0000_0000_0001;
-
-        private const uint C0 = 0x214EE939;
-        private const uint C1 = 0x117DFA89;
-
-        private const byte ONE = 0b1000_0000;
-        private const byte MASK1 = 0b0111_1111;
-        private const byte MASK2 = 0b0100_0000;
-
-        private const uint H0 = 0x209536F9;
-        private static readonly uint s_h0 = H0 ^ Math2.R1(H0, 12);
-
+        /// <summary>
+        ///     Serialize TCP.
+        /// </summary>
+        /// <param name="commandID">      Identifier for the command. </param>
+        /// <param name="data">           The data. </param>
+        /// <param name="offset">         The offset. </param>
+        /// <param name="length">         The length. </param>
+        /// <param name="responseID">     Identifier for the response. </param>
+        /// <param name="encryptionMode"> The encryption mode. </param>
+        /// <param name="send">           [out] The send. </param>
+        /// <param name="size">           [out] The size. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeTcp(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode, out byte[] send, out int size)
+        internal static void SerializeTcp(uint           commandID, byte[] data, int offset, int length,
+                                          uint           responseID,
+                                          EncryptionMode encryptionMode, out byte[] send, out int size)
         {
             send = ByteArrayPool.Rent(Constants.TCP_HEADER_SIZE + 9 + length + Math2.Ceiling(length / 7.0f));
             SerializeTcp(commandID, data, offset, length, responseID, encryptionMode, send, out size);
         }
 
+        /// <summary>
+        ///     Serialize TCP.
+        /// </summary>
+        /// <param name="commandID">      Identifier for the command. </param>
+        /// <param name="data">           The data. </param>
+        /// <param name="offset">         The offset. </param>
+        /// <param name="length">         The length. </param>
+        /// <param name="responseID">     Identifier for the response. </param>
+        /// <param name="encryptionMode"> The encryption mode. </param>
+        /// <param name="send">           The send. </param>
+        /// <param name="size">           [out] The size. </param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeTcp(uint commandID, byte[] data, int offset, int length, uint responseID,
-            EncryptionMode encryptionMode, byte[] send, out int size)
+        internal static void SerializeTcp(uint           commandID, byte[] data, int offset, int length,
+                                          uint           responseID,
+                                          EncryptionMode encryptionMode, byte[] send, out int size)
         {
             // 8bit
             // 
@@ -79,7 +84,7 @@ namespace Exomia.Network.Serialization
 
             // 16bit   -    CHECKSUM
 
-            int l;
+            int    l;
             ushort checksum;
 
             if (responseID != 0)
@@ -96,33 +101,35 @@ namespace Exomia.Network.Serialization
                     }
                     if (s > 0)
                     {
-                        checksum = E2S(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 8, out l);
-                        size     = Constants.TCP_HEADER_SIZE + 9 + l;
+                        checksum = PayloadEncoding.Encode(
+                            buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 8, out l);
+                        size = Constants.TCP_HEADER_SIZE + 9 + l;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)(RESPONSE_1_BIT | (byte)CompressionMode.Lz4 | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 9) & DATA_LENGTH_MASK)
-                                | (commandID << COMMAND_ID_SHIFT);
-                            *(ushort*)(ptr + 5)                              = checksum;
-                            *(uint*)(ptr + 7)                                = responseID;
-                            *(int*)(ptr + 11)                                = length;
-                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 8) = Constants.ZERO_BYTE;
+                              | (commandID << COMMAND_ID_SHIFT);
+                            *(ushort*)(ptr                              + 5)  = checksum;
+                            *(uint*)(ptr                                + 7)  = responseID;
+                            *(int*)(ptr                                 + 11) = length;
+                            *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 8)  = Constants.ZERO_BYTE;
                         }
                         return;
                     }
                 }
 
-                checksum = E2S(data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, out l);
-                size     = Constants.TCP_HEADER_SIZE + 5 + l;
+                checksum = PayloadEncoding.Encode(
+                    data, offset, length, send, Constants.TCP_HEADER_SIZE + 4, out l);
+                size = Constants.TCP_HEADER_SIZE + 5 + l;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
                     *(uint*)(ptr + 1) =
                         ((uint)(l + 5) & DATA_LENGTH_MASK)
-                        | (commandID << COMMAND_ID_SHIFT);
-                    *(ushort*)(ptr + 5)                              = checksum;
-                    *(uint*)(ptr + 7)                                = responseID;
+                      | (commandID << COMMAND_ID_SHIFT);
+                    *(ushort*)(ptr                              + 5) = checksum;
+                    *(uint*)(ptr                                + 7) = responseID;
                     *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
                 }
             }
@@ -140,96 +147,35 @@ namespace Exomia.Network.Serialization
                     }
                     if (s > 0)
                     {
-                        checksum = E2S(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 4, out l);
+                        checksum = PayloadEncoding.Encode(buffer, 0, s, send, Constants.TCP_HEADER_SIZE + 4, out l);
                         size     = Constants.TCP_HEADER_SIZE + 5 + l;
                         fixed (byte* ptr = send)
                         {
                             *ptr = (byte)((byte)CompressionMode.Lz4 | (byte)encryptionMode);
                             *(uint*)(ptr + 1) =
                                 ((uint)(l + 5) & DATA_LENGTH_MASK)
-                                | (commandID << COMMAND_ID_SHIFT);
-                            *(ushort*)(ptr + 5)                              = checksum;
-                            *(int*)(ptr + 7)                                 = length;
+                              | (commandID << COMMAND_ID_SHIFT);
+                            *(ushort*)(ptr                              + 5) = checksum;
+                            *(int*)(ptr                                 + 7) = length;
                             *(int*)(ptr + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
                         }
                         return;
                     }
                 }
 
-                checksum = E2S(data, offset, length, send, Constants.TCP_HEADER_SIZE, out l);
-                size     = Constants.TCP_HEADER_SIZE + 1 + l;
+                checksum = PayloadEncoding.Encode(
+                    data, offset, length, send, Constants.TCP_HEADER_SIZE, out l);
+                size = Constants.TCP_HEADER_SIZE + 1 + l;
                 fixed (byte* ptr = send)
                 {
                     *ptr = (byte)encryptionMode;
                     *(uint*)(ptr + 1) =
                         ((uint)(l + 1) & DATA_LENGTH_MASK)
-                        | (commandID << COMMAND_ID_SHIFT);
-                    *(ushort*)(ptr + 5)                          = checksum;
+                      | (commandID << COMMAND_ID_SHIFT);
+                    *(ushort*)(ptr                          + 5) = checksum;
                     *(int*)(ptr + Constants.TCP_HEADER_SIZE + l) = Constants.ZERO_BYTE;
                 }
             }
-        }
-
-        internal static ushort S2E(byte* src, int offset, int length, byte[] buffer, out int bufferLength)
-        {
-            bufferLength = length - Math2.Ceiling(length / 8.0);
-            uint checksum = s_h0;
-            int o1 = 0;
-            fixed (byte* dest = buffer)
-            {
-                while (offset + 8 < length)
-                {
-                    Deserialize(&checksum, dest, o1, src, offset, 8);
-                    o1     += 7;
-                    offset += 8;
-                }
-                Deserialize(&checksum, dest, o1, src, offset, length - offset);
-            }
-
-            return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
-        }
-
-        private static ushort E2S(byte[] data, int offset, int length, byte[] buffer, int bufferOffset,
-            out int bufferLength)
-        {
-            bufferLength = length + Math2.Ceiling(length / 7.0f);
-            uint checksum = s_h0;
-            while (offset + 7 < length)
-            {
-                E2S(&checksum, buffer, bufferOffset, data, offset, 7);
-                bufferOffset += 8;
-                offset       += 7;
-            }
-            E2S(&checksum, buffer, bufferOffset, data, offset, length - offset);
-
-            return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
-        }
-
-        private static void Deserialize(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
-        {
-            byte b = *((src + o2 + size) - 1);
-            for (int i = 0; i < size - 1; ++i)
-            {
-                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
-                *(dest + o1 + i) =  d;
-                *checksum        ^= d + C0;
-            }
-            *checksum += Math2.R1(b, 23) + C1;
-        }
-
-        private static void E2S(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)
-        {
-            byte b = ONE;
-            for (int i = 0; i < size; ++i)
-            {
-                uint d = data[o2 + i];
-                byte s = (byte)(d >> 7);
-                b              =  (byte)(b | (s << (6 - i)));
-                buffer[o1 + i] =  (byte)(ONE | d);
-                *checksum      ^= d + C0;
-            }
-            buffer[o1 + size] =  b;
-            *checksum         += Math2.R1(b, 23) + C1;
         }
     }
 }
