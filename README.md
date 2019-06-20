@@ -2,7 +2,21 @@
 
 exomia/network is a wrapper library around System.Socket for easy TCP/UDP client & server communication.
 
-![](https://img.shields.io/github/issues-pr/exomia/network.svg) ![](https://img.shields.io/github/issues/exomia/network.svg)  ![](https://img.shields.io/github/last-commit/exomia/network.svg) ![](https://img.shields.io/github/contributors/exomia/network.svg) ![](https://img.shields.io/github/commit-activity/y/exomia/network.svg) ![](https://img.shields.io/github/languages/top/exomia/network.svg) ![](https://img.shields.io/github/languages/count/exomia/network.svg) ![](https://img.shields.io/github/license/exomia/network.svg)
+![](https://img.shields.io/github/issues-pr/exomia/network.svg)
+![](https://img.shields.io/github/issues/exomia/network.svg)
+![](https://img.shields.io/github/last-commit/exomia/network.svg)
+![](https://img.shields.io/github/contributors/exomia/network.svg)
+![](https://img.shields.io/github/commit-activity/y/exomia/network.svg)
+![](https://img.shields.io/github/languages/top/exomia/network.svg)
+![](https://img.shields.io/github/languages/count/exomia/network.svg)
+![](https://img.shields.io/github/license/exomia/network.svg)
+
+## Installing
+
+```shell
+[Package Manager]
+PM> Install-Package Exomia.Network
+```
 
 ## Example
 
@@ -190,162 +204,4 @@ static void Main(string[] args)
 	}
 }
 ```
-
-## Installing
-
-```shell
-[Package Manager]
-PM> Install-Package Exomia.Network
-```
-
-## Send data
-
-to send data to a server or from a server to a client you have several options see:
-
- - IClient.cs
- 
-```csharp
-/// <summary>
-///     send data to the server
-/// </summary>
-/// <param name="commandid">command id</param>
-/// <param name="data">data</param>
-/// <param name="offset">offset</param>
-/// <param name="lenght">lenght of data</param>
-SendError Send(uint commandid, byte[] data, int offset, int lenght);
-
-/// <summary>
-///     send data to the server
-/// </summary>
-/// <param name="commandid">command id</param>
-/// <param name="serializable">ISerializable</param>
-SendError Send(uint commandid, ISerializable serializable);
-
-/// <summary>
-///     send data to the server
-/// </summary>
-/// <typeparam name="T">struct type</typeparam>
-/// <param name="commandid">command id</param>
-/// <param name="data">struct data</param>
-SendError Send<T>(uint commandid, in T data) where T : unmanaged;
-
-...
-```
-alternative you can use the 'SendR' methods to wait until you received the response
-
-Samples:
-```csharp
-/// <summary>
-///     send data to the server
-/// </summary>
-/// <typeparam name="TResult">struct type</typeparam>
-/// <param name="commandid">command id</param>
-/// <param name="data">data</param>
-/// <param name="offset">offset</param>
-/// <param name="lenght">lenght of data</param>
-/// <param name="timeout">timeout</param>
-/// <returns>task of Response{TResult}</returns>
-Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght, TimeSpan timeout)
-    where TResult : unmanaged;
-
-/// <summary>
-///     send data to the server
-/// </summary>
-/// <typeparam name="TResult">struct type</typeparam>
-/// <param name="commandid">command id</param>
-/// <param name="data">data</param>
-/// <param name="offset">offset</param>
-/// <param name="lenght">lenght of data</param>
-/// <param name="deserialize"></param>
-/// <param name="timeout">timeout</param>
- /// <returns>task of Response{TResult}</returns>
-Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int lenght,
-    DeserializePacket<TResult> deserialize, TimeSpan timeout);
-    
-...
-```
-
-- IServer.cs
-
-```csharp
-/// <summary>
-///     send data to the client
-/// </summary>
-/// <param name="arg0">Socket|EndPoint</param>
-/// <param name="commandid">command id</param>
-/// <param name="data">data</param>
-/// <param name="offset">offset</param>
-/// <param name="lenght">data lenght</param>
-/// <param name="responseid">responseid</param>
-/// <returns>SendError</returns>
-SendError SendTo(T arg0, uint commandid, byte[] data, int offset, int lenght, uint responseid);
-
-/// <summary>
-///     send data to the client
-/// </summary>
-/// <param name="arg0">Socket|EndPoint</param>
-/// <param name="commandid">command id</param>
-/// <param name="serializable">ISerializable</param>
-/// <param name="responseid">responseid</param>
-/// <returns>SendError</returns>
-SendError SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid);
-
-/// <summary>
-///     send data to the client
-/// </summary>
-/// <typeparam name="T1">struct type</typeparam>
-/// <param name="arg0">Socket|EndPoint</param>
-/// <param name="commandid">command id</param>
-/// <param name="data">data</param>
-/// <param name="responseid"></param>
-/// <returns>SendError</returns>
-SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : unmanaged;
-
-...
-```
-
-## Changelog
-
-### v1.2.2.1
-
-	- new internal tcp system
-	- new packet handling system
-	- better event system
-	- renaming and moving
-	- removed some unused extensions
-	- unit tests added
-	- interface changes
-
-### v1.1.1.1
-
-	- added eap and apm versions of client aswell tcp/udp-server
-	- bug fixes (disconnect reason, ...)
-	- server only accepts requests from connected clients
-	- better abstraction and cleaner code
-	- impl. SendError to handle send failures
-	- ...
-
-## License
-
-MIT License
-Copyright (c) 2019 exomia
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
 
