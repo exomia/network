@@ -22,7 +22,7 @@ namespace Exomia.Network.Extensions.Class
         ///     returns a new deserialized object from a byte array.
         /// </summary>
         /// <typeparam name="T"> ISerializable. </typeparam>
-        /// <param name="arr"> byte array. </param>
+        /// <param name="arr"> The byte array. </param>
         /// <param name="obj"> [out] out object. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FromBytes<T>(this byte[] arr, out T obj)
@@ -36,7 +36,7 @@ namespace Exomia.Network.Extensions.Class
         ///     returns a new deserialized object from a byte array.
         /// </summary>
         /// <typeparam name="T"> ISerializable. </typeparam>
-        /// <param name="arr"> byte array. </param>
+        /// <param name="arr"> The byte array. </param>
         /// <returns>
         ///     returns a new deserialized object from a byte array.
         /// </returns>

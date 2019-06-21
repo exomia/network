@@ -23,7 +23,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="length"> [out] out the size of T. </param>
         /// <returns>
         ///     byte array.
@@ -44,7 +44,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="arr">    [out] out byte array. </param>
         /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -62,7 +62,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="arr">    [in,out] out byte array. </param>
         /// <param name="offset"> offset. </param>
         /// <param name="length"> [out] out the size of T. </param>
@@ -81,7 +81,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="length"> [out] out the size of T. </param>
         /// <returns>
         ///     byte array.
@@ -102,7 +102,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="arr">    [out] out byte array. </param>
         /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -120,7 +120,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="arr">    [in,out] out byte array. </param>
         /// <param name="offset"> offset. </param>
         /// <param name="length"> [out] out the size of T. </param>
@@ -139,7 +139,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="length"> [out] out the size of T. </param>
         /// <returns>
         ///     byte array.
@@ -165,7 +165,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="arr">    [out] out byte array. </param>
         /// <param name="length"> [out] out the size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -188,7 +188,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   data. </param>
+        /// <param name="data">   The data. </param>
         /// <param name="arr">    [in,out] ref byte array. </param>
         /// <param name="offset"> offset. </param>
         /// <param name="length"> [out] out the size of T. </param>
