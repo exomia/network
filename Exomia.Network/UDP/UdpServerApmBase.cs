@@ -53,8 +53,8 @@ namespace Exomia.Network.UDP
                 fixed (byte* src = data)
                 {
                     Serialization.Serialization.SerializeUdp(
-                        commandid, src + offset, length, responseid, EncryptionMode.None, out send,
-                        out size);
+                        commandid, src + offset, length, responseid, EncryptionMode.None,
+                        CompressionMode.Lz4, out send, out size);
                 }
 
                 try
@@ -227,7 +227,6 @@ namespace Exomia.Network.UDP
                             DeserializeData(ep, commandID, payload, 0, l, responseID);
                             break;
                         case CompressionMode.None:
-                        default:
                             dataLength -= offset;
                             payload    =  ByteArrayPool.Rent(dataLength);
 
@@ -238,6 +237,11 @@ namespace Exomia.Network.UDP
 
                             DeserializeData(ep, commandID, payload, 0, dataLength, responseID);
                             break;
+                        default:
+                            throw new ArgumentOutOfRangeException(
+                                nameof(CompressionMode),
+                                (CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK),
+                                "Not supported!");
                     }
                 }
             }

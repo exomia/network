@@ -24,50 +24,54 @@ namespace Exomia.Network.Serialization
         /// <summary>
         ///     Serialize UDP.
         /// </summary>
-        /// <param name="commandID">      [out] Identifier for the command. </param>
-        /// <param name="src">            [in,out] If non-null, source for the. </param>
-        /// <param name="length">         The length. </param>
-        /// <param name="responseID">     Identifier for the response. </param>
-        /// <param name="encryptionMode"> The encryption mode. </param>
-        /// <param name="dst">            [out] Destination for the. </param>
-        /// <param name="size">           [out] The size. </param>
+        /// <param name="commandID">       [out] Identifier for the command. </param>
+        /// <param name="src">             [in,out] If non-null, source for the. </param>
+        /// <param name="length">          The length. </param>
+        /// <param name="responseID">      Identifier for the response. </param>
+        /// <param name="encryptionMode">  The encryption mode. </param>
+        /// <param name="compressionMode"> The compression mode. </param>
+        /// <param name="dst">             [out] Destination for the. </param>
+        /// <param name="size">            [out] The size. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeUdp(uint           commandID,
-                                          byte*          src,
-                                          int            length,
-                                          uint           responseID,
-                                          EncryptionMode encryptionMode,
-                                          out byte[]     dst,
-                                          out int        size)
+        internal static void SerializeUdp(uint            commandID,
+                                          byte*           src,
+                                          int             length,
+                                          uint            responseID,
+                                          EncryptionMode  encryptionMode,
+                                          CompressionMode compressionMode,
+                                          out byte[]      dst,
+                                          out int         size)
         {
             dst = ByteArrayPool.Rent(Constants.UDP_HEADER_SIZE + 8 + length);
             fixed (byte* ptr = dst)
             {
-                SerializeUdp(commandID, src, length, responseID, encryptionMode, ptr, out size);
+                SerializeUdp(commandID, src, length, responseID, encryptionMode, compressionMode, ptr, out size);
             }
         }
 
         /// <summary>
         ///     Serialize UDP.
         /// </summary>
-        /// <param name="commandID">      [out] Identifier for the command. </param>
-        /// <param name="src">            [in,out] If non-null, source for the. </param>
-        /// <param name="length">         The length. </param>
-        /// <param name="responseID">     Identifier for the response. </param>
-        /// <param name="encryptionMode"> The encryption mode. </param>
-        /// <param name="dst">            [out] Destination for the. </param>
-        /// <param name="size">           [out] The size. </param>
+        /// <param name="commandID">       [out] Identifier for the command. </param>
+        /// <param name="src">             [in,out] If non-null, source for the. </param>
+        /// <param name="length">          The length. </param>
+        /// <param name="responseID">      Identifier for the response. </param>
+        /// <param name="encryptionMode">  The encryption mode. </param>
+        /// <param name="compressionMode"> The compression mode. </param>
+        /// <param name="dst">             [out] Destination for the. </param>
+        /// <param name="size">            [out] The size. </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
         ///     the required range.
         /// </exception>
-        internal static void SerializeUdp(uint           commandID,
-                                          byte*          src,
-                                          int            length,
-                                          uint           responseID,
-                                          EncryptionMode encryptionMode,
-                                          byte*          dst,
-                                          out int        size)
+        internal static void SerializeUdp(uint            commandID,
+                                          byte*           src,
+                                          int             length,
+                                          uint            responseID,
+                                          EncryptionMode  encryptionMode,
+                                          CompressionMode compressionMode,
+                                          byte*           dst,
+                                          out int         size)
         {
             // 8bit
             // 
@@ -93,9 +97,17 @@ namespace Exomia.Network.Serialization
             {
                 if (length >= LENGTH_THRESHOLD)
                 {
-                    int s = LZ4Codec.Encode(
-                        src, length, dst + Constants.UDP_HEADER_SIZE + 8, length);
-
+                    int s;
+                    switch (compressionMode)
+                    {
+                        case CompressionMode.Lz4:
+                            s = LZ4Codec.Encode(
+                                src, length, dst + Constants.UDP_HEADER_SIZE + 8, length);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(
+                                nameof(compressionMode), compressionMode, "Not supported!");
+                    }
                     if (s > Constants.UDP_PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(
@@ -129,7 +141,17 @@ namespace Exomia.Network.Serialization
             {
                 if (length >= LENGTH_THRESHOLD)
                 {
-                    int s = LZ4Codec.Encode(src, length, dst + Constants.UDP_HEADER_SIZE + 4, length);
+                    int s;
+                    switch (compressionMode)
+                    {
+                        case CompressionMode.Lz4:
+                            s = LZ4Codec.Encode(
+                                src, length, dst + Constants.UDP_HEADER_SIZE + 4, length);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(
+                                nameof(compressionMode), compressionMode, "Not supported!");
+                    }
                     if (s > Constants.UDP_PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(

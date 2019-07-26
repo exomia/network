@@ -24,6 +24,36 @@ namespace Exomia.Network
         /// <summary>
         ///     LZ4
         /// </summary>
-        Lz4 = 0b100000
+        Lz4 = 0b001000,
+
+        /// <summary>
+        ///     Unused1
+        /// </summary>
+        Unused1 = 0b010000,
+
+        /// <summary>
+        ///     Unused2
+        /// </summary>
+        Unused2 = 0b011000,
+
+        /// <summary>
+        ///     Unused3
+        /// </summary>
+        Unused3 = 0b100000,
+
+        /// <summary>
+        ///     Unused4
+        /// </summary>
+        Unused4 = 0b101000,
+
+        /// <summary>
+        ///     Unused5
+        /// </summary>
+        Unused5 = 0b110000,
+
+        /// <summary>
+        ///     Unused6
+        /// </summary>
+        Unused6 = 0b111000
     }
 }

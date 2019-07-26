@@ -25,51 +25,55 @@ namespace Exomia.Network.Serialization
         /// <summary>
         ///     Serialize TCP.
         /// </summary>
-        /// <param name="commandID">      Identifier for the command. </param>
-        /// <param name="src">            [in,out] If non-null, source for the. </param>
-        /// <param name="length">         The length. </param>
-        /// <param name="responseID">     Identifier for the response. </param>
-        /// <param name="encryptionMode"> The encryption mode. </param>
-        /// <param name="dst">            [in,out] If non-null, destination for the. </param>
-        /// <param name="size">           [out] The size. </param>
+        /// <param name="commandID">       Identifier for the command. </param>
+        /// <param name="src">             [in,out] If non-null, source for the. </param>
+        /// <param name="length">          The length. </param>
+        /// <param name="responseID">      Identifier for the response. </param>
+        /// <param name="encryptionMode">  The encryption mode. </param>
+        /// <param name="compressionMode"> The compression mode. </param>
+        /// <param name="dst">             [in,out] If non-null, destination for the. </param>
+        /// <param name="size">            [out] The size. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeTcp(uint           commandID,
-                                          byte*          src,
-                                          int            length,
-                                          uint           responseID,
-                                          EncryptionMode encryptionMode,
-                                          out byte[]     dst,
-                                          out int        size)
+        internal static void SerializeTcp(uint            commandID,
+                                          byte*           src,
+                                          int             length,
+                                          uint            responseID,
+                                          EncryptionMode  encryptionMode,
+                                          CompressionMode compressionMode,
+                                          out byte[]      dst,
+                                          out int         size)
         {
             dst = ByteArrayPool.Rent(Constants.TCP_HEADER_SIZE + 9 + length + Math2.Ceiling(length / 7.0f));
             fixed (byte* ptr = dst)
             {
-                SerializeTcp(commandID, src, length, responseID, encryptionMode, ptr, out size);
+                SerializeTcp(commandID, src, length, responseID, encryptionMode, compressionMode, ptr, out size);
             }
         }
 
         /// <summary>
         ///     Serialize TCP.
         /// </summary>
-        /// <param name="commandID">      Identifier for the command. </param>
-        /// <param name="src">            [in,out] If non-null, source for the. </param>
-        /// <param name="length">         The length. </param>
-        /// <param name="responseID">     Identifier for the response. </param>
-        /// <param name="encryptionMode"> The encryption mode. </param>
-        /// <param name="dst">            [in,out] If non-null, destination for the. </param>
-        /// <param name="size">           [out] The size. </param>
+        /// <param name="commandID">       Identifier for the command. </param>
+        /// <param name="src">             [in,out] If non-null, source for the. </param>
+        /// <param name="length">          The length. </param>
+        /// <param name="responseID">      Identifier for the response. </param>
+        /// <param name="encryptionMode">  The encryption mode. </param>
+        /// <param name="compressionMode"> The compression mode. </param>
+        /// <param name="dst">             [in,out] If non-null, destination for the. </param>
+        /// <param name="size">            [out] The size. </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
         ///     the required range.
         /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeTcp(uint           commandID,
-                                          byte*          src,
-                                          int            length,
-                                          uint           responseID,
-                                          EncryptionMode encryptionMode,
-                                          byte*          dst,
-                                          out int        size)
+        internal static void SerializeTcp(uint            commandID,
+                                          byte*           src,
+                                          int             length,
+                                          uint            responseID,
+                                          EncryptionMode  encryptionMode,
+                                          CompressionMode compressionMode,
+                                          byte*           dst,
+                                          out int         size)
         {
             // 8bit
             // 
@@ -98,12 +102,21 @@ namespace Exomia.Network.Serialization
 
             if (responseID != 0)
             {
-                if (length >= LENGTH_THRESHOLD)
+                if (length >= LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
                 {
                     byte[] buffer = ByteArrayPool.Rent(length);
                     fixed (byte* bPtr = buffer)
                     {
-                        int s = LZ4Codec.Encode(src, length, bPtr, length);
+                        int s;
+                        switch (compressionMode)
+                        {
+                            case CompressionMode.Lz4:
+                                s = LZ4Codec.Encode(src, length, bPtr, length);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException(
+                                    nameof(compressionMode), compressionMode, "Not supported!");
+                        }
                         if (s > Constants.TCP_PACKET_SIZE_MAX)
                         {
                             ByteArrayPool.Return(buffer);
@@ -117,7 +130,7 @@ namespace Exomia.Network.Serialization
 
                             size = Constants.TCP_HEADER_SIZE + 9 + l;
 
-                            *dst = (byte)(RESPONSE_1_BIT | (byte)CompressionMode.Lz4 | (byte)encryptionMode);
+                            *dst = (byte)(RESPONSE_1_BIT | (byte)compressionMode | (byte)encryptionMode);
                             *(uint*)(dst + 1) =
                                 ((uint)(l + 9) & DATA_LENGTH_MASK)
                               | (commandID << COMMAND_ID_SHIFT);
@@ -145,12 +158,21 @@ namespace Exomia.Network.Serialization
             }
             else
             {
-                if (length >= LENGTH_THRESHOLD)
+                if (length >= LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
                 {
                     byte[] buffer = ByteArrayPool.Rent(length);
                     fixed (byte* bPtr = buffer)
                     {
-                        int s = LZ4Codec.Encode(src, length, bPtr, length);
+                        int s;
+                        switch (compressionMode)
+                        {
+                            case CompressionMode.Lz4:
+                                s = LZ4Codec.Encode(src, length, bPtr, length);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException(
+                                    nameof(compressionMode), compressionMode, "Not supported!");
+                        }
                         if (s > Constants.TCP_PACKET_SIZE_MAX)
                         {
                             ByteArrayPool.Return(buffer);
@@ -164,7 +186,7 @@ namespace Exomia.Network.Serialization
 
                             size = Constants.TCP_HEADER_SIZE + 5 + l;
 
-                            *dst = (byte)((byte)CompressionMode.Lz4 | (byte)encryptionMode);
+                            *dst = (byte)((byte)compressionMode | (byte)encryptionMode);
                             *(uint*)(dst + 1) =
                                 ((uint)(l + 5) & DATA_LENGTH_MASK)
                               | (commandID << COMMAND_ID_SHIFT);

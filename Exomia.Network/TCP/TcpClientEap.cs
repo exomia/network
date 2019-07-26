@@ -139,7 +139,7 @@ namespace Exomia.Network.TCP
                 {
                     Serialization.Serialization.SerializeTcp(
                         commandid, src + offset, length, responseid, EncryptionMode.None,
-                        dst, out int size);
+                        CompressionMode.Lz4, dst, out int size);
                     sendEventArgs.SetBuffer(0, size);
                 }
 
@@ -234,6 +234,8 @@ namespace Exomia.Network.TCP
                         {
                             switch (compressionMode)
                             {
+                                case CompressionMode.None:
+                                    break;
                                 case CompressionMode.Lz4:
                                     int l = *(int*)(ptr + offset);
 
@@ -245,6 +247,12 @@ namespace Exomia.Network.TCP
                                     deserializeBuffer = buffer;
                                     bufferLength      = l;
                                     break;
+                                default:
+                                    throw new ArgumentOutOfRangeException(
+                                        nameof(CompressionMode),
+                                        (CompressionMode)(packetHeader &
+                                                          Serialization.Serialization.COMPRESSED_MODE_MASK),
+                                        "Not supported!");
                             }
 
                             ReceiveAsync();

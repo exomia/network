@@ -30,7 +30,7 @@ namespace Exomia.Network
         private DateTime _lastReceivedPacketTimeStamp;
 
         /// <summary>
-        ///     LastReceivedPacketTimeStamp.
+        ///     Gets the Date/Time of the last received packet time stamp.
         /// </summary>
         /// <value>
         ///     The last received packet time stamp.
@@ -41,7 +41,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     IPAddress.
+        ///     Gets the IP address.
         /// </summary>
         /// <value>
         ///     The IP address.
@@ -49,20 +49,26 @@ namespace Exomia.Network
         public abstract IPAddress IPAddress { get; }
 
         /// <summary>
-        ///     EndPoint.
+        ///     Gets the end point.
         /// </summary>
         /// <value>
         ///     The end point.
         /// </value>
         public abstract EndPoint EndPoint { get; }
 
+        /// <summary>
+        ///     Gets the argument 0.
+        /// </summary>
+        /// <value>
+        ///     The argument 0.
+        /// </value>
         internal T Arg0
         {
             get { return _arg0; }
         }
 
         /// <summary>
-        ///     ServerClientBase constructor.
+        ///     Initializes a new instance of the <see cref="ServerClientBase{T}" />; class.
         /// </summary>
         /// <param name="arg0"> Socket|Endpoint. </param>
         protected ServerClientBase(T arg0)
