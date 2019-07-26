@@ -14,7 +14,7 @@ using System.Net.Sockets;
 using Exomia.Network.Buffers;
 using Exomia.Network.Encoding;
 using Exomia.Network.Native;
-using LZ4;
+using K4os.Compression.LZ4;
 
 namespace Exomia.Network.TCP
 {
@@ -45,9 +45,12 @@ namespace Exomia.Network.TCP
             _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClient);
         }
 
-        /// <inheritdoc />
-        public override SendError SendTo(Socket arg0, uint commandid, byte[] data, int offset, int length,
-                                         uint   responseid)
+        private protected override unsafe SendError SendTo(Socket arg0,
+                                                           uint   commandid,
+                                                           byte[] data,
+                                                           int    offset,
+                                                           int    length,
+                                                           uint   responseid)
         {
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -61,11 +64,14 @@ namespace Exomia.Network.TCP
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
 
-                Serialization.Serialization.SerializeTcp(
-                    commandid, data, offset, length, responseid, EncryptionMode.None,
-                    sendEventArgs.Buffer,
-                    out int size);
-                sendEventArgs.SetBuffer(0, size);
+                fixed (byte* src = data)
+                fixed (byte* dst = sendEventArgs.Buffer)
+                {
+                    Serialization.Serialization.SerializeTcp(
+                        commandid, src + offset, length, responseid, EncryptionMode.None,
+                        dst, out int size);
+                    sendEventArgs.SetBuffer(0, size);
+                }
                 sendEventArgs.AcceptSocket = arg0;
 
                 try
@@ -304,8 +310,7 @@ namespace Exomia.Network.TCP
                                     int l = *(int*)(ptr + offset);
 
                                     byte[] buffer = ByteArrayPool.Rent(l);
-                                    int s = LZ4Codec.Decode(
-                                        deserializeBuffer, 0, bufferLength, buffer, 0, l, true);
+                                    int    s      = LZ4Codec.Decode(deserializeBuffer, 0, bufferLength, buffer, 0, l);
                                     if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
 
                                     ByteArrayPool.Return(deserializeBuffer);

@@ -16,7 +16,7 @@ using System.Threading;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
 using Exomia.Network.Serialization;
-using LZ4;
+using K4os.Compression.LZ4;
 
 namespace Exomia.Network.UDP
 {
@@ -38,16 +38,25 @@ namespace Exomia.Network.UDP
             _pool = new ServerClientStateObjectPool(maxClients, maxPacketSize);
         }
 
-        /// <inheritdoc />
-        public override SendError SendTo(EndPoint arg0, uint commandid, byte[] data, int offset, int length,
-                                         uint     responseid)
+        private protected override unsafe SendError SendTo(EndPoint arg0,
+                                                           uint     commandid,
+                                                           byte[]   data,
+                                                           int      offset,
+                                                           int      length,
+                                                           uint     responseid)
         {
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
             {
-                Serialization.Serialization.SerializeUdp(
-                    commandid, data, offset, length, responseid, EncryptionMode.None, out byte[] send,
-                    out int size);
+                byte[] send;
+                int    size;
+                fixed (byte* src = data)
+                {
+                    Serialization.Serialization.SerializeUdp(
+                        commandid, src + offset, length, responseid, EncryptionMode.None, out send,
+                        out size);
+                }
+
                 try
                 {
                     _listener.BeginSendTo(send, 0, size, SocketFlags.None, arg0, SendDataToCallback, send);
@@ -212,8 +221,7 @@ namespace Exomia.Network.UDP
 
                             payload = ByteArrayPool.Rent(l);
                             int s = LZ4Codec.Decode(
-                                state.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l,
-                                true);
+                                state.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l);
                             if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
 
                             DeserializeData(ep, commandID, payload, 0, l, responseID);

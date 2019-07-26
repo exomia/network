@@ -156,14 +156,13 @@ class TcpServer : TcpServerEapBase<TcpServerClient>
         return true;
     }
 
-    /// <inheritdoc />
-    public TcpServer(int maxPacketSize = 65520)
-        : base(maxPacketSize) { }
+    public TcpServer(uint expectedMaxClient = 32, int maxPacketSize = 65520)
+        : base(expectedMaxClient, maxPacketSize) { }
 }
 
 class TcpServerClient : ServerClientBase<Socket>
 {
-    public TcpServerClient(Socketarg0) : base(arg0) { }
+    public TcpServerClient(Socket arg0) : base(arg0) { }
     public override IPAddress IPAddress { get { return (_arg0.RemoteEndPoint as IPEndPoint)?.Address; } }
     public override EndPoint EndPoint { get { return _arg0.RemoteEndPoint; } }
 }
@@ -188,12 +187,12 @@ static void Main(string[] args)
             return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
         });
 
-		server.AddDataReceivedCallback(45, (b, arg0, data, responseid) =>
+		server.AddDataReceivedCallback(45, (server1, client, data, responseid) =>
         {
 			string request = (string)data;
 			Console.WriteLine($"Request: {request}");
 			byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
-			b.SendTo(arg0, 45, buffer, 0, buffer.Length, responseid);
+			server1.SendTo(client, 45, buffer, 0, buffer.Length, responseid);
 			return true;
         });
         

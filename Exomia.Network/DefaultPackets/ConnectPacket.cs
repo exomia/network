@@ -19,10 +19,10 @@ namespace Exomia.Network.DefaultPackets
     public unsafe struct ConnectPacket
     {
         /// <summary>
-        ///     Checksum(16)
+        ///     Gets the checksum[16].
         /// </summary>
         /// <value>
-        ///     The checksum[ 16].
+        ///     The checksum[16].
         /// </value>
         public fixed byte Checksum[16];
     }

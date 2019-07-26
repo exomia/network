@@ -168,7 +168,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     ClientBase destructor.
+        ///     Finalizes an instance of the <see cref="ClientBase" /> class.
         /// </summary>
         ~ClientBase()
         {
@@ -297,8 +297,11 @@ namespace Exomia.Network
         /// <param name="offset">     The offset. </param>
         /// <param name="length">     The length. </param>
         /// <param name="responseid"> The responseid. </param>
-        private protected unsafe void DeserializeData(uint commandid, byte[] data, int offset, int length,
-                                                      uint responseid)
+        private protected unsafe void DeserializeData(uint   commandid,
+                                                      byte[] data,
+                                                      int    offset,
+                                                      int    length,
+                                                      uint   responseid)
         {
             if (responseid != 0)
             {
@@ -516,12 +519,15 @@ namespace Exomia.Network
         /// <param name="data">       The data. </param>
         /// <param name="offset">     The offset. </param>
         /// <param name="length">     The length. </param>
-        /// <param name="responseID"> Identifier for the response. </param>
+        /// <param name="responseid"> Identifier for the response. </param>
         /// <returns>
         ///     A SendError.
         /// </returns>
-        private protected abstract SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
-                                                           uint responseID);
+        private protected abstract SendError BeginSendData(uint   commandid,
+                                                           byte[] data,
+                                                           int    offset,
+                                                           int    length,
+                                                           uint   responseid);
 
         /// <inheritdoc />
         public SendError Send(uint commandid, byte[] data, int offset, int length)
@@ -537,15 +543,20 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandid, byte[] data,
-                                                      int                               offset,    int    length,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+                                                      byte[]                            data,
+                                                      int                               offset,
+                                                      int                               length,
                                                       DeserializePacketHandler<TResult> deserialize)
         {
             return SendR(commandid, data, offset, length, deserialize, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint     commandid, byte[] data, int offset, int length,
+        public Task<Response<TResult>> SendR<TResult>(uint     commandid,
+                                                      byte[]   data,
+                                                      int      offset,
+                                                      int      length,
                                                       TimeSpan timeout)
             where TResult : unmanaged
         {
@@ -553,8 +564,10 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public async Task<Response<TResult>> SendR<TResult>(uint                              commandid, byte[] data,
-                                                            int                               offset,    int    length,
+        public async Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+                                                            byte[]                            data,
+                                                            int                               offset,
+                                                            int                               length,
                                                             DeserializePacketHandler<TResult> deserialize,
                                                             TimeSpan                          timeout)
         {
@@ -677,7 +690,8 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandid, in T data,
+        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandid,
+                                                         in T                              data,
                                                          DeserializePacketHandler<TResult> deserialize)
             where T : unmanaged
         {
@@ -695,7 +709,8 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandid, in T data,
+        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandid,
+                                                         in T                              data,
                                                          DeserializePacketHandler<TResult> deserialize,
                                                          TimeSpan                          timeout) where T : unmanaged
         {

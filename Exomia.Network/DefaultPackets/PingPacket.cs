@@ -19,7 +19,7 @@ namespace Exomia.Network.DefaultPackets
     public struct PingPacket
     {
         /// <summary>
-        ///     Timestamp.
+        ///     The timestamp.
         /// </summary>
         public long Timestamp;
 

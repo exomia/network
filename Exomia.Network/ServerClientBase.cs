@@ -14,7 +14,7 @@ using System.Net;
 namespace Exomia.Network
 {
     /// <summary>
-    ///     ServerClientBase{T} class.
+    ///     A server client base.
     /// </summary>
     /// <typeparam name="T"> Socket|EndPoint. </typeparam>
     public abstract class ServerClientBase<T> where T : class
@@ -55,6 +55,11 @@ namespace Exomia.Network
         ///     The end point.
         /// </value>
         public abstract EndPoint EndPoint { get; }
+
+        internal T Arg0
+        {
+            get { return _arg0; }
+        }
 
         /// <summary>
         ///     ServerClientBase constructor.

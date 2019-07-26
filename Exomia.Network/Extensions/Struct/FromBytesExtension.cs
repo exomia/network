@@ -17,13 +17,13 @@ namespace Exomia.Network.Extensions.Struct
     /// <summary>
     ///     from bytes extensions.
     /// </summary>
-    public static class FromBytesExtensions
+    public static class FromBytesExtension
     {
         /// <summary>
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr"> byte array. </param>
+        /// <param name="arr"> The byte array. </param>
         /// <param name="obj"> [out] out struct. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void FromBytesUnsafe<T>(this byte[] arr, out T obj) where T : struct
@@ -38,8 +38,8 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr">    byte array. </param>
-        /// <param name="offset"> offset. </param>
+        /// <param name="arr">    The byte array. </param>
+        /// <param name="offset"> The offset. </param>
         /// <param name="obj">    [out] out struct. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void FromBytesUnsafe<T>(this byte[] arr, int offset, out T obj) where T : struct
@@ -54,7 +54,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr"> byte array. </param>
+        /// <param name="arr"> The byte array. </param>
         /// <returns>
         ///     struct.
         /// </returns>
@@ -71,8 +71,8 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr">    byte array. </param>
-        /// <param name="offset"> offset. </param>
+        /// <param name="arr">    The byte array. </param>
+        /// <param name="offset"> The offset. </param>
         /// <returns>
         ///     struct.
         /// </returns>
@@ -89,7 +89,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr"> byte array. </param>
+        /// <param name="arr"> The byte array. </param>
         /// <param name="obj"> [out] out struct. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void FromBytesUnsafe2<T>(this byte[] arr, out T obj) where T : unmanaged
@@ -104,8 +104,8 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr">    byte array. </param>
-        /// <param name="offset"> offset. </param>
+        /// <param name="arr">    The byte array. </param>
+        /// <param name="offset"> The offset. </param>
         /// <param name="obj">    [out] out struct. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void FromBytesUnsafe2<T>(this byte[] arr, int offset, out T obj) where T : unmanaged
@@ -120,7 +120,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr"> byte array. </param>
+        /// <param name="arr"> The byte array. </param>
         /// <returns>
         ///     struct.
         /// </returns>
@@ -137,8 +137,8 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr">    byte array. </param>
-        /// <param name="offset"> offset. </param>
+        /// <param name="arr">    The byte array. </param>
+        /// <param name="offset"> The offset. </param>
         /// <returns>
         ///     struct.
         /// </returns>
@@ -155,7 +155,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr"> byte array. </param>
+        /// <param name="arr"> The byte array. </param>
         /// <param name="obj"> [out] out struct. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FromBytes<T>(this byte[] arr, out T obj) where T : struct
@@ -175,8 +175,8 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr">    byte array. </param>
-        /// <param name="offset"> offset. </param>
+        /// <param name="arr">    The byte array. </param>
+        /// <param name="offset"> The offset. </param>
         /// <param name="obj">    [out] out struct. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FromBytes<T>(this byte[] arr, int offset, out T obj) where T : struct
@@ -196,7 +196,7 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr"> byte array. </param>
+        /// <param name="arr"> The byte array. </param>
         /// <returns>
         ///     struct.
         /// </returns>
@@ -218,8 +218,8 @@ namespace Exomia.Network.Extensions.Struct
         ///     converts a byte array into a struct.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="arr">    byte array. </param>
-        /// <param name="offset"> . </param>
+        /// <param name="arr">    The byte array. </param>
+        /// <param name="offset"> The offset. </param>
         /// <returns>
         ///     struct.
         /// </returns>

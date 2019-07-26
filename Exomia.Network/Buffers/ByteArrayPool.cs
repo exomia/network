@@ -102,8 +102,10 @@ namespace Exomia.Network.Buffers
         ///     Returns the given array.
         /// </summary>
         /// <param name="array"> The array to return. </param>
-        /// <exception cref="ArgumentException"> Thrown when one or more arguments have unsupported or
-        ///                                      illegal values. </exception>
+        /// <exception cref="ArgumentException">
+        ///     Thrown when one or more arguments have unsupported or
+        ///     illegal values.
+        /// </exception>
         internal static void Return(byte[] array)
         {
             int bucketIndex = SelectBucketIndex(array.Length);

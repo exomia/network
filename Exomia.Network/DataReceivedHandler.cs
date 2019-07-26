@@ -11,10 +11,10 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     DataReceivedHandler callback.
+    ///     Called than a client received data from the server.
     /// </summary>
-    /// <param name="client"> IClient. </param>
-    /// <param name="data">   data. </param>
+    /// <param name="client"> The client. </param>
+    /// <param name="data">   The data. </param>
     /// <returns>
     ///     A bool.
     /// </returns>

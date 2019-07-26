@@ -11,7 +11,7 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     DisconnectedHandler callback.
+    ///     Called than a client disconnects from the server.
     /// </summary>
     /// <param name="client"> The client. </param>
     /// <param name="reason"> The reason. </param>

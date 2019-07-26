@@ -17,20 +17,20 @@ namespace Exomia.Network
     public readonly struct Response<TResult>
     {
         /// <summary>
-        ///     Result.
+        ///     The result.
         /// </summary>
         public readonly TResult Result;
 
         /// <summary>
-        ///     SendError.
+        ///     The send error.
         /// </summary>
         public readonly SendError SendError;
 
         /// <summary>
-        ///     Initializes a new instance of the &lt;see cref="Response&lt;TResult&gt;"/&gt; struct.
+        ///     Initializes a new instance of the <see cref="Response{TResult}" /> struct.
         /// </summary>
-        /// <param name="result">    Result. </param>
-        /// <param name="sendError"> SendError. </param>
+        /// <param name="result">    The result. </param>
+        /// <param name="sendError"> The send error. </param>
         internal Response(in TResult result, SendError sendError)
         {
             Result    = result;
@@ -40,7 +40,7 @@ namespace Exomia.Network
         /// <summary>
         ///     <c>true</c> if no SendError occured; <c>false</c> otherwise.
         /// </summary>
-        /// <param name="r"> instance of Response{TResult} </param>
+        /// <param name="r"> The in Response&lt;TResult&gt; to process. </param>
         /// <returns>
         ///     The result of the operation.
         /// </returns>
@@ -50,9 +50,9 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     implicit operator TResult.
+        ///     Implicit cast that converts the given in Response&lt;TResult&gt; to a TResult.
         /// </summary>
-        /// <param name="r"> instance of Response{TResult} </param>
+        /// <param name="r"> The in Response&lt;TResult&gt; to process. </param>
         /// <returns>
         ///     The result of the operation.
         /// </returns>

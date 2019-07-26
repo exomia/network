@@ -16,7 +16,7 @@ namespace Exomia.Network.Serialization
     public interface ISerializable
     {
         /// <summary>
-        ///     serialize the object to a byte array.
+        ///     Serialize the object to a byte array.
         /// </summary>
         /// <param name="length"> [out] the length of the data. </param>
         /// <returns>
@@ -25,9 +25,11 @@ namespace Exomia.Network.Serialization
         byte[] Serialize(out int length);
 
         /// <summary>
-        ///     deserialize the object from a byte array.
+        ///     Deserialize the object from a byte array.
         /// </summary>
-        /// <param name="data"> . </param>
-        void Deserialize(byte[] data);
+        /// <param name="data">   The data. </param>
+        /// <param name="offset"> The offset. </param>
+        /// <param name="length"> The length of the data. </param>
+        void Deserialize(byte[] data, int offset, int length);
     }
 }

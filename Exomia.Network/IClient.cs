@@ -107,7 +107,9 @@ namespace Exomia.Network
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandid, byte[] data, int offset,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+                                               byte[]                            data,
+                                               int                               offset,
                                                int                               length,
                                                DeserializePacketHandler<TResult> deserialize);
 
@@ -139,9 +141,12 @@ namespace Exomia.Network
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandid, byte[] data, int offset,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+                                               byte[]                            data,
+                                               int                               offset,
                                                int                               length,
-                                               DeserializePacketHandler<TResult> deserialize, TimeSpan timeout);
+                                               DeserializePacketHandler<TResult> deserialize,
+                                               TimeSpan                          timeout);
 
         /// <summary>
         ///     send data to the server.
@@ -165,7 +170,8 @@ namespace Exomia.Network
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandid, ISerializable serializable,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+                                               ISerializable                     serializable,
                                                DeserializePacketHandler<TResult> deserialize);
 
         /// <summary>
@@ -194,7 +200,8 @@ namespace Exomia.Network
         /// </returns>
         Task<Response<TResult>> SendR<TResult>(uint                              commandid,
                                                ISerializable                     serializable,
-                                               DeserializePacketHandler<TResult> deserialize, TimeSpan timeout);
+                                               DeserializePacketHandler<TResult> deserialize,
+                                               TimeSpan                          timeout);
 
         /// <summary>
         ///     send data to the server.
@@ -221,7 +228,8 @@ namespace Exomia.Network
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint                              commandid, in T data,
+        Task<Response<TResult>> SendR<T, TResult>(uint                              commandid,
+                                                  in T                              data,
                                                   DeserializePacketHandler<TResult> deserialize)
             where T : unmanaged;
 
@@ -252,7 +260,8 @@ namespace Exomia.Network
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint                              commandid, in T data,
+        Task<Response<TResult>> SendR<T, TResult>(uint                              commandid,
+                                                  in T                              data,
                                                   DeserializePacketHandler<TResult> deserialize,
                                                   TimeSpan                          timeout)
             where T : unmanaged;

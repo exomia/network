@@ -11,7 +11,7 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     ClientDisconnectHandler callback.
+    ///     Called than a client disconnects from the server.
     /// </summary>
     /// <typeparam name="T"> Socket|EndPoint. </typeparam>
     /// <param name="arg0">   The args. </param>
