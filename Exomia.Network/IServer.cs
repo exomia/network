@@ -8,87 +8,90 @@
 
 #endregion
 
+using System;
 using Exomia.Network.Serialization;
 
 namespace Exomia.Network
 {
     /// <summary>
-    ///     IServer{T} interface.
+    ///     Interface for server.
     /// </summary>
-    /// <typeparam name="T"> Socket|Endpoint. </typeparam>
-    interface IServer<in T>
+    /// <typeparam name="T">             Generic type parameter. </typeparam>
+    /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
+    interface IServer<in T, in TServerClient> : IDisposable
         where T : class
+        where TServerClient : ServerClientBase<T>
     {
         /// <summary>
-        ///     runs the server and starts the listener.
+        ///     Runs.
         /// </summary>
-        /// <param name="port"> . </param>
+        /// <param name="port"> The port. </param>
         /// <returns>
-        ///     <b>true</b> if successful; <b>false</b> otherwise.
+        ///     True if it succeeds, false if it fails.
         /// </returns>
         bool Run(int port);
 
         /// <summary>
-        ///     send data to the client.
+        ///     Sends data to the client.
         /// </summary>
-        /// <param name="arg0">       Socket|EndPoint. </param>
-        /// <param name="commandid">  command id. </param>
-        /// <param name="data">       data. </param>
-        /// <param name="offset">     offset. </param>
-        /// <param name="length">     data length. </param>
-        /// <param name="responseid"> . </param>
+        /// <param name="client">     The client. </param>
+        /// <param name="commandid">  The commandid. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="offset">     The offset. </param>
+        /// <param name="length">     The length. </param>
+        /// <param name="responseid"> The responseid. </param>
         /// <returns>
-        ///     SendError.
+        ///     A SendError.
         /// </returns>
-        SendError SendTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid);
+        SendError SendTo(TServerClient client, uint commandid, byte[] data, int offset, int length, uint responseid);
 
         /// <summary>
-        ///     send data to the client.
+        ///     Sends data to the client.
         /// </summary>
-        /// <param name="arg0">         Socket|EndPoint. </param>
-        /// <param name="commandid">    command id. </param>
-        /// <param name="serializable"> ISerializable. </param>
-        /// <param name="responseid">   . </param>
+        /// <param name="client">       The client. </param>
+        /// <param name="commandid">    The commandid. </param>
+        /// <param name="serializable"> The serializable. </param>
+        /// <param name="responseid">   The responseid. </param>
         /// <returns>
-        ///     SendError.
+        ///     A SendError.
         /// </returns>
-        SendError SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid);
+        SendError SendTo(TServerClient client, uint commandid, ISerializable serializable, uint responseid);
 
         /// <summary>
-        ///     send data to the client.
+        ///     Sends data to the client.
         /// </summary>
-        /// <typeparam name="T1"> struct type. </typeparam>
-        /// <param name="arg0">       Socket|EndPoint. </param>
-        /// <param name="commandid">  command id. </param>
-        /// <param name="data">       data. </param>
-        /// <param name="responseid"> . </param>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
+        /// <param name="client">     The client. </param>
+        /// <param name="commandid">  The commandid. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="responseid"> The responseid. </param>
         /// <returns>
-        ///     SendError.
+        ///     A SendError.
         /// </returns>
-        SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : unmanaged;
+        SendError SendTo<T1>(TServerClient client, uint commandid, in T1 data, uint responseid) where T1 : unmanaged;
 
         /// <summary>
-        ///     send data to all clients.
+        ///     Sends data to all clients.
         /// </summary>
-        /// <param name="commandid"> command id. </param>
-        /// <param name="data">      data. </param>
-        /// <param name="offset">    offset. </param>
-        /// <param name="length">    data length. </param>
+        /// <param name="commandid"> The commandid. </param>
+        /// <param name="data">      The data. </param>
+        /// <param name="offset">    The offset. </param>
+        /// <param name="length">    The length. </param>
         void SendToAll(uint commandid, byte[] data, int offset, int length);
 
         /// <summary>
-        ///     send data to all clients.
+        ///     Sends data to all clients.
         /// </summary>
-        /// <param name="commandid">    command id. </param>
-        /// <param name="serializable"> ISerializable. </param>
+        /// <param name="commandid">    The commandid. </param>
+        /// <param name="serializable"> The serializable. </param>
         void SendToAll(uint commandid, ISerializable serializable);
 
         /// <summary>
-        ///     send data to all clients.
+        ///     Sends data to all clients.
         /// </summary>
         /// <typeparam name="T1"> Generic type parameter. </typeparam>
-        /// <param name="commandid"> command id. </param>
-        /// <param name="data">      data. </param>
+        /// <param name="commandid"> The commandid. </param>
+        /// <param name="data">      The data. </param>
         void SendToAll<T1>(uint commandid, in T1 data) where T1 : unmanaged;
     }
 }

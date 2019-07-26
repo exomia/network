@@ -17,7 +17,7 @@ using System.Threading;
 namespace Exomia.Network.Native
 {
     /// <summary>
-    ///     Buffer for circular.
+    ///     A circular buffer class.
     /// </summary>
     unsafe class CircularBuffer : IDisposable
     {
@@ -197,8 +197,8 @@ namespace Exomia.Network.Native
                     else if (_tail + skip < _capacity)
                     {
                         int l1 = _capacity - (_tail + skip);
-                        Mem.Cpy(d          + offset, _ptr + _tail + skip, l1);
-                        Mem.Cpy(d + offset + l1, _ptr, length     - l1);
+                        Mem.Cpy(d + offset, _ptr + _tail + skip, l1);
+                        Mem.Cpy(d + offset + l1, _ptr, length - l1);
                     }
                     else
                     {
@@ -249,9 +249,9 @@ namespace Exomia.Network.Native
                 }
                 else if (_tail + skip < _capacity)
                 {
-                    int l1 = _capacity    - (_tail + skip);
-                    Mem.Cpy(dest          + offset, _ptr + _tail + skip, l1);
-                    Mem.Cpy(dest + offset + l1, _ptr, length     - l1);
+                    int l1 = _capacity - (_tail + skip);
+                    Mem.Cpy(dest + offset, _ptr + _tail + skip, l1);
+                    Mem.Cpy(dest + offset + l1, _ptr, length - l1);
                 }
                 else
                 {
@@ -304,8 +304,8 @@ namespace Exomia.Network.Native
                     else if (_tail + skip < _capacity)
                     {
                         int l1 = _capacity - (_tail + skip);
-                        Mem.Cpy(d          + offset, _ptr + _tail + skip, l1);
-                        Mem.Cpy(d + offset + l1, _ptr, length     - l1);
+                        Mem.Cpy(d + offset, _ptr + _tail + skip, l1);
+                        Mem.Cpy(d + offset + l1, _ptr, length - l1);
                     }
                     else
                     {
@@ -353,9 +353,9 @@ namespace Exomia.Network.Native
                 }
                 else if (_tail + skip < _capacity)
                 {
-                    int l1 = _capacity    - (_tail + skip);
-                    Mem.Cpy(dest          + offset, _ptr + _tail + skip, l1);
-                    Mem.Cpy(dest + offset + l1, _ptr, length     - l1);
+                    int l1 = _capacity - (_tail + skip);
+                    Mem.Cpy(dest + offset, _ptr + _tail + skip, l1);
+                    Mem.Cpy(dest + offset + l1, _ptr, length - l1);
                 }
                 else
                 {
@@ -410,7 +410,10 @@ namespace Exomia.Network.Native
         /// <returns>
         ///     a byte array.
         /// </returns>
-        public bool PeekHeader(int        skip, out byte packetHeader, out uint commandID, out int dataLength,
+        public bool PeekHeader(int        skip,
+                               out byte   packetHeader,
+                               out uint   commandID,
+                               out int    dataLength,
                                out ushort checksum)
         {
             bool lockTaken = false;
@@ -576,8 +579,8 @@ namespace Exomia.Network.Native
                     }
                     else
                     {
-                        int l1 = _capacity         - _head;
-                        Mem.Cpy(_ptr               + _head, src + offset, l1);
+                        int l1 = _capacity - _head;
+                        Mem.Cpy(_ptr + _head, src + offset, l1);
                         Mem.Cpy(_ptr, src + offset + l1, length - l1);
                     }
                 }
@@ -621,8 +624,8 @@ namespace Exomia.Network.Native
                 }
                 else
                 {
-                    int l1 = _capacity         - _head;
-                    Mem.Cpy(_ptr               + _head, src + offset, l1);
+                    int l1 = _capacity - _head;
+                    Mem.Cpy(_ptr + _head, src + offset, l1);
                     Mem.Cpy(_ptr, src + offset + l1, length - l1);
                 }
 

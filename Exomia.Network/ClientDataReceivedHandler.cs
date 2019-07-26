@@ -11,22 +11,21 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     ClientDataReceivedHandler callback.
+    ///     Handler, called when the server received client data.
     /// </summary>
     /// <typeparam name="T">             Socket|EndPoint. </typeparam>
-    /// <typeparam name="TServerClient"> TServerClient. </typeparam>
-    /// <param name="server">     IServer. </param>
-    /// <param name="arg0">       Socket|EndPoint. </param>
-    /// <param name="data">       object. </param>
-    /// <param name="responseid"> responseid. </param>
-    /// <param name="client">     TServerClient. </param>
+    /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
+    /// <param name="server">     The server. </param>
+    /// <param name="client">     The client. </param>
+    /// <param name="data">       The data. </param>
+    /// <param name="responseid"> The responseid. </param>
     /// <returns>
     ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
     /// </returns>
-    public delegate bool ClientDataReceivedHandler<T, TServerClient>(ServerBase<T, TServerClient> server, T arg0,
+    public delegate bool ClientDataReceivedHandler<T, TServerClient>(ServerBase<T, TServerClient> server,
+                                                                     TServerClient                client,
                                                                      object                       data,
-                                                                     uint                         responseid,
-                                                                     TServerClient                client)
+                                                                     uint                         responseid)
         where T : class
         where TServerClient : ServerClientBase<T>;
 }

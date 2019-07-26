@@ -11,8 +11,11 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     can be used to determine if a client has disconnected properly.
+    ///     Values that represent DisconnectReason.
     /// </summary>
+    /// <remarks>
+    ///     Can be used to determine if a client has disconnected properly.
+    /// </remarks>
     public enum DisconnectReason
     {
         /// <summary>

@@ -30,8 +30,7 @@ namespace Exomia.Network.Lib
         private readonly Event<ClientDataReceivedHandler<T, TServerClient>> _dataReceived;
 
         /// <summary>
-        ///     Initializes a new instance of the &lt;see cref="ServerClientEventEntry&lt;T,
-        ///     TServerClient&gt;"/&gt; class.
+        ///     Initializes a new instance of the <see cref="ServerClientEventEntry{T,TServerClient}" /> class.
         /// </summary>
         /// <param name="deserialize"> The deserialize. </param>
         public ServerClientEventEntry(DeserializePacketHandler<object> deserialize)
@@ -62,16 +61,14 @@ namespace Exomia.Network.Lib
         ///     Raises the event entries.
         /// </summary>
         /// <param name="server">     The server. </param>
-        /// <param name="arg0">       The argument 0. </param>
+        /// <param name="client">     The client. </param>
         /// <param name="data">       The data. </param>
         /// <param name="responseid"> The responseid. </param>
-        /// <param name="client">     The client. </param>
-        public void Raise(ServerBase<T, TServerClient> server, T arg0, object data, uint responseid,
-                          TServerClient                client)
+        public void Raise(ServerBase<T, TServerClient> server, TServerClient client, object data, uint responseid)
         {
             for (int i = _dataReceived.Count - 1; i >= 0; --i)
             {
-                if (!_dataReceived[i].Invoke(server, arg0, data, responseid, client))
+                if (!_dataReceived[i].Invoke(server, client, data, responseid))
                 {
                     _dataReceived.Remove(i);
                 }

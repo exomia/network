@@ -17,7 +17,7 @@ namespace Exomia.Network.Extensions.Struct
     /// <summary>
     ///     from bytes extensions.
     /// </summary>
-    public static class FromBytesExtensions
+    public static class FromBytesExtension
     {
         /// <summary>
         ///     converts a byte array into a struct.

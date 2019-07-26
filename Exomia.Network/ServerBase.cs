@@ -25,7 +25,7 @@ namespace Exomia.Network
     /// </summary>
     /// <typeparam name="T">             Generic type parameter. </typeparam>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
-    public abstract class ServerBase<T, TServerClient> : IServer<T>, IDisposable
+    public abstract class ServerBase<T, TServerClient> : IServer<T, TServerClient>
         where T : class
         where TServerClient : ServerClientBase<T>
     {
@@ -175,8 +175,12 @@ namespace Exomia.Network
         /// <param name="offset">     The offset. </param>
         /// <param name="length">     The length. </param>
         /// <param name="responseid"> The responseid. </param>
-        private protected void DeserializeData(T    arg0, uint commandid, byte[] data, int offset, int length,
-                                               uint responseid)
+        private protected void DeserializeData(T      arg0,
+                                               uint   commandid,
+                                               byte[] data,
+                                               int    offset,
+                                               int    length,
+                                               uint   responseid)
         {
             switch (commandid)
             {
@@ -200,7 +204,8 @@ namespace Exomia.Network
                     {
                         if (_clients.TryGetValue(arg0, out TServerClient sClient))
                         {
-                            if (commandid <= Constants.USER_COMMAND_LIMIT && _dataReceivedCallbacks.TryGetValue(
+                            if (commandid <= Constants.USER_COMMAND_LIMIT &&
+                                _dataReceivedCallbacks.TryGetValue(
                                     commandid, out ServerClientEventEntry<T, TServerClient> scee))
                             {
                                 sClient.SetLastReceivedPacketTimeStamp();
@@ -212,7 +217,7 @@ namespace Exomia.Network
                                         object res = scee._deserialize(in packet);
                                         ByteArrayPool.Return(data);
 
-                                        if (res != null) { scee.Raise(this, arg0, res, responseid, sClient); }
+                                        if (res != null) { scee.Raise(this, sClient, res, responseid); }
                                     });
                                 return;
                             }
@@ -412,7 +417,7 @@ namespace Exomia.Network
                 if (!_dataReceivedCallbacks.TryGetValue(commandid, out buffer))
                 {
                     throw new Exception(
-                        $"Invalid paramater '{nameof(commandid)}'! Use 'AddCommand(uint, DeserializeData)' first.");
+                        $"Invalid parameter '{nameof(commandid)}'! Use 'AddCommand(uint, DeserializeData)' first.");
                 }
             }
             finally
@@ -456,21 +461,37 @@ namespace Exomia.Network
 
         #region Send
 
-        /// <inheritdoc />
-        public abstract SendError SendTo(T arg0, uint commandid, byte[] data, int offset, int length, uint responseid);
+        private protected abstract SendError SendTo(T      arg0,
+                                                    uint   commandid,
+                                                    byte[] data,
+                                                    int    offset,
+                                                    int    length,
+                                                    uint   responseid);
 
         /// <inheritdoc />
-        public SendError SendTo(T arg0, uint commandid, ISerializable serializable, uint responseid)
+        public SendError SendTo(TServerClient client,
+                                uint          commandid,
+                                byte[]        data,
+                                int           offset,
+                                int           length,
+                                uint          responseid)
         {
-            byte[] dataB = serializable.Serialize(out int length);
-            return SendTo(arg0, commandid, dataB, 0, length, responseid);
+            return SendTo(client.Arg0, commandid, data, offset, length, responseid);
         }
 
         /// <inheritdoc />
-        public SendError SendTo<T1>(T arg0, uint commandid, in T1 data, uint responseid) where T1 : unmanaged
+        public SendError SendTo(TServerClient client, uint commandid, ISerializable serializable, uint responseid)
+        {
+            byte[] dataB = serializable.Serialize(out int length);
+            return SendTo(client.Arg0, commandid, dataB, 0, length, responseid);
+        }
+
+        /// <inheritdoc />
+        public SendError SendTo<T1>(TServerClient client, uint commandid, in T1 data, uint responseid)
+            where T1 : unmanaged
         {
             byte[] dataB = data.ToBytesUnsafe2(out int length);
-            return SendTo(arg0, commandid, dataB, 0, length, responseid);
+            return SendTo(client.Arg0, commandid, dataB, 0, length, responseid);
         }
 
         /// <inheritdoc />
@@ -484,9 +505,9 @@ namespace Exomia.Network
 
             if (buffer.Count > 0)
             {
-                foreach (T endPoint in buffer.Keys)
+                foreach (T arg0 in buffer.Keys)
                 {
-                    SendTo(endPoint, commandid, data, offset, length, 0);
+                    SendTo(arg0, commandid, data, offset, length, 0);
                 }
             }
         }

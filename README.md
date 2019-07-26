@@ -156,7 +156,6 @@ class TcpServer : TcpServerEapBase<TcpServerClient>
         return true;
     }
 
-    /// <inheritdoc />
     public TcpServer(uint expectedMaxClient = 32, int maxPacketSize = 65520)
         : base(expectedMaxClient, maxPacketSize) { }
 }
@@ -188,12 +187,12 @@ static void Main(string[] args)
             return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
         });
 
-		server.AddDataReceivedCallback(45, (b, arg0, data, responseid) =>
+		server.AddDataReceivedCallback(45, (server1, client, data, responseid) =>
         {
 			string request = (string)data;
 			Console.WriteLine($"Request: {request}");
 			byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
-			b.SendTo(arg0, 45, buffer, 0, buffer.Length, responseid);
+			server1.SendTo(client, 45, buffer, 0, buffer.Length, responseid);
 			return true;
         });
         

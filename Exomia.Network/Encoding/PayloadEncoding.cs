@@ -91,28 +91,48 @@ namespace Exomia.Network.Encoding
         ///     Encodes the data.
         /// </summary>
         /// <param name="data">         The data. </param>
-        /// <param name="offset">       The offset. </param>
         /// <param name="length">       The length. </param>
         /// <param name="buffer">       The buffer. </param>
-        /// <param name="bufferOffset"> The buffer offset. </param>
         /// <param name="bufferLength"> [out] Length of the buffer. </param>
         /// <returns>
         ///     An ushort.
         /// </returns>
-        internal static ushort Encode(byte[]  data, int offset, int length, byte[] buffer, int bufferOffset,
-                                      out int bufferLength)
+        internal static ushort Encode(byte* data, int length, byte* buffer, out int bufferLength)
         {
             bufferLength = length + Math2.Ceiling(length / 7.0f);
             uint checksum = s_h0;
-            while (offset + 7 < length)
+            while (length > 7)
             {
-                Encode(&checksum, buffer, bufferOffset, data, offset, 7);
-                bufferOffset += 8;
-                offset       += 7;
+                Encode(&checksum, buffer, data, 7);
+                buffer += 8;
+                data   += 7;
+                length -= 7;
             }
-            Encode(&checksum, buffer, bufferOffset, data, offset, length - offset);
+            Encode(&checksum, buffer, data, length);
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
+        }
+
+        /// <summary>
+        ///     Encodes the data.
+        /// </summary>
+        /// <param name="checksum"> [in,out] If non-null, the checksum. </param>
+        /// <param name="buffer">   The buffer. </param>
+        /// <param name="data">     The data. </param>
+        /// <param name="size">     The size. </param>
+        private static void Encode(uint* checksum, byte* buffer, byte* data, int size)
+        {
+            byte b = ONE;
+            for (int i = 0; i < size; ++i)
+            {
+                uint d = *(data + i);
+                byte s = (byte)(d >> 7);
+                b             =  (byte)(b | (s << (6 - i)));
+                *(buffer + i) =  (byte)(ONE | d);
+                *checksum     ^= d + C0;
+            }
+            *(buffer + size) =  b;
+            *checksum        += Math2.R1(b, 23) + C1;
         }
 
         /// <summary>
@@ -134,30 +154,6 @@ namespace Exomia.Network.Encoding
                 *checksum        ^= d + C0;
             }
             *checksum += Math2.R1(b, 23) + C1;
-        }
-
-        /// <summary>
-        ///     Encodes the data.
-        /// </summary>
-        /// <param name="checksum"> [in,out] If non-null, the checksum. </param>
-        /// <param name="buffer">   The buffer. </param>
-        /// <param name="o1">       The first int. </param>
-        /// <param name="data">     The data. </param>
-        /// <param name="o2">       The second int. </param>
-        /// <param name="size">     The size. </param>
-        private static void Encode(uint* checksum, byte[] buffer, int o1, byte[] data, int o2, int size)
-        {
-            byte b = ONE;
-            for (int i = 0; i < size; ++i)
-            {
-                uint d = data[o2 + i];
-                byte s = (byte)(d                 >> 7);
-                b              =  (byte)(b   | (s << (6 - i)));
-                buffer[o1 + i] =  (byte)(ONE | d);
-                *checksum      ^= d + C0;
-            }
-            buffer[o1 + size] =  b;
-            *checksum         += Math2.R1(b, 23) + C1;
         }
     }
 }

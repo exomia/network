@@ -13,7 +13,7 @@ using System.Net.Sockets;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
 using Exomia.Network.Serialization;
-using LZ4;
+using K4os.Compression.LZ4;
 
 namespace Exomia.Network.UDP
 {
@@ -105,19 +105,11 @@ namespace Exomia.Network.UDP
             }
         }
 
-        /// <summary>
-        ///     Begins send data.
-        /// </summary>
-        /// <param name="commandid">  The commandid. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length. </param>
-        /// <param name="responseID"> Identifier for the response. </param>
-        /// <returns>
-        ///     A SendError.
-        /// </returns>
-        private protected override SendError BeginSendData(uint commandid, byte[] data, int offset, int length,
-                                                           uint responseID)
+        private protected override unsafe SendError BeginSendData(uint   commandid,
+                                                                  byte[] data,
+                                                                  int    offset,
+                                                                  int    length,
+                                                                  uint   responseid)
         {
             if (_clientSocket == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -129,11 +121,15 @@ namespace Exomia.Network.UDP
                     sendEventArgs.Completed += SendAsyncCompleted;
                     sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
                 }
-                Serialization.Serialization.SerializeUdp(
-                    commandid, data, offset, length, responseID, EncryptionMode.None,
-                    sendEventArgs.Buffer,
-                    out int size);
-                sendEventArgs.SetBuffer(0, size);
+
+                fixed (byte* src = data)
+                fixed (byte* dst = sendEventArgs.Buffer)
+                {
+                    Serialization.Serialization.SerializeUdp(
+                        commandid, src + offset, length, responseid, EncryptionMode.None,
+                        dst, out int size);
+                    sendEventArgs.SetBuffer(0, size);
+                }
 
                 try
                 {
@@ -206,7 +202,7 @@ namespace Exomia.Network.UDP
 
                             payload = ByteArrayPool.Rent(l);
                             int s = LZ4Codec.Decode(
-                                e.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l, true);
+                                e.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l);
                             if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
 
                             ReceiveAsync();

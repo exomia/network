@@ -11,7 +11,7 @@
 namespace Exomia.Network
 {
     /// <summary>
-    ///     DeserializePacket callback.
+    ///     Handler, called when the deserialize packet.
     /// </summary>
     /// <typeparam name="TResult"> Type of the result. </typeparam>
     /// <param name="packet"> The packet. </param>
@@ -26,26 +26,26 @@ namespace Exomia.Network
     public readonly struct Packet
     {
         /// <summary>
-        ///     Buffer.
+        ///     The buffer.
         /// </summary>
         public readonly byte[] Buffer;
 
         /// <summary>
-        ///     Offset.
+        ///     The offset.
         /// </summary>
         public readonly int Offset;
 
         /// <summary>
-        ///     Length.
+        ///     The length.
         /// </summary>
         public readonly int Length;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="Packet" /> struct.
         /// </summary>
-        /// <param name="buffer"> . </param>
-        /// <param name="offset"> . </param>
-        /// <param name="length"> . </param>
+        /// <param name="buffer"> The buffer. </param>
+        /// <param name="offset"> The offset. </param>
+        /// <param name="length"> The length. </param>
         public Packet(byte[] buffer, int offset, int length)
         {
             Buffer = buffer;

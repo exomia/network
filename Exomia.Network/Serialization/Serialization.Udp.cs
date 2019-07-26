@@ -11,7 +11,8 @@
 using System;
 using System.Runtime.CompilerServices;
 using Exomia.Network.Buffers;
-using LZ4;
+using Exomia.Network.Native;
+using K4os.Compression.LZ4;
 
 namespace Exomia.Network.Serialization
 {
@@ -24,40 +25,49 @@ namespace Exomia.Network.Serialization
         ///     Serialize UDP.
         /// </summary>
         /// <param name="commandID">      [out] Identifier for the command. </param>
-        /// <param name="data">           The data. </param>
-        /// <param name="offset">         The offset. </param>
+        /// <param name="src">            [in,out] If non-null, source for the. </param>
         /// <param name="length">         The length. </param>
         /// <param name="responseID">     Identifier for the response. </param>
         /// <param name="encryptionMode"> The encryption mode. </param>
-        /// <param name="send">           [out] The send. </param>
+        /// <param name="dst">            [out] Destination for the. </param>
         /// <param name="size">           [out] The size. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeUdp(uint           commandID, byte[] data, int offset, int length,
+        internal static void SerializeUdp(uint           commandID,
+                                          byte*          src,
+                                          int            length,
                                           uint           responseID,
-                                          EncryptionMode encryptionMode, out byte[] send, out int size)
+                                          EncryptionMode encryptionMode,
+                                          out byte[]     dst,
+                                          out int        size)
         {
-            send = ByteArrayPool.Rent(Constants.UDP_HEADER_SIZE + 8 + length);
-            SerializeUdp(commandID, data, offset, length, responseID, encryptionMode, send, out size);
+            dst = ByteArrayPool.Rent(Constants.UDP_HEADER_SIZE + 8 + length);
+            fixed (byte* ptr = dst)
+            {
+                SerializeUdp(commandID, src, length, responseID, encryptionMode, ptr, out size);
+            }
         }
 
         /// <summary>
         ///     Serialize UDP.
         /// </summary>
         /// <param name="commandID">      [out] Identifier for the command. </param>
-        /// <param name="data">           The data. </param>
-        /// <param name="offset">         The offset. </param>
+        /// <param name="src">            [in,out] If non-null, source for the. </param>
         /// <param name="length">         The length. </param>
         /// <param name="responseID">     Identifier for the response. </param>
         /// <param name="encryptionMode"> The encryption mode. </param>
-        /// <param name="send">           The send. </param>
+        /// <param name="dst">            [out] Destination for the. </param>
         /// <param name="size">           [out] The size. </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
         ///     the required range.
         /// </exception>
-        internal static void SerializeUdp(uint           commandID, byte[] data, int offset, int length,
+        internal static void SerializeUdp(uint           commandID,
+                                          byte*          src,
+                                          int            length,
                                           uint           responseID,
-                                          EncryptionMode encryptionMode, byte[] send, out int size)
+                                          EncryptionMode encryptionMode,
+                                          byte*          dst,
+                                          out int        size)
         {
             // 8bit
             // 
@@ -84,7 +94,7 @@ namespace Exomia.Network.Serialization
                 if (length >= LENGTH_THRESHOLD)
                 {
                     int s = LZ4Codec.Encode(
-                        data, offset, length, send, Constants.UDP_HEADER_SIZE + 8, length);
+                        src, length, dst + Constants.UDP_HEADER_SIZE + 8, length);
 
                     if (s > Constants.UDP_PACKET_SIZE_MAX)
                     {
@@ -95,36 +105,31 @@ namespace Exomia.Network.Serialization
                     if (s > 0)
                     {
                         size = Constants.UDP_HEADER_SIZE + 8 + s;
-                        fixed (byte* ptr = send)
-                        {
-                            *ptr = (byte)(RESPONSE_1_BIT | (byte)CompressionMode.Lz4 | (byte)encryptionMode);
-                            *(uint*)(ptr + 1) =
-                                ((uint)(s + 8) & DATA_LENGTH_MASK) |
-                                (commandID << COMMAND_ID_SHIFT);
-                            *(uint*)(ptr + 5) = responseID;
-                            *(int*)(ptr  + 9) = length;
-                        }
+                        *dst = (byte)(RESPONSE_1_BIT | (byte)CompressionMode.Lz4 | (byte)encryptionMode);
+                        *(uint*)(dst + 1) =
+                            ((uint)(s + 8) & DATA_LENGTH_MASK) |
+                            (commandID << COMMAND_ID_SHIFT);
+                        *(uint*)(dst + 5) = responseID;
+                        *(int*)(dst + 9)  = length;
+
                         return;
                     }
                 }
 
                 size = Constants.UDP_HEADER_SIZE + 4 + length;
-                fixed (byte* ptr = send)
-                {
-                    *ptr = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
-                    *(uint*)(ptr + 1) =
-                        ((uint)(length + 4) & DATA_LENGTH_MASK) |
-                        (commandID << COMMAND_ID_SHIFT);
-                    *(uint*)(ptr + 5) = responseID;
-                }
-                Buffer.BlockCopy(data, offset, send, Constants.UDP_HEADER_SIZE + 4, length);
+
+                *dst = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
+                *(uint*)(dst + 1) =
+                    ((uint)(length + 4) & DATA_LENGTH_MASK) |
+                    (commandID << COMMAND_ID_SHIFT);
+                *(uint*)(dst + 5) = responseID;
+                Mem.Cpy(dst + Constants.UDP_HEADER_SIZE + 4, src, length);
             }
             else
             {
                 if (length >= LENGTH_THRESHOLD)
                 {
-                    int s = LZ4Codec.Encode(
-                        data, offset, length, send, Constants.UDP_HEADER_SIZE + 4, length);
+                    int s = LZ4Codec.Encode(src, length, dst + Constants.UDP_HEADER_SIZE + 4, length);
                     if (s > Constants.UDP_PACKET_SIZE_MAX)
                     {
                         throw new ArgumentOutOfRangeException(
@@ -133,27 +138,25 @@ namespace Exomia.Network.Serialization
                     if (s > 0)
                     {
                         size = Constants.UDP_HEADER_SIZE + 4 + s;
-                        fixed (byte* ptr = send)
-                        {
-                            *ptr = (byte)((byte)CompressionMode.Lz4 | (byte)encryptionMode);
-                            *(uint*)(ptr + 1) =
-                                ((uint)(s + 4) & DATA_LENGTH_MASK) |
-                                (commandID << COMMAND_ID_SHIFT);
-                            *(int*)(ptr + 5) = length;
-                        }
+
+                        *dst = (byte)((byte)CompressionMode.Lz4 | (byte)encryptionMode);
+                        *(uint*)(dst + 1) =
+                            ((uint)(s + 4) & DATA_LENGTH_MASK) |
+                            (commandID << COMMAND_ID_SHIFT);
+                        *(int*)(dst + 5) = length;
+
                         return;
                     }
                 }
 
                 size = Constants.UDP_HEADER_SIZE + length;
-                fixed (byte* ptr = send)
-                {
-                    *ptr = (byte)encryptionMode;
-                    *(uint*)(ptr + 1) =
-                        ((uint)length & DATA_LENGTH_MASK) |
-                        (commandID << COMMAND_ID_SHIFT);
-                }
-                Buffer.BlockCopy(data, offset, send, Constants.UDP_HEADER_SIZE, length);
+
+                *dst = (byte)encryptionMode;
+                *(uint*)(dst + 1) =
+                    ((uint)length & DATA_LENGTH_MASK) |
+                    (commandID << COMMAND_ID_SHIFT);
+
+                Mem.Cpy(dst + Constants.UDP_HEADER_SIZE, src, length);
             }
         }
 
@@ -165,7 +168,9 @@ namespace Exomia.Network.Serialization
         /// <param name="commandID">    [out] Identifier for the command. </param>
         /// <param name="dataLength">   [out] Length of the data. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeaderUdp(this byte[] header, out byte packetHeader, out uint commandID,
+        internal static void GetHeaderUdp(this byte[] header,
+                                          out  byte   packetHeader,
+                                          out  uint   commandID,
                                           out  int    dataLength)
         {
             // 8bit

@@ -29,10 +29,9 @@ namespace Exomia.Network.Native
         [SuppressUnmanagedCodeSecurity]
         [DllImport(
             "msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
-        public static extern void Cpy(
-            void* dest,
-            void* src,
-            int   count);
+        public static extern void Cpy(void* dest,
+                                      void* src,
+                                      int   count);
 
         /// <summary>
         ///     memset call.
@@ -48,9 +47,8 @@ namespace Exomia.Network.Native
         [SuppressUnmanagedCodeSecurity]
         [DllImport(
             "msvcrt.dll", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
-        public static extern void* Set(
-            void* dest,
-            int   value,
-            int   count);
+        public static extern void* Set(void* dest,
+                                       int   value,
+                                       int   count);
     }
 }

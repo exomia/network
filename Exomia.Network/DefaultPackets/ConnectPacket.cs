@@ -18,7 +18,6 @@ namespace Exomia.Network.DefaultPackets
     [StructLayout(LayoutKind.Sequential, Size = 16)]
     public unsafe struct ConnectPacket
     {
-
         /// <summary>
         ///     Gets the checksum[16].
         /// </summary>
