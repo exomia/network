@@ -163,7 +163,7 @@ class TcpServer : TcpServerEapBase<TcpServerClient>
 
 class TcpServerClient : ServerClientBase<Socket>
 {
-    public TcpServerClient(Socketarg0) : base(arg0) { }
+    public TcpServerClient(Socket arg0) : base(arg0) { }
     public override IPAddress IPAddress { get { return (_arg0.RemoteEndPoint as IPEndPoint)?.Address; } }
     public override EndPoint EndPoint { get { return _arg0.RemoteEndPoint; } }
 }
