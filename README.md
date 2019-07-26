@@ -157,8 +157,8 @@ class TcpServer : TcpServerEapBase<TcpServerClient>
     }
 
     /// <inheritdoc />
-    public TcpServer(int maxPacketSize = 65520)
-        : base(maxPacketSize) { }
+    public TcpServer(uint expectedMaxClient = 32, int maxPacketSize = 65520)
+        : base(expectedMaxClient, maxPacketSize) { }
 }
 
 class TcpServerClient : ServerClientBase<Socket>
