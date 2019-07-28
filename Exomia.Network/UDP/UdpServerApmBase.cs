@@ -39,11 +39,11 @@ namespace Exomia.Network.UDP
         }
 
         private protected override unsafe SendError SendTo(EndPoint arg0,
-                                                           uint     commandid,
+                                                           uint     commandID,
                                                            byte[]   data,
                                                            int      offset,
                                                            int      length,
-                                                           uint     responseid)
+                                                           uint     responseID)
         {
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -53,7 +53,7 @@ namespace Exomia.Network.UDP
                 fixed (byte* src = data)
                 {
                     Serialization.Serialization.SerializeUdp(
-                        commandid, src + offset, length, responseid, EncryptionMode.None,
+                        commandID, src + offset, length, responseID, EncryptionMode.None,
                         CompressionMode.Lz4, out send, out size);
                 }
 

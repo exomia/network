@@ -22,7 +22,7 @@ namespace Exomia.Network
         /// <summary>
         ///     Socket|Endpoint.
         /// </summary>
-        protected T _arg0;
+        private protected T _arg0;
 
         /// <summary>
         ///     The last received packet time stamp Date/Time.
@@ -49,14 +49,6 @@ namespace Exomia.Network
         public abstract IPAddress IPAddress { get; }
 
         /// <summary>
-        ///     Gets the end point.
-        /// </summary>
-        /// <value>
-        ///     The end point.
-        /// </value>
-        public abstract EndPoint EndPoint { get; }
-
-        /// <summary>
         ///     Gets the argument 0.
         /// </summary>
         /// <value>
@@ -71,7 +63,7 @@ namespace Exomia.Network
         ///     Initializes a new instance of the <see cref="ServerClientBase{T}" />; class.
         /// </summary>
         /// <param name="arg0"> Socket|Endpoint. </param>
-        protected ServerClientBase(T arg0)
+        private protected ServerClientBase(T arg0)
         {
             _arg0 = arg0;
         }

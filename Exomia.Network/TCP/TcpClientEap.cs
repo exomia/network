@@ -117,11 +117,11 @@ namespace Exomia.Network.TCP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(uint   commandid,
+        private protected override unsafe SendError BeginSendData(uint   commandID,
                                                                   byte[] data,
                                                                   int    offset,
                                                                   int    length,
-                                                                  uint   responseid)
+                                                                  uint   responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -138,7 +138,7 @@ namespace Exomia.Network.TCP
                 fixed (byte* dst = sendEventArgs.Buffer)
                 {
                     Serialization.Serialization.SerializeTcp(
-                        commandid, src + offset, length, responseid, EncryptionMode.None,
+                        commandID, src + offset, length, responseID, EncryptionMode.None,
                         CompressionMode.Lz4, dst, out int size);
                     sendEventArgs.SetBuffer(0, size);
                 }

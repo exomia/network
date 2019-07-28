@@ -35,63 +35,63 @@ namespace Exomia.Network
         ///     Sends data to the client.
         /// </summary>
         /// <param name="client">     The client. </param>
-        /// <param name="commandid">  The commandid. </param>
+        /// <param name="commandID">  Identifier for the command. </param>
         /// <param name="data">       The data. </param>
         /// <param name="offset">     The offset. </param>
         /// <param name="length">     The length. </param>
-        /// <param name="responseid"> The responseid. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
         /// <returns>
         ///     A SendError.
         /// </returns>
-        SendError SendTo(TServerClient client, uint commandid, byte[] data, int offset, int length, uint responseid);
+        SendError SendTo(TServerClient client, uint commandID, byte[] data, int offset, int length, uint responseID);
 
         /// <summary>
         ///     Sends data to the client.
         /// </summary>
         /// <param name="client">       The client. </param>
-        /// <param name="commandid">    The commandid. </param>
+        /// <param name="commandID">    Identifier for the command. </param>
         /// <param name="serializable"> The serializable. </param>
-        /// <param name="responseid">   The responseid. </param>
+        /// <param name="responseID">   Identifier for the response. </param>
         /// <returns>
         ///     A SendError.
         /// </returns>
-        SendError SendTo(TServerClient client, uint commandid, ISerializable serializable, uint responseid);
+        SendError SendTo(TServerClient client, uint commandID, ISerializable serializable, uint responseID);
 
         /// <summary>
         ///     Sends data to the client.
         /// </summary>
         /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="client">     The client. </param>
-        /// <param name="commandid">  The commandid. </param>
+        /// <param name="commandID">  Identifier for the command. </param>
         /// <param name="data">       The data. </param>
-        /// <param name="responseid"> The responseid. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
         /// <returns>
         ///     A SendError.
         /// </returns>
-        SendError SendTo<T1>(TServerClient client, uint commandid, in T1 data, uint responseid) where T1 : unmanaged;
+        SendError SendTo<T1>(TServerClient client, uint commandID, in T1 data, uint responseID) where T1 : unmanaged;
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
-        /// <param name="commandid"> The commandid. </param>
+        /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="data">      The data. </param>
         /// <param name="offset">    The offset. </param>
         /// <param name="length">    The length. </param>
-        void SendToAll(uint commandid, byte[] data, int offset, int length);
+        void SendToAll(uint commandID, byte[] data, int offset, int length);
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
-        /// <param name="commandid">    The commandid. </param>
+        /// <param name="commandID">    Identifier for the command. </param>
         /// <param name="serializable"> The serializable. </param>
-        void SendToAll(uint commandid, ISerializable serializable);
+        void SendToAll(uint commandID, ISerializable serializable);
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
         /// <typeparam name="T1"> Generic type parameter. </typeparam>
-        /// <param name="commandid"> The commandid. </param>
+        /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="data">      The data. </param>
-        void SendToAll<T1>(uint commandid, in T1 data) where T1 : unmanaged;
+        void SendToAll<T1>(uint commandID, in T1 data) where T1 : unmanaged;
     }
 }

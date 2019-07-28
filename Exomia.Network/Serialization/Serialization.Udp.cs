@@ -24,7 +24,7 @@ namespace Exomia.Network.Serialization
         /// <summary>
         ///     Serialize UDP.
         /// </summary>
-        /// <param name="commandID">       [out] Identifier for the command. </param>
+        /// <param name="commandID">       Identifier for the command. </param>
         /// <param name="src">             [in,out] If non-null, source for the. </param>
         /// <param name="length">          The length. </param>
         /// <param name="responseID">      Identifier for the response. </param>
@@ -52,7 +52,7 @@ namespace Exomia.Network.Serialization
         /// <summary>
         ///     Serialize UDP.
         /// </summary>
-        /// <param name="commandID">       [out] Identifier for the command. </param>
+        /// <param name="commandID">       Identifier for the command. </param>
         /// <param name="src">             [in,out] If non-null, source for the. </param>
         /// <param name="length">          The length. </param>
         /// <param name="responseID">      Identifier for the response. </param>
