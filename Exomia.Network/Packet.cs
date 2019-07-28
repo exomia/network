@@ -63,8 +63,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     A Network.Packet extension method that convert this packets raw data into a string
-        ///     representation.
+        ///     Convert this packets raw data into a string representation.
         /// </summary>
         /// <param name="encoding"> The encoding. </param>
         /// <returns>
