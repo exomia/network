@@ -63,12 +63,12 @@ namespace Exomia.Network.Lib
         /// <param name="server">     The server. </param>
         /// <param name="client">     The client. </param>
         /// <param name="data">       The data. </param>
-        /// <param name="responseid"> The responseid. </param>
-        public void Raise(ServerBase<T, TServerClient> server, TServerClient client, object data, uint responseid)
+        /// <param name="responseID"> The responseID. </param>
+        public void Raise(ServerBase<T, TServerClient> server, TServerClient client, object data, uint responseID)
         {
             for (int i = _dataReceived.Count - 1; i >= 0; --i)
             {
-                if (!_dataReceived[i].Invoke(server, client, data, responseid))
+                if (!_dataReceived[i].Invoke(server, client, data, responseID))
                 {
                     _dataReceived.Remove(i);
                 }

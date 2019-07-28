@@ -292,27 +292,27 @@ namespace Exomia.Network
         /// <summary>
         ///     Deserialize data.
         /// </summary>
-        /// <param name="commandid">  command id. </param>
+        /// <param name="commandID">  command id. </param>
         /// <param name="data">       The data. </param>
         /// <param name="offset">     The offset. </param>
         /// <param name="length">     The length. </param>
-        /// <param name="responseid"> The responseid. </param>
-        private protected unsafe void DeserializeData(uint   commandid,
+        /// <param name="responseID"> The responseID. </param>
+        private protected unsafe void DeserializeData(uint   commandID,
                                                       byte[] data,
                                                       int    offset,
                                                       int    length,
-                                                      uint   responseid)
+                                                      uint   responseID)
         {
-            if (responseid != 0)
+            if (responseID != 0)
             {
                 TaskCompletionSource<Packet> cs;
                 bool                         lockTaken = false;
                 try
                 {
                     _lockTaskCompletionSources.Enter(ref lockTaken);
-                    if (_taskCompletionSources.TryGetValue(responseid, out cs))
+                    if (_taskCompletionSources.TryGetValue(responseID, out cs))
                     {
-                        _taskCompletionSources.Remove(responseid);
+                        _taskCompletionSources.Remove(responseID);
                     }
                 }
                 finally
@@ -326,7 +326,7 @@ namespace Exomia.Network
                 }
                 return;
             }
-            switch (commandid)
+            switch (commandID)
             {
                 case CommandID.PING:
                     {
@@ -352,8 +352,8 @@ namespace Exomia.Network
                     }
                 default:
                     {
-                        if (commandid <= Constants.USER_COMMAND_LIMIT &&
-                            _dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry cee))
+                        if (commandID <= Constants.USER_COMMAND_LIMIT &&
+                            _dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry cee))
                         {
                             Packet packet = new Packet(data, offset, length);
                             ThreadPool.QueueUserWorkItem(
@@ -377,7 +377,7 @@ namespace Exomia.Network
         /// <summary>
         ///     add a command.
         /// </summary>
-        /// <param name="commandid">   command id. </param>
+        /// <param name="commandID">   command id. </param>
         /// <param name="deserialize"> . </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
@@ -387,22 +387,22 @@ namespace Exomia.Network
         ///     Thrown when one or more required arguments
         ///     are null.
         /// </exception>
-        public void AddCommand(uint commandid, DeserializePacketHandler<object> deserialize)
+        public void AddCommand(uint commandID, DeserializePacketHandler<object> deserialize)
         {
-            if (commandid > Constants.USER_COMMAND_LIMIT)
+            if (commandID > Constants.USER_COMMAND_LIMIT)
             {
                 throw new ArgumentOutOfRangeException(
-                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+                    $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
             bool lockTaken = false;
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
+                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry buffer))
                 {
                     buffer = new ClientEventEntry(deserialize);
-                    _dataReceivedCallbacks.Add(commandid, buffer);
+                    _dataReceivedCallbacks.Add(commandID, buffer);
                 }
             }
             finally
@@ -414,23 +414,23 @@ namespace Exomia.Network
         /// <summary>
         ///     remove a command.
         /// </summary>
-        /// <param name="commandid"> command id. </param>
+        /// <param name="commandID"> command id. </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
         ///     the required range.
         /// </exception>
-        public void RemoveCommand(uint commandid)
+        public void RemoveCommand(uint commandID)
         {
-            if (commandid > Constants.USER_COMMAND_LIMIT)
+            if (commandID > Constants.USER_COMMAND_LIMIT)
             {
                 throw new ArgumentOutOfRangeException(
-                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+                    $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
             bool lockTaken = false;
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                _dataReceivedCallbacks.Remove(commandid);
+                _dataReceivedCallbacks.Remove(commandID);
             }
             finally
             {
@@ -441,7 +441,7 @@ namespace Exomia.Network
         /// <summary>
         ///     add a data received callback.
         /// </summary>
-        /// <param name="commandid"> command id. </param>
+        /// <param name="commandID"> command id. </param>
         /// <param name="callback">  callback. </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
@@ -455,12 +455,12 @@ namespace Exomia.Network
         ///     Thrown when an exception error condition
         ///     occurs.
         /// </exception>
-        public void AddDataReceivedCallback(uint commandid, DataReceivedHandler callback)
+        public void AddDataReceivedCallback(uint commandID, DataReceivedHandler callback)
         {
-            if (commandid > Constants.USER_COMMAND_LIMIT)
+            if (commandID > Constants.USER_COMMAND_LIMIT)
             {
                 throw new ArgumentOutOfRangeException(
-                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+                    $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
             ClientEventEntry buffer;
@@ -468,10 +468,10 @@ namespace Exomia.Network
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandid, out buffer))
+                if (!_dataReceivedCallbacks.TryGetValue(commandID, out buffer))
                 {
                     throw new Exception(
-                        $"Invalid parameter '{nameof(commandid)}'! Use 'AddCommand(uint, DeserializeData)' first.");
+                        $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(uint, DeserializeData)' first.");
                 }
             }
             finally
@@ -484,7 +484,7 @@ namespace Exomia.Network
         /// <summary>
         ///     remove a data received callback.
         /// </summary>
-        /// <param name="commandid"> command id. </param>
+        /// <param name="commandID"> command id. </param>
         /// <param name="callback">  DataReceivedHandler. </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
@@ -494,15 +494,15 @@ namespace Exomia.Network
         ///     Thrown when one or more required arguments
         ///     are null.
         /// </exception>
-        public void RemoveDataReceivedCallback(uint commandid, DataReceivedHandler callback)
+        public void RemoveDataReceivedCallback(uint commandID, DataReceivedHandler callback)
         {
-            if (commandid > Constants.USER_COMMAND_LIMIT)
+            if (commandID > Constants.USER_COMMAND_LIMIT)
             {
                 throw new ArgumentOutOfRangeException(
-                    $"{nameof(commandid)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+                    $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
-            if (_dataReceivedCallbacks.TryGetValue(commandid, out ClientEventEntry buffer))
+            if (_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry buffer))
             {
                 buffer.Remove(callback);
             }
@@ -515,56 +515,56 @@ namespace Exomia.Network
         /// <summary>
         ///     Begins send data.
         /// </summary>
-        /// <param name="commandid">  command id. </param>
+        /// <param name="commandID">  command id. </param>
         /// <param name="data">       The data. </param>
         /// <param name="offset">     The offset. </param>
         /// <param name="length">     The length. </param>
-        /// <param name="responseid"> Identifier for the response. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
         /// <returns>
         ///     A SendError.
         /// </returns>
-        private protected abstract SendError BeginSendData(uint   commandid,
+        private protected abstract SendError BeginSendData(uint   commandID,
                                                            byte[] data,
                                                            int    offset,
                                                            int    length,
-                                                           uint   responseid);
+                                                           uint   responseID);
 
         /// <inheritdoc />
-        public SendError Send(uint commandid, byte[] data, int offset, int length)
+        public SendError Send(uint commandID, byte[] data, int offset, int length)
         {
-            return BeginSendData(commandid, data, offset, length, 0);
+            return BeginSendData(commandID, data, offset, length, 0);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint commandid, byte[] data, int offset, int length)
+        public Task<Response<TResult>> SendR<TResult>(uint commandID, byte[] data, int offset, int length)
             where TResult : unmanaged
         {
-            return SendR(commandid, data, offset, length, DeserializeResponse<TResult>, s_defaultTimeout);
+            return SendR(commandID, data, offset, length, DeserializeResponse<TResult>, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
                                                       byte[]                            data,
                                                       int                               offset,
                                                       int                               length,
                                                       DeserializePacketHandler<TResult> deserialize)
         {
-            return SendR(commandid, data, offset, length, deserialize, s_defaultTimeout);
+            return SendR(commandID, data, offset, length, deserialize, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint     commandid,
+        public Task<Response<TResult>> SendR<TResult>(uint     commandID,
                                                       byte[]   data,
                                                       int      offset,
                                                       int      length,
                                                       TimeSpan timeout)
             where TResult : unmanaged
         {
-            return SendR(commandid, data, offset, length, DeserializeResponse<TResult>, timeout);
+            return SendR(commandID, data, offset, length, DeserializeResponse<TResult>, timeout);
         }
 
         /// <inheritdoc />
-        public async Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+        public async Task<Response<TResult>> SendR<TResult>(uint                              commandID,
                                                             byte[]                            data,
                                                             int                               offset,
                                                             int                               length,
@@ -605,7 +605,7 @@ namespace Exomia.Network
                         }
                         tcs.TrySetResult(default);
                     }, false);
-                SendError sendError = BeginSendData(commandid, data, offset, length, responseID);
+                SendError sendError = BeginSendData(commandID, data, offset, length, responseID);
                 if (sendError == SendError.None)
                 {
                     Packet packet = await tcs.Task;
@@ -632,90 +632,90 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public SendError Send(uint commandid, ISerializable serializable)
+        public SendError Send(uint commandID, ISerializable serializable)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return BeginSendData(commandid, dataB, 0, length, 0);
+            return BeginSendData(commandID, dataB, 0, length, 0);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable)
+        public Task<Response<TResult>> SendR<TResult>(uint commandID, ISerializable serializable)
             where TResult : unmanaged
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout);
+            return SendR(commandID, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
                                                       ISerializable                     serializable,
                                                       DeserializePacketHandler<TResult> deserialize)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR(commandid, dataB, 0, length, deserialize, s_defaultTimeout);
+            return SendR(commandID, dataB, 0, length, deserialize, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint commandid, ISerializable serializable, TimeSpan timeout)
+        public Task<Response<TResult>> SendR<TResult>(uint commandID, ISerializable serializable, TimeSpan timeout)
             where TResult : unmanaged
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, timeout);
+            return SendR(commandID, dataB, 0, length, DeserializeResponse<TResult>, timeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandid,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
                                                       ISerializable                     serializable,
                                                       DeserializePacketHandler<TResult> deserialize,
                                                       TimeSpan                          timeout)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR(commandid, dataB, 0, length, deserialize, timeout);
+            return SendR(commandID, dataB, 0, length, deserialize, timeout);
         }
 
         /// <inheritdoc />
-        public SendError Send<T>(uint commandid, in T data) where T : unmanaged
+        public SendError Send<T>(uint commandID, in T data) where T : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return BeginSendData(commandid, dataB, 0, length, 0);
+            return BeginSendData(commandID, dataB, 0, length, 0);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data)
+        public Task<Response<TResult>> SendR<T, TResult>(uint commandID, in T data)
             where T : unmanaged
             where TResult : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout);
+            return SendR(commandID, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandid,
+        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandID,
                                                          in T                              data,
                                                          DeserializePacketHandler<TResult> deserialize)
             where T : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendR(commandid, dataB, 0, length, deserialize, s_defaultTimeout);
+            return SendR(commandID, dataB, 0, length, deserialize, s_defaultTimeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint commandid, in T data, TimeSpan timeout)
+        public Task<Response<TResult>> SendR<T, TResult>(uint commandID, in T data, TimeSpan timeout)
             where T : unmanaged
             where TResult : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendR(commandid, dataB, 0, length, DeserializeResponse<TResult>, timeout);
+            return SendR(commandID, dataB, 0, length, DeserializeResponse<TResult>, timeout);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandid,
+        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandID,
                                                          in T                              data,
                                                          DeserializePacketHandler<TResult> deserialize,
                                                          TimeSpan                          timeout) where T : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendR(commandid, dataB, 0, length, deserialize, timeout);
+            return SendR(commandID, dataB, 0, length, deserialize, timeout);
         }
 
         /// <summary>

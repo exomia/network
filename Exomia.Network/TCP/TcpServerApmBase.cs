@@ -39,11 +39,11 @@ namespace Exomia.Network.TCP
         }
 
         private protected override unsafe SendError SendTo(Socket arg0,
-                                                           uint   commandid,
+                                                           uint   commandID,
                                                            byte[] data,
                                                            int    offset,
                                                            int    length,
-                                                           uint   responseid)
+                                                           uint   responseID)
         {
             if (_listener == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -53,8 +53,8 @@ namespace Exomia.Network.TCP
                 fixed (byte* src = data)
                 {
                     Serialization.Serialization.SerializeTcp(
-                        commandid, src + offset, length, responseid, EncryptionMode.None, out send,
-                        out size);
+                        commandID, src + offset, length, responseID, EncryptionMode.None,
+                        CompressionMode.Lz4, out send, out size);
                 }
 
                 try
@@ -308,6 +308,8 @@ namespace Exomia.Network.TCP
                         {
                             switch (compressionMode)
                             {
+                                case CompressionMode.None:
+                                    break;
                                 case CompressionMode.Lz4:
                                     int l = *(int*)(ptr + offset);
 
@@ -319,6 +321,12 @@ namespace Exomia.Network.TCP
                                     deserializeBuffer = buffer;
                                     bufferLength      = l;
                                     break;
+                                default:
+                                    throw new ArgumentOutOfRangeException(
+                                        nameof(CompressionMode),
+                                        (CompressionMode)(packetHeader &
+                                                          Serialization.Serialization.COMPRESSED_MODE_MASK),
+                                        "Not supported!");
                             }
 
                             ReceiveAsync(state);

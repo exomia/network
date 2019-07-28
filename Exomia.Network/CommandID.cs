@@ -13,7 +13,7 @@ namespace Exomia.Network
     /// <summary>
     ///     CommandID.
     /// </summary>
-    public static class CommandID
+    static class CommandID
     {
         /// <summary>
         ///     CONNECT_ID.

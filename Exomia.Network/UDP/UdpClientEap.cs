@@ -105,11 +105,11 @@ namespace Exomia.Network.UDP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(uint   commandid,
+        private protected override unsafe SendError BeginSendData(uint   commandID,
                                                                   byte[] data,
                                                                   int    offset,
                                                                   int    length,
-                                                                  uint   responseid)
+                                                                  uint   responseID)
         {
             if (_clientSocket == null) { return SendError.Invalid; }
             if ((_state & SEND_FLAG) == SEND_FLAG)
@@ -126,8 +126,8 @@ namespace Exomia.Network.UDP
                 fixed (byte* dst = sendEventArgs.Buffer)
                 {
                     Serialization.Serialization.SerializeUdp(
-                        commandid, src + offset, length, responseid, EncryptionMode.None,
-                        dst, out int size);
+                        commandID, src + offset, length, responseID, EncryptionMode.None,
+                        CompressionMode.Lz4, dst, out int size);
                     sendEventArgs.SetBuffer(0, size);
                 }
 
@@ -209,7 +209,6 @@ namespace Exomia.Network.UDP
                             DeserializeData(commandID, payload, 0, l, responseID);
                             break;
                         case CompressionMode.None:
-                        default:
                             dataLength -= offset;
                             payload    =  ByteArrayPool.Rent(dataLength);
 
@@ -221,6 +220,11 @@ namespace Exomia.Network.UDP
                             ReceiveAsync();
                             DeserializeData(commandID, payload, 0, dataLength, responseID);
                             break;
+                        default:
+                            throw new ArgumentOutOfRangeException(
+                                nameof(CompressionMode),
+                                (CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK),
+                                "Not supported!");
                     }
                 }
                 return;

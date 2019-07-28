@@ -65,11 +65,9 @@ class UdpServer : UdpServerEapBase<UdpServerClient>
         : base(maxClients, maxPacketSize) { }
 }
 
-class UdpServerClient : ServerClientBase<EndPoint>
+class UdpServerClient : UdpServerClientBase
 {
-    public UdpServerClient(EndPoint arg0) : base(arg0) { }
-    public override IPAddress IPAddress { get { return (_arg0 as IPEndPoint)?.Address; } }
-    public override EndPoint EndPoint { get { return _arg0; } }
+    public UdpServerClient(EndPoint endPoint) : base(endPoint) { }
 }
 ```
 
@@ -160,11 +158,9 @@ class TcpServer : TcpServerEapBase<TcpServerClient>
         : base(expectedMaxClient, maxPacketSize) { }
 }
 
-class TcpServerClient : ServerClientBase<Socket>
+class TcpServerClient : TcpServerClientBase
 {
-    public TcpServerClient(Socket arg0) : base(arg0) { }
-    public override IPAddress IPAddress { get { return (_arg0.RemoteEndPoint as IPEndPoint)?.Address; } }
-    public override EndPoint EndPoint { get { return _arg0.RemoteEndPoint; } }
+    public TcpServerClient(Socket socket) : base(socket) { }
 }
 ```
 
