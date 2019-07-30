@@ -49,21 +49,6 @@ namespace Exomia.Network.Extensions.Packet
         }
 
         /// <summary>
-        ///     A Network.Packet extension method that convert this packet into a string
-        ///     representation.
-        /// </summary>
-        /// <param name="packet">   The packet. </param>
-        /// <param name="encoding"> (Optional) The encoding. </param>
-        /// <returns>
-        ///     A string that represents this packet.
-        /// </returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string ToString(this Network.Packet packet, System.Text.Encoding encoding = null)
-        {
-            return (encoding ?? System.Text.Encoding.UTF8).GetString(packet.Buffer, packet.Offset, packet.Length);
-        }
-
-        /// <summary>
         ///     A Network.Packet extension method that deserialize this packet to the class.
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>

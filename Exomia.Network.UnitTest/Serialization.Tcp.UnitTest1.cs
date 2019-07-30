@@ -25,7 +25,8 @@ namespace Exomia.Network.UnitTest
             fixed (byte* src = data)
             {
                 Serialization.Serialization.SerializeTcp(
-                    1337u, src, data.Length, 0, EncryptionMode.None, out byte[] send, out int size);
+                    1337u, src, data.Length, 0, EncryptionMode.None, CompressionMode.Lz4, out byte[] send,
+                    out int size);
                 Assert.AreEqual(size, Constants.TCP_HEADER_SIZE + data.Length + 1 + 1);
 
                 CircularBuffer cb = new CircularBuffer();
@@ -62,8 +63,8 @@ namespace Exomia.Network.UnitTest
             fixed (byte* src = data)
             {
                 Serialization.Serialization.SerializeTcp(
-                    1337u, src, data.Length, 654584478, EncryptionMode.None, out byte[] send,
-                    out int size);
+                    1337u, src, data.Length, 654584478, EncryptionMode.None, CompressionMode.Lz4,
+                    out byte[] send, out int size);
                 Assert.AreEqual(size, Constants.TCP_HEADER_SIZE + 4 + data.Length + 1 + 1);
 
                 CircularBuffer cb = new CircularBuffer();
@@ -105,7 +106,8 @@ namespace Exomia.Network.UnitTest
             fixed (byte* src = data)
             {
                 Serialization.Serialization.SerializeTcp(
-                    1337u, src, data.Length, 0, EncryptionMode.None, out byte[] send, out int size);
+                    1337u, src, data.Length, 0, EncryptionMode.None, CompressionMode.Lz4, out byte[] send,
+                    out int size);
                 Assert.IsTrue(size < Constants.TCP_HEADER_SIZE + 4 + expectedLength + 1 + 1);
 
                 CircularBuffer cb = new CircularBuffer(data.Length);
@@ -115,7 +117,7 @@ namespace Exomia.Network.UnitTest
                     cb.PeekHeader(
                         0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum));
 
-                Assert.AreEqual((byte)32, packetHeader);
+                Assert.AreEqual((byte)8, packetHeader);
                 Assert.AreEqual(1337u, commandID);
                 Assert.IsTrue(4 + data.Length + 1 + 1 > dataLength);
 

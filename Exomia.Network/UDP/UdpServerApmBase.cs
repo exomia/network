@@ -9,14 +9,9 @@
 #endregion
 
 using System;
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 using Exomia.Network.Buffers;
-using Exomia.Network.Native;
-using Exomia.Network.Serialization;
-using K4os.Compression.LZ4;
 
 namespace Exomia.Network.UDP
 {
@@ -24,18 +19,23 @@ namespace Exomia.Network.UDP
     ///     A UDP-Server build with the "Asynchronous Programming Model" (APM)
     /// </summary>
     /// <typeparam name="TServerClient"> TServerClient. </typeparam>
-    public abstract class UdpServerApmBase<TServerClient> : ServerBase<EndPoint, TServerClient>
+    public abstract class UdpServerApmBase<TServerClient> : UdpServerBase<TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
         /// <summary>
         ///     The pool.
         /// </summary>
-        private readonly ServerClientStateObjectPool _pool;
+        private readonly ObjectPool<ServerClientStateObject> _serverClientStateObjectPool;
 
-        /// <inheritdoc />
-        protected UdpServerApmBase(uint maxClients, int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="UdpServerApmBase{TServerClien}" /> class.
+        /// </summary>
+        /// <param name="expectedMaxClients"> The expected maximum clients. </param>
+        /// <param name="maxPacketSize">      (Optional) Size of the maximum packet. </param>
+        protected UdpServerApmBase(ushort expectedMaxClients, ushort maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
+            : base(maxPacketSize)
         {
-            _pool = new ServerClientStateObjectPool(maxClients, maxPacketSize);
+            _serverClientStateObjectPool = new ObjectPool<ServerClientStateObject>(expectedMaxClients);
         }
 
         private protected override unsafe SendError SendTo(EndPoint arg0,
@@ -85,63 +85,26 @@ namespace Exomia.Network.UDP
         }
 
         /// <summary>
-        ///     Executes the run action.
-        /// </summary>
-        /// <param name="port">     The port. </param>
-        /// <param name="listener"> [out] The listener. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
-        private protected override bool OnRun(int port, out Socket listener)
-        {
-            try
-            {
-                if (Socket.OSSupportsIPv6)
-                {
-                    listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
-                    {
-                        Blocking = false, DualMode = true
-                    };
-                    listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
-                }
-                else
-                {
-                    listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
-                    {
-                        Blocking = false
-                    };
-                    listener.Bind(new IPEndPoint(IPAddress.Any, port));
-                }
-                return true;
-            }
-            catch
-            {
-                listener = null;
-                return false;
-            }
-        }
-
-        /// <summary>
         ///     Listen asynchronous.
         /// </summary>
         private protected override void ListenAsync()
         {
-            ServerClientStateObject state = _pool.Rent();
-            try
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
-                _listener.BeginReceiveFrom(
-                    state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
-                    ReceiveDataCallback, state);
+                ServerClientStateObject state = _serverClientStateObjectPool.Rent()
+                                             ?? new ServerClientStateObject(new byte[_maxPacketSize]);
+                state.EndPoint = new IPEndPoint(IPAddress.Any, 0);
+                try
+                {
+                    _listener.BeginReceiveFrom(
+                        state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
+                        ReceiveDataCallback, state);
+                }
+                catch
+                {
+                    _serverClientStateObjectPool.Return(state);
+                }
             }
-            catch (ObjectDisposedException)
-            {
-                InvokeClientDisconnect(state.EndPoint, DisconnectReason.Aborted);
-            }
-            catch (SocketException)
-            {
-                InvokeClientDisconnect(state.EndPoint, DisconnectReason.Error);
-            }
-            catch { InvokeClientDisconnect(state.EndPoint, DisconnectReason.Unspecified); }
         }
 
         /// <summary>
@@ -166,87 +129,44 @@ namespace Exomia.Network.UDP
         /// </summary>
         /// <param name="iar"> The iar. </param>
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private unsafe void ReceiveDataCallback(IAsyncResult iar)
+        private void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
 
-            int length;
+            int bytesTransferred;
             try
             {
-                if ((length = _listener.EndReceiveFrom(iar, ref state.EndPoint)) <= 0)
+                if ((bytesTransferred = _listener.EndReceiveFrom(iar, ref state.EndPoint)) <= 0)
                 {
                     InvokeClientDisconnect(state.EndPoint, DisconnectReason.Graceful);
+                    _serverClientStateObjectPool.Return(state);
                     return;
                 }
             }
             catch (ObjectDisposedException)
             {
                 InvokeClientDisconnect(state.EndPoint, DisconnectReason.Aborted);
+                _serverClientStateObjectPool.Return(state);
                 return;
             }
             catch (SocketException)
             {
                 InvokeClientDisconnect(state.EndPoint, DisconnectReason.Error);
+                _serverClientStateObjectPool.Return(state);
                 return;
             }
             catch
             {
                 InvokeClientDisconnect(state.EndPoint, DisconnectReason.Unspecified);
+                _serverClientStateObjectPool.Return(state);
                 return;
             }
 
             ListenAsync();
 
-            state.Buffer.GetHeaderUdp(out byte packetHeader, out uint commandID, out int dataLength);
+            Receive(state.Buffer, bytesTransferred, state.EndPoint);
 
-            if (length == dataLength + Constants.UDP_HEADER_SIZE)
-            {
-                EndPoint ep = state.EndPoint;
-
-                uint responseID = 0;
-                int  offset     = 0;
-                fixed (byte* src = state.Buffer)
-                {
-                    if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                    {
-                        responseID = *(uint*)src;
-                        offset     = 4;
-                    }
-                    byte[] payload;
-                    switch ((CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK))
-                    {
-                        case CompressionMode.Lz4:
-                            int l = *(int*)(src + offset);
-                            offset += 4;
-
-                            payload = ByteArrayPool.Rent(l);
-                            int s = LZ4Codec.Decode(
-                                state.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l);
-                            if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
-                            DeserializeData(ep, commandID, payload, 0, l, responseID);
-                            break;
-                        case CompressionMode.None:
-                            dataLength -= offset;
-                            payload    =  ByteArrayPool.Rent(dataLength);
-
-                            fixed (byte* dest = payload)
-                            {
-                                Mem.Cpy(dest, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
-                            }
-
-                            DeserializeData(ep, commandID, payload, 0, dataLength, responseID);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(CompressionMode),
-                                (CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK),
-                                "Not supported!");
-                    }
-                }
-            }
-
-            _pool.Return(state);
+            _serverClientStateObjectPool.Return(state);
         }
 
         /// <summary>
@@ -257,111 +177,20 @@ namespace Exomia.Network.UDP
             /// <summary>
             ///     The buffer.
             /// </summary>
-            public byte[] Buffer;
+            public readonly byte[] Buffer;
 
             /// <summary>
             ///     The end point.
             /// </summary>
             public EndPoint EndPoint;
-        }
-
-        /// <summary>
-        ///     A server client state object pool.
-        /// </summary>
-        private class ServerClientStateObjectPool
-        {
-            /// <summary>
-            ///     The buffers.
-            /// </summary>
-            private readonly ServerClientStateObject[] _buffers;
 
             /// <summary>
-            ///     Size of the maximum packet.
+            ///     Initializes a new instance of the <see cref="ServerClientStateObject" /> class.
             /// </summary>
-            private readonly int _maxPacketSize;
-
-            /// <summary>
-            ///     The index.
-            /// </summary>
-            private int _index;
-
-            /// <summary>
-            ///     The lock.
-            /// </summary>
-            private SpinLock _lock;
-
-            /// <summary>
-            ///     Initializes a new instance of the <see cref="ServerClientStateObjectPool" /> class.
-            /// </summary>
-            /// <param name="maxClients">    The maximum clients. </param>
-            /// <param name="maxPacketSize"> Size of the maximum packet. </param>
-            public ServerClientStateObjectPool(uint maxClients, int maxPacketSize)
+            /// <param name="buffer"> The buffer. </param>
+            public ServerClientStateObject(byte[] buffer)
             {
-                _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
-                    ? maxPacketSize
-                    : Constants.UDP_PACKET_SIZE_MAX;
-                _lock    = new SpinLock(Debugger.IsAttached);
-                _buffers = new ServerClientStateObject[maxClients != 0 ? maxClients + 1u : 33];
-            }
-
-            /// <summary>
-            ///     Gets the rent.
-            /// </summary>
-            /// <returns>
-            ///     A ServerClientStateObject.
-            /// </returns>
-            internal ServerClientStateObject Rent()
-            {
-                ServerClientStateObject buffer    = null;
-                bool                    lockTaken = false;
-                try
-                {
-                    _lock.Enter(ref lockTaken);
-
-                    if (_index < _buffers.Length)
-                    {
-                        buffer             = _buffers[_index];
-                        _buffers[_index++] = null;
-                    }
-                }
-                finally
-                {
-                    if (lockTaken)
-                    {
-                        _lock.Exit(false);
-                    }
-                }
-
-                return buffer ?? new ServerClientStateObject
-                {
-                    Buffer = new byte[_maxPacketSize], EndPoint = new IPEndPoint(IPAddress.Any, 0)
-                };
-            }
-
-            /// <summary>
-            ///     Returns the given object.
-            /// </summary>
-            /// <param name="obj"> The Object to return. </param>
-            internal void Return(ServerClientStateObject obj)
-            {
-                bool lockTaken = false;
-                try
-                {
-                    _lock.Enter(ref lockTaken);
-
-                    if (_index != 0)
-                    {
-                        obj.EndPoint       = new IPEndPoint(IPAddress.Any, 0);
-                        _buffers[--_index] = obj;
-                    }
-                }
-                finally
-                {
-                    if (lockTaken)
-                    {
-                        _lock.Exit(false);
-                    }
-                }
+                Buffer = buffer;
             }
         }
     }

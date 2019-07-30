@@ -97,119 +97,71 @@ namespace Exomia.Network.Serialization
 
             // 16bit   -    CHECKSUM
 
-            int    l;
-            ushort checksum;
+            *dst = (byte)encryptionMode;
 
-            if (responseID != 0)
+            int offset;
+            if (responseID == 0)
             {
-                if (length >= LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
-                {
-                    byte[] buffer = ByteArrayPool.Rent(length);
-                    fixed (byte* bPtr = buffer)
-                    {
-                        int s;
-                        switch (compressionMode)
-                        {
-                            case CompressionMode.Lz4:
-                                s = LZ4Codec.Encode(src, length, bPtr, length);
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException(
-                                    nameof(compressionMode), compressionMode, "Not supported!");
-                        }
-                        if (s > Constants.TCP_PACKET_SIZE_MAX)
-                        {
-                            ByteArrayPool.Return(buffer);
-                            throw new ArgumentOutOfRangeException(
-                                $"packet size of {Constants.TCP_PACKET_SIZE_MAX} exceeded (s: {s})");
-                        }
-                        if (s > 0)
-                        {
-                            checksum = PayloadEncoding.Encode(bPtr, s, dst + Constants.TCP_HEADER_SIZE + 8, out l);
-                            ByteArrayPool.Return(buffer);
-
-                            size = Constants.TCP_HEADER_SIZE + 9 + l;
-
-                            *dst = (byte)(RESPONSE_1_BIT | (byte)compressionMode | (byte)encryptionMode);
-                            *(uint*)(dst + 1) =
-                                ((uint)(l + 9) & DATA_LENGTH_MASK)
-                              | (commandID << COMMAND_ID_SHIFT);
-                            *(ushort*)(dst + 5)                              = checksum;
-                            *(uint*)(dst + 7)                                = responseID;
-                            *(int*)(dst + 11)                                = length;
-                            *(int*)(dst + Constants.TCP_HEADER_SIZE + l + 8) = Constants.ZERO_BYTE;
-
-                            return;
-                        }
-                        ByteArrayPool.Return(buffer);
-                    }
-                }
-
-                checksum = PayloadEncoding.Encode(src, length, dst + Constants.TCP_HEADER_SIZE + 4, out l);
-                size     = Constants.TCP_HEADER_SIZE + 5 + l;
-
-                *dst = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
-                *(uint*)(dst + 1) =
-                    ((uint)(l + 5) & DATA_LENGTH_MASK)
-                  | (commandID << COMMAND_ID_SHIFT);
-                *(ushort*)(dst + 5)                              = checksum;
-                *(uint*)(dst + 7)                                = responseID;
-                *(int*)(dst + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
+                offset = 0;
             }
             else
             {
-                if (length >= LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
-                {
-                    byte[] buffer = ByteArrayPool.Rent(length);
-                    fixed (byte* bPtr = buffer)
-                    {
-                        int s;
-                        switch (compressionMode)
-                        {
-                            case CompressionMode.Lz4:
-                                s = LZ4Codec.Encode(src, length, bPtr, length);
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException(
-                                    nameof(compressionMode), compressionMode, "Not supported!");
-                        }
-                        if (s > Constants.TCP_PACKET_SIZE_MAX)
-                        {
-                            ByteArrayPool.Return(buffer);
-                            throw new ArgumentOutOfRangeException(
-                                $"packet size of {Constants.TCP_PACKET_SIZE_MAX} exceeded (s: {s})");
-                        }
-                        if (s > 0)
-                        {
-                            checksum = PayloadEncoding.Encode(bPtr, s, dst + Constants.TCP_HEADER_SIZE + 4, out l);
-                            ByteArrayPool.Return(buffer);
-
-                            size = Constants.TCP_HEADER_SIZE + 5 + l;
-
-                            *dst = (byte)((byte)compressionMode | (byte)encryptionMode);
-                            *(uint*)(dst + 1) =
-                                ((uint)(l + 5) & DATA_LENGTH_MASK)
-                              | (commandID << COMMAND_ID_SHIFT);
-                            *(ushort*)(dst + 5)                              = checksum;
-                            *(int*)(dst + 7)                                 = length;
-                            *(int*)(dst + Constants.TCP_HEADER_SIZE + l + 4) = Constants.ZERO_BYTE;
-
-                            return;
-                        }
-                        ByteArrayPool.Return(buffer);
-                    }
-                }
-
-                checksum = PayloadEncoding.Encode(src, length, dst + Constants.TCP_HEADER_SIZE, out l);
-                size     = Constants.TCP_HEADER_SIZE + 1 + l;
-
-                *dst = (byte)encryptionMode;
-                *(uint*)(dst + 1) =
-                    ((uint)(l + 1) & DATA_LENGTH_MASK)
-                  | (commandID << COMMAND_ID_SHIFT);
-                *(ushort*)(dst + 5)                          = checksum;
-                *(int*)(dst + Constants.TCP_HEADER_SIZE + l) = Constants.ZERO_BYTE;
+                offset            =  4;
+                *dst              |= RESPONSE_1_BIT;
+                *(uint*)(dst + 7) =  responseID;
             }
+
+            int    l;
+            ushort checksum;
+
+            if (length >= LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
+            {
+                byte[] buffer = ByteArrayPool.Rent(length);
+                fixed (byte* bPtr = buffer)
+                {
+                    int s;
+                    switch (compressionMode)
+                    {
+                        case CompressionMode.Lz4:
+                            s = LZ4Codec.Encode(src, length, bPtr, length);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(
+                                nameof(compressionMode), compressionMode, "Not supported!");
+                    }
+                    if (s > Constants.TCP_PACKET_SIZE_MAX)
+                    {
+                        ByteArrayPool.Return(buffer);
+                        throw new ArgumentOutOfRangeException(
+                            $"packet size of {Constants.TCP_PACKET_SIZE_MAX} exceeded (s: {s})");
+                    }
+                    if (s > 0)
+                    {
+                        checksum = PayloadEncoding.Encode(bPtr, s, dst + Constants.TCP_HEADER_SIZE + offset + 4, out l);
+                        ByteArrayPool.Return(buffer);
+
+                        size = Constants.TCP_HEADER_SIZE + offset + 5 + l;
+
+                        *dst |= (byte)compressionMode;
+                        *(uint*)(dst + 1) =
+                            ((uint)(l + offset + 5) & DATA_LENGTH_MASK) | (commandID << COMMAND_ID_SHIFT);
+                        *(ushort*)(dst + 5)                                       = checksum;
+                        *(int*)(dst + offset + 7)                                 = length;
+                        *(int*)(dst + Constants.TCP_HEADER_SIZE + l + offset + 4) = Constants.ZERO_BYTE;
+
+                        return;
+                    }
+                    ByteArrayPool.Return(buffer);
+                }
+            }
+
+            checksum = PayloadEncoding.Encode(src, length, dst + Constants.TCP_HEADER_SIZE + offset, out l);
+            size     = Constants.TCP_HEADER_SIZE + offset + 1 + l;
+
+            *(uint*)(dst + 1) =
+                ((uint)(l + offset + 1) & DATA_LENGTH_MASK) | (commandID << COMMAND_ID_SHIFT);
+            *(ushort*)(dst + 5)                                   = checksum;
+            *(int*)(dst + Constants.TCP_HEADER_SIZE + l + offset) = Constants.ZERO_BYTE;
         }
     }
 }

@@ -11,63 +11,24 @@
 using System;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
-using Exomia.Network.Native;
-using Exomia.Network.Serialization;
-using K4os.Compression.LZ4;
 
 namespace Exomia.Network.UDP
 {
     /// <summary>
     ///     A UDP-Client build with the "Asynchronous Programming Model" (APM)
     /// </summary>
-    public sealed class UdpClientApm : ClientBase
+    public sealed class UdpClientApm : UdpClientBase
     {
-        /// <summary>
-        ///     The state object.
-        /// </summary>
-        private readonly ClientStateObject _stateObj;
+        private readonly ObjectPool<ClientStateObject> _clientStateObjectPool;
 
-        /// <inheritdoc />
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="UdpClientApm" /> class.
+        /// </summary>
+        /// <param name="maxPacketSize"> (Optional) Size of the maximum packet. </param>
         public UdpClientApm(ushort maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
+            : base(maxPacketSize)
         {
-            _stateObj = new ClientStateObject(
-                new byte[(maxPacketSize > 0) & (maxPacketSize < Constants.UDP_PACKET_SIZE_MAX)
-                    ? maxPacketSize
-                    : Constants.UDP_PACKET_SIZE_MAX]);
-        }
-
-        /// <summary>
-        ///     Attempts to create socket.
-        /// </summary>
-        /// <param name="socket"> [out] The socket. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
-        private protected override bool TryCreateSocket(out Socket socket)
-        {
-            try
-            {
-                if (Socket.OSSupportsIPv6)
-                {
-                    socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
-                    {
-                        Blocking = false, DualMode = true
-                    };
-                }
-                else
-                {
-                    socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
-                    {
-                        Blocking = false
-                    };
-                }
-                return true;
-            }
-            catch
-            {
-                socket = null;
-                return false;
-            }
+            _clientStateObjectPool = new ObjectPool<ClientStateObject>();
         }
 
         /// <summary>
@@ -77,14 +38,28 @@ namespace Exomia.Network.UDP
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
+                ClientStateObject state = _clientStateObjectPool.Rent() ??
+                                          new ClientStateObject(new byte[_maxPacketSize]);
                 try
                 {
                     _clientSocket.BeginReceive(
-                        _stateObj.Buffer, 0, _stateObj.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, null);
+                        state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, state);
                 }
-                catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
-                catch (SocketException) { Disconnect(DisconnectReason.Error); }
-                catch { Disconnect(DisconnectReason.Unspecified); }
+                catch (ObjectDisposedException)
+                {
+                    Disconnect(DisconnectReason.Aborted);
+                    _clientStateObjectPool.Return(state);
+                }
+                catch (SocketException)
+                {
+                    Disconnect(DisconnectReason.Error);
+                    _clientStateObjectPool.Return(state);
+                }
+                catch
+                {
+                    Disconnect(DisconnectReason.Unspecified);
+                    _clientStateObjectPool.Return(state);
+                }
             }
         }
 
@@ -139,12 +114,12 @@ namespace Exomia.Network.UDP
         /// </summary>
         /// <param name="iar"> The iar. </param>
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private unsafe void ReceiveAsyncCallback(IAsyncResult iar)
+        private void ReceiveAsyncCallback(IAsyncResult iar)
         {
-            int length;
+            int bytesTransferred;
             try
             {
-                if ((length = _clientSocket.EndReceive(iar)) <= 0)
+                if ((bytesTransferred = _clientSocket.EndReceive(iar)) <= 0)
                 {
                     Disconnect(DisconnectReason.Graceful);
                     return;
@@ -166,59 +141,9 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            _stateObj.Buffer.GetHeaderUdp(out byte packetHeader, out uint commandID, out int dataLength);
-
-            if (length == dataLength + Constants.UDP_HEADER_SIZE)
-            {
-                uint responseID = 0;
-                int  offset     = 0;
-                fixed (byte* src = _stateObj.Buffer)
-                {
-                    if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                    {
-                        responseID = *(uint*)src;
-                        offset     = 4;
-                    }
-                    byte[] payload;
-
-                    switch ((CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK))
-                    {
-                        case CompressionMode.Lz4:
-                            int l = *(int*)(src + offset);
-                            offset += 4;
-
-                            payload = ByteArrayPool.Rent(l);
-                            int s = LZ4Codec.Decode(
-                                _stateObj.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0,
-                                l);
-                            if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
-                            ReceiveAsync();
-                            DeserializeData(commandID, payload, 0, l, responseID);
-                            break;
-                        case CompressionMode.None:
-                            dataLength -= offset;
-                            payload    =  ByteArrayPool.Rent(dataLength);
-
-                            fixed (byte* dest = payload)
-                            {
-                                Mem.Cpy(dest, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
-                            }
-
-                            ReceiveAsync();
-                            DeserializeData(commandID, payload, 0, dataLength, responseID);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(CompressionMode),
-                                (CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK),
-                                "Not supported!");
-                    }
-                }
-                return;
-            }
-
-            ReceiveAsync();
+            ClientStateObject state = (ClientStateObject)iar.AsyncState;
+            Receive(state.Buffer, bytesTransferred);
+            _clientStateObjectPool.Return(state);
         }
 
         /// <summary>
@@ -245,7 +170,7 @@ namespace Exomia.Network.UDP
         /// <summary>
         ///     A client state object.
         /// </summary>
-        private struct ClientStateObject
+        private sealed class ClientStateObject
         {
             /// <summary>
             ///     The buffer.

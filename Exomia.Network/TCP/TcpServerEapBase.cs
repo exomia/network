@@ -9,12 +9,8 @@
 #endregion
 
 using System;
-using System.Net;
 using System.Net.Sockets;
-using Exomia.Network.Buffers;
-using Exomia.Network.Encoding;
 using Exomia.Network.Native;
-using K4os.Compression.LZ4;
 
 namespace Exomia.Network.TCP
 {
@@ -22,27 +18,24 @@ namespace Exomia.Network.TCP
     ///     A TCP-Server build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>
     /// <typeparam name="TServerClient"> TServerClient. </typeparam>
-    public abstract class TcpServerEapBase<TServerClient> : ServerBase<Socket, TServerClient>
+    public abstract class TcpServerEapBase<TServerClient> : TcpServerBase<TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
-        /// <summary>
-        ///     _maxPacketSize.
-        /// </summary>
-        protected readonly int _maxPacketSize;
-
         /// <summary>
         ///     The send event arguments pool.
         /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
-        /// <inheritdoc />
-        protected TcpServerEapBase(uint expectedMaxClient = 32, int maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
+        /// <summary>
+        ///     Initializes a new instance of the &lt;see cref="TcpServerEapBase&lt;TServerClient&gt;
+        ///     "/&gt; class.
+        /// </summary>
+        /// <param name="expectedMaxClients"> (Optional) The expected maximum clients. </param>
+        /// <param name="maxPacketSize">      (Optional) Size of the maximum packet. </param>
+        protected TcpServerEapBase(ushort expectedMaxClients = 32, ushort maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
+            : base(maxPacketSize)
         {
-            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
-                ? maxPacketSize
-                : Constants.TCP_PACKET_SIZE_MAX;
-
-            _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClient);
+            _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClients);
         }
 
         private protected override unsafe SendError SendTo(Socket arg0,
@@ -104,64 +97,12 @@ namespace Exomia.Network.TCP
             return SendError.Invalid;
         }
 
-        /// <summary>
-        ///     Executes the run action.
-        /// </summary>
-        /// <param name="port">     The port. </param>
-        /// <param name="listener"> [out] The listener. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
-        private protected override bool OnRun(int port, out Socket listener)
-        {
-            try
-            {
-                if (Socket.OSSupportsIPv6)
-                {
-                    listener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
-                    {
-                        NoDelay = true, Blocking = false, DualMode = true
-                    };
-                    listener.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
-                }
-                else
-                {
-                    listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-                    {
-                        NoDelay = true, Blocking = false
-                    };
-                    listener.Bind(new IPEndPoint(IPAddress.Any, port));
-                }
-                listener.Listen(100);
-                return true;
-            }
-            catch
-            {
-                listener = null;
-                return false;
-            }
-        }
-
         /// <inheritdoc />
         private protected override void ListenAsync()
         {
             SocketAsyncEventArgs acceptArgs = new SocketAsyncEventArgs();
             acceptArgs.Completed += AcceptAsyncCompleted;
             ListenAsync(acceptArgs);
-        }
-
-        /// <inheritdoc />
-        protected override void OnAfterClientDisconnect(Socket arg0)
-        {
-            try
-            {
-                arg0?.Shutdown(SocketShutdown.Both);
-                arg0?.Close(CLOSE_TIMEOUT);
-            }
-            catch
-            {
-                /* IGNORE */
-            }
         }
 
         /// <summary>
@@ -177,10 +118,6 @@ namespace Exomia.Network.TCP
                 {
                     AcceptAsyncCompleted(_listener, acceptArgs);
                 }
-            }
-            catch (ObjectDisposedException)
-            {
-                /* SOCKET CLOSED */
             }
             catch
             {
@@ -252,95 +189,24 @@ namespace Exomia.Network.TCP
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private unsafe void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
                 return;
             }
-            int length = e.BytesTransferred;
-            if (length <= 0)
+            int bytesTransferred = e.BytesTransferred;
+            if (bytesTransferred <= 0)
             {
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Graceful);
                 return;
             }
 
-            ServerClientStateObject state          = (ServerClientStateObject)e.UserToken;
-            CircularBuffer          circularBuffer = state.CircularBuffer;
+            ServerClientStateObject state = (ServerClientStateObject)e.UserToken;
 
-            int size = circularBuffer.Write(e.Buffer, 0, length);
-            while (circularBuffer.PeekHeader(
-                       0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
-                && dataLength <= circularBuffer.Count - Constants.TCP_HEADER_SIZE)
-            {
-                if (circularBuffer.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b) &&
-                    b == Constants.ZERO_BYTE)
-                {
-                    fixed (byte* ptr = state.BufferRead)
-                    {
-                        circularBuffer.Read(ptr, 0, dataLength, Constants.TCP_HEADER_SIZE);
-                        if (size < length)
-                        {
-                            circularBuffer.Write(e.Buffer, size, length - size);
-                        }
+            Receive(e.AcceptSocket, state.CircularBuffer, e.Buffer, state.BufferRead, bytesTransferred);
 
-                        uint responseID = 0;
-                        int  offset     = 0;
-                        if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                        {
-                            responseID = *(uint*)ptr;
-                            offset     = 4;
-                        }
-
-                        CompressionMode compressionMode =
-                            (CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK);
-                        if (compressionMode != CompressionMode.None)
-                        {
-                            offset += 4;
-                        }
-
-                        byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
-                        if (PayloadEncoding.Decode(
-                                ptr, offset, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
-                        {
-                            switch (compressionMode)
-                            {
-                                case CompressionMode.None:
-                                    break;
-                                case CompressionMode.Lz4:
-                                    int l = *(int*)(ptr + offset);
-
-                                    byte[] buffer = ByteArrayPool.Rent(l);
-                                    int    s      = LZ4Codec.Decode(deserializeBuffer, 0, bufferLength, buffer, 0, l);
-                                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
-                                    ByteArrayPool.Return(deserializeBuffer);
-                                    deserializeBuffer = buffer;
-                                    bufferLength      = l;
-                                    break;
-                                default:
-                                    throw new ArgumentOutOfRangeException(
-                                        nameof(CompressionMode),
-                                        (CompressionMode)(packetHeader &
-                                                          Serialization.Serialization.COMPRESSED_MODE_MASK),
-                                        "Not supported!");
-                            }
-
-                            ReceiveAsync(e);
-                            DeserializeData(e.AcceptSocket, commandID, deserializeBuffer, 0, bufferLength, responseID);
-                            return;
-                        }
-                        break;
-                    }
-                }
-                bool skipped = circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
-                if (size < length)
-                {
-                    size += circularBuffer.Write(e.Buffer, size, length - size);
-                }
-                if (!skipped && !circularBuffer.SkipUntil(0, Constants.ZERO_BYTE)) { break; }
-            }
             ReceiveAsync(e);
         }
 

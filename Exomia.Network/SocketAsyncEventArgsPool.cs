@@ -43,9 +43,9 @@ namespace Exomia.Network
         ///     Thrown when one or more arguments are outside
         ///     the required range.
         /// </exception>
-        public SocketAsyncEventArgsPool(uint numberOfBuffers = 32)
+        public SocketAsyncEventArgsPool(ushort numberOfBuffers = 32)
         {
-            if (numberOfBuffers <= 0) { throw new ArgumentOutOfRangeException(nameof(numberOfBuffers)); }
+            if (numberOfBuffers == 0) { throw new ArgumentOutOfRangeException(nameof(numberOfBuffers)); }
 
             _lock   = new SpinLock(Debugger.IsAttached);
             _buffer = new SocketAsyncEventArgs[numberOfBuffers];

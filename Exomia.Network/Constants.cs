@@ -27,7 +27,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The TCP packet size maximum.
         /// </summary>
-        internal const int TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_SIZE - 8;
+        internal const ushort TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_SIZE - 8;
 
         /// <summary>
         ///     The zero byte.
@@ -42,7 +42,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The UDP packet size maximum.
         /// </summary>
-        internal const int UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_SIZE - 8;
+        internal const ushort UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_SIZE - 8;
 
         /// <summary>
         ///     The user command limit.

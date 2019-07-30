@@ -57,12 +57,12 @@ namespace Exomia.Network
         /// <summary>
         ///     Called than a client is connected.
         /// </summary>
-        public event ClientActionHandler<T> ClientConnected;
+        public event ClientActionHandler<T, TServerClient> ClientConnected;
 
         /// <summary>
         ///     Called than a client is disconnected.
         /// </summary>
-        public event ClientDisconnectHandler<T> ClientDisconnected;
+        public event ClientDisconnectHandler<T, TServerClient> ClientDisconnected;
 
         /// <summary>
         ///     Occurs when data from a client is received.
@@ -74,7 +74,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Dictionary{T, TServerClient}
+        ///     The clients.
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
 
@@ -119,7 +119,7 @@ namespace Exomia.Network
         private bool _isRunning;
 
         /// <summary>
-        ///     Port.
+        ///     Gets the port.
         /// </summary>
         /// <value>
         ///     The port.
@@ -130,7 +130,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     ServerBase constructor.
+        ///     Initializes a new instance of the <see cref="ServerBase{T, TServerClient}" /> class.
         /// </summary>
         private protected ServerBase()
         {
@@ -144,7 +144,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     ServerBase destructor.
+        ///     Finalizes an instance of the <see cref="ServerBase{T, TServerClient}" /> class.
         /// </summary>
         ~ServerBase()
         {
@@ -213,7 +213,10 @@ namespace Exomia.Network
                     }
                 case CommandID.DISCONNECT:
                     {
-                        InvokeClientDisconnect(arg0, DisconnectReason.Graceful);
+                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                        {
+                            InvokeClientDisconnect(sClient, DisconnectReason.Graceful);
+                        }
                         break;
                     }
                 default:
@@ -253,10 +256,10 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     called than a new client is connected.
+        ///     Called than a new client is connected.
         /// </summary>
-        /// <param name="arg0"> Socket|Endpoint. </param>
-        protected virtual void OnClientConnected(T arg0) { }
+        /// <param name="client"> The client. </param>
+        protected virtual void OnClientConnected(TServerClient client) { }
 
         /// <summary>
         ///     Create a new ServerClient than a client connects.
@@ -276,12 +279,25 @@ namespace Exomia.Network
         /// <param name="reason"> DisconnectReason. </param>
         private protected void InvokeClientDisconnect(T arg0, DisconnectReason reason)
         {
+            if (_clients.TryGetValue(arg0, out TServerClient client))
+            {
+                InvokeClientDisconnect(client, reason);
+            }
+        }
+
+        /// <summary>
+        ///     Executes the client disconnect on a different thread, and waits for the result.
+        /// </summary>
+        /// <param name="client"> The client. </param>
+        /// <param name="reason"> DisconnectReason. </param>
+        private protected void InvokeClientDisconnect(TServerClient client, DisconnectReason reason)
+        {
             bool lockTaken = false;
             bool removed;
             try
             {
                 _clientsLock.Enter(ref lockTaken);
-                removed = _clients.Remove(arg0);
+                removed = _clients.Remove(client.Arg0);
             }
             finally
             {
@@ -290,25 +306,25 @@ namespace Exomia.Network
 
             if (removed)
             {
-                OnClientDisconnected(arg0, reason);
-                ClientDisconnected?.Invoke(arg0, reason);
+                OnClientDisconnected(client, reason);
+                ClientDisconnected?.Invoke(this, client, reason);
             }
 
-            OnAfterClientDisconnect(arg0);
+            OnAfterClientDisconnect(client);
         }
 
         /// <summary>
-        ///     called then the client is disconnected.
+        ///     Called then the client is disconnected.
         /// </summary>
-        /// <param name="arg0">   Socket|EndPoint. </param>
+        /// <param name="client"> The client. </param>
         /// <param name="reason"> DisconnectReason. </param>
-        protected virtual void OnClientDisconnected(T arg0, DisconnectReason reason) { }
+        protected virtual void OnClientDisconnected(TServerClient client, DisconnectReason reason) { }
 
         /// <summary>
-        ///     called after <see cref="InvokeClientDisconnect" />.
+        ///     called after <see cref="InvokeClientDisconnect(TServerClient, DisconnectReason)" />.
         /// </summary>
-        /// <param name="arg0"> Socket|EndPoint. </param>
-        protected virtual void OnAfterClientDisconnect(T arg0) { }
+        /// <param name="client"> The client. </param>
+        private protected virtual void OnAfterClientDisconnect(TServerClient client) { }
 
         /// <summary>
         ///     Executes the client connected on a different thread, and waits for the result.
@@ -329,8 +345,8 @@ namespace Exomia.Network
                     if (lockTaken) { _clientsLock.Exit(false); }
                 }
 
-                OnClientConnected(arg0);
-                ClientConnected?.Invoke(arg0);
+                OnClientConnected(serverClient);
+                ClientConnected?.Invoke(this, serverClient);
             }
         }
 
@@ -493,26 +509,31 @@ namespace Exomia.Network
                                                     uint   responseID);
 
         /// <inheritdoc />
-        public SendError SendTo(TServerClient client,
-                                uint          commandID,
-                                byte[]        data,
-                                int           offset,
-                                int           length,
-                                uint          responseID)
+        SendError IServer<T, TServerClient>.SendTo(TServerClient client,
+                                                   uint          commandID,
+                                                   byte[]        data,
+                                                   int           offset,
+                                                   int           length,
+                                                   uint          responseID)
         {
             return SendTo(client.Arg0, commandID, data, offset, length, responseID);
         }
 
         /// <inheritdoc />
-        public SendError SendTo(TServerClient client, uint commandID, ISerializable serializable, uint responseID)
+        SendError IServer<T, TServerClient>.SendTo(TServerClient client,
+                                                   uint          commandID,
+                                                   ISerializable serializable,
+                                                   uint          responseID)
         {
             byte[] dataB = serializable.Serialize(out int length);
             return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
         }
 
         /// <inheritdoc />
-        public SendError SendTo<T1>(TServerClient client, uint commandID, in T1 data, uint responseID)
-            where T1 : unmanaged
+        SendError IServer<T, TServerClient>.SendTo<T1>(TServerClient client,
+                                                       uint          commandID,
+                                                       in T1         data,
+                                                       uint          responseID)
         {
             byte[] dataB = data.ToBytesUnsafe2(out int length);
             return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
@@ -521,15 +542,21 @@ namespace Exomia.Network
         /// <inheritdoc />
         public void SendToAll(uint commandID, byte[] data, int offset, int length)
         {
-            Dictionary<T, TServerClient> buffer;
-            lock (_clients)
+            Dictionary<T, TServerClient> clients;
+            bool                         lockTaken = false;
+            try
             {
-                buffer = new Dictionary<T, TServerClient>(_clients);
+                _clientsLock.Enter(ref lockTaken);
+                clients = new Dictionary<T, TServerClient>(_clients);
+            }
+            finally
+            {
+                if (lockTaken) { _clientsLock.Exit(false); }
             }
 
-            if (buffer.Count > 0)
+            if (clients.Count > 0)
             {
-                foreach (T arg0 in buffer.Keys)
+                foreach (T arg0 in clients.Keys)
                 {
                     SendTo(arg0, commandID, data, offset, length, 0);
                 }
@@ -537,17 +564,17 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public void SendToAll<T1>(uint commandID, in T1 data) where T1 : unmanaged
+        void IServer<T, TServerClient>.SendToAll<T1>(uint commandID, in T1 data)
         {
-            byte[] dataB = data.ToBytesUnsafe2(out int length);
-            SendToAll(commandID, dataB, 0, length);
+            byte[] buffer = data.ToBytesUnsafe2(out int length);
+            SendToAll(commandID, buffer, 0, length);
         }
 
         /// <inheritdoc />
-        public void SendToAll(uint commandID, ISerializable serializable)
+        void IServer<T, TServerClient>.SendToAll(uint commandID, ISerializable serializable)
         {
-            byte[] dataB = serializable.Serialize(out int length);
-            SendToAll(commandID, dataB, 0, length);
+            byte[] buffer = serializable.Serialize(out int length);
+            SendToAll(commandID, buffer, 0, length);
         }
 
         #endregion

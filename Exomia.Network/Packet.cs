@@ -8,6 +8,9 @@
 
 #endregion
 
+using System;
+using System.Runtime.CompilerServices;
+
 namespace Exomia.Network
 {
     /// <summary>
@@ -51,6 +54,25 @@ namespace Exomia.Network
             Buffer = buffer;
             Offset = offset;
             Length = length;
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return ToString(System.Text.Encoding.UTF8);
+        }
+
+        /// <summary>
+        ///     Convert this packets raw data into a string representation.
+        /// </summary>
+        /// <param name="encoding"> The encoding. </param>
+        /// <returns>
+        ///     A string that represents this packets raw date.
+        /// </returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public string ToString(System.Text.Encoding encoding)
+        {
+            return (encoding ?? throw new ArgumentNullException(nameof(encoding))).GetString(Buffer, Offset, Length);
         }
     }
 }
