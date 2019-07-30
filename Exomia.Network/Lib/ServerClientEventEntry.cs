@@ -13,11 +13,9 @@ namespace Exomia.Network.Lib
     /// <summary>
     ///     A server client event entry. This class cannot be inherited.
     /// </summary>
-    /// <typeparam name="T">             Generic type parameter. </typeparam>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
-    sealed class ServerClientEventEntry<T, TServerClient>
-        where T : class
-        where TServerClient : ServerClientBase<T>
+    sealed class ServerClientEventEntry<TServerClient>
+        where TServerClient : IServerClient
     {
         /// <summary>
         ///     The deserialize.
@@ -27,15 +25,15 @@ namespace Exomia.Network.Lib
         /// <summary>
         ///     The data received.
         /// </summary>
-        private readonly Event<ClientDataReceivedHandler<T, TServerClient>> _dataReceived;
+        private readonly Event<ClientDataReceivedHandler<TServerClient>> _dataReceived;
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="ServerClientEventEntry{T,TServerClient}" /> class.
+        ///     Initializes a new instance of the <see cref="ServerClientEventEntry{TServerClient}" /> class.
         /// </summary>
         /// <param name="deserialize"> The deserialize. </param>
         public ServerClientEventEntry(DeserializePacketHandler<object> deserialize)
         {
-            _dataReceived = new Event<ClientDataReceivedHandler<T, TServerClient>>();
+            _dataReceived = new Event<ClientDataReceivedHandler<TServerClient>>();
             _deserialize  = deserialize;
         }
 
@@ -43,7 +41,7 @@ namespace Exomia.Network.Lib
         ///     Adds callback.
         /// </summary>
         /// <param name="callback"> The callback to remove. </param>
-        public void Add(ClientDataReceivedHandler<T, TServerClient> callback)
+        public void Add(ClientDataReceivedHandler<TServerClient> callback)
         {
             _dataReceived.Add(callback);
         }
@@ -52,7 +50,7 @@ namespace Exomia.Network.Lib
         ///     Removes the given callback.
         /// </summary>
         /// <param name="callback"> The callback to remove. </param>
-        public void Remove(ClientDataReceivedHandler<T, TServerClient> callback)
+        public void Remove(ClientDataReceivedHandler<TServerClient> callback)
         {
             _dataReceived.Remove(callback);
         }

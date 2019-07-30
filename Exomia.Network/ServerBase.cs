@@ -57,17 +57,17 @@ namespace Exomia.Network
         /// <summary>
         ///     Called than a client is connected.
         /// </summary>
-        public event ClientActionHandler<T, TServerClient> ClientConnected;
+        public event ClientActionHandler<TServerClient> ClientConnected;
 
         /// <summary>
         ///     Called than a client is disconnected.
         /// </summary>
-        public event ClientDisconnectHandler<T, TServerClient> ClientDisconnected;
+        public event ClientDisconnectHandler<TServerClient> ClientDisconnected;
 
         /// <summary>
         ///     Occurs when data from a client is received.
         /// </summary>
-        public event ClientCommandDataReceivedHandler<T, TServerClient> ClientDataReceived
+        public event ClientCommandDataReceivedHandler<TServerClient> ClientDataReceived
         {
             add { _clientDataReceived.Add(value); }
             remove { _clientDataReceived.Remove(value); }
@@ -96,12 +96,12 @@ namespace Exomia.Network
         /// <summary>
         ///     The data received callbacks.
         /// </summary>
-        private readonly Dictionary<uint, ServerClientEventEntry<T, TServerClient>> _dataReceivedCallbacks;
+        private readonly Dictionary<uint, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
 
         /// <summary>
         ///     The client data received event handler.
         /// </summary>
-        private readonly Event<ClientCommandDataReceivedHandler<T, TServerClient>> _clientDataReceived;
+        private readonly Event<ClientCommandDataReceivedHandler<TServerClient>> _clientDataReceived;
 
         /// <summary>
         ///     The clients lock.
@@ -134,13 +134,13 @@ namespace Exomia.Network
         /// </summary>
         private protected ServerBase()
         {
-            _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<T, TServerClient>>(INITIAL_QUEUE_SIZE);
+            _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<TServerClient>>(INITIAL_QUEUE_SIZE);
             _clients               = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
 
             _clientsLock               = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
 
-            _clientDataReceived = new Event<ClientCommandDataReceivedHandler<T, TServerClient>>();
+            _clientDataReceived = new Event<ClientCommandDataReceivedHandler<TServerClient>>();
         }
 
         /// <summary>
@@ -231,7 +231,7 @@ namespace Exomia.Network
                         {
                             if (commandID <= Constants.USER_COMMAND_LIMIT &&
                                 _dataReceivedCallbacks.TryGetValue(
-                                    commandID, out ServerClientEventEntry<T, TServerClient> scee))
+                                    commandID, out ServerClientEventEntry<TServerClient> scee))
                             {
                                 sClient.SetLastReceivedPacketTimeStamp();
 
@@ -363,14 +363,10 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="deserialize"> The deserialize handler. </param>
         /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
+        ///                                                are null. </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
         public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
             if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
@@ -389,9 +385,9 @@ namespace Exomia.Network
                             $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
                     }
                     if (!_dataReceivedCallbacks.TryGetValue(
-                        commandID, out ServerClientEventEntry<T, TServerClient> buffer))
+                        commandID, out ServerClientEventEntry<TServerClient> buffer))
                     {
-                        buffer = new ServerClientEventEntry<T, TServerClient>(deserialize);
+                        buffer = new ServerClientEventEntry<TServerClient>(deserialize);
                         _dataReceivedCallbacks.Add(commandID, buffer);
                     }
                 }
@@ -409,10 +405,8 @@ namespace Exomia.Network
         /// <returns>
         ///     True if at least one command is removed, false otherwise.
         /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
         public bool RemoveCommands(params uint[] commandIDs)
         {
             bool removed   = false;
@@ -442,19 +436,13 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        /// <exception cref="Exception">
-        ///     Thrown when an exception error condition
-        ///     occurs.
-        /// </exception>
-        public void AddDataReceivedCallback(uint commandID, ClientDataReceivedHandler<T, TServerClient> callback)
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
+        ///                                                are null. </exception>
+        /// <exception cref="Exception">                   Thrown when an exception error condition
+        ///                                                occurs. </exception>
+        public void AddDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -468,7 +456,7 @@ namespace Exomia.Network
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<T, TServerClient> buffer))
+                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient> buffer))
                 {
                     throw new Exception(
                         $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(DeserializeData, params uint[])' first.");
@@ -487,15 +475,11 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        public void RemoveDataReceivedCallback(uint commandID, ClientDataReceivedHandler<T, TServerClient> callback)
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
+        ///                                                are null. </exception>
+        public void RemoveDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -505,7 +489,7 @@ namespace Exomia.Network
 
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
-            if (_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<T, TServerClient> buffer))
+            if (_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient> buffer))
             {
                 buffer.Remove(callback);
             }
