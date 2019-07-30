@@ -13,8 +13,14 @@ namespace Exomia.Network
     /// <summary>
     ///     Called than a client disconnects from the server.
     /// </summary>
-    /// <typeparam name="T"> Socket|EndPoint. </typeparam>
-    /// <param name="arg0">   The args. </param>
+    /// <typeparam name="T">             Socket|EndPoint. </typeparam>
+    /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
+    /// <param name="server"> The server. </param>
+    /// <param name="client"> The client. </param>
     /// <param name="reason"> The reason. </param>
-    public delegate void ClientDisconnectHandler<in T>(T arg0, DisconnectReason reason) where T : class;
+    public delegate void ClientDisconnectHandler<out T, TServerClient>(IServer<T, TServerClient> server,
+                                                                       TServerClient             client,
+                                                                       DisconnectReason          reason)
+        where T : class
+        where TServerClient : ServerClientBase<T>;
 }

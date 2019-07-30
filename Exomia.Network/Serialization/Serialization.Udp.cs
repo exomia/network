@@ -93,93 +93,57 @@ namespace Exomia.Network.Serialization
             // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0xFFFF
             // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
 
-            if (responseID != 0)
+            *dst = (byte)encryptionMode;
+
+            int offset;
+            if (responseID == 0)
             {
-                if (length >= LENGTH_THRESHOLD)
-                {
-                    int s;
-                    switch (compressionMode)
-                    {
-                        case CompressionMode.Lz4:
-                            s = LZ4Codec.Encode(
-                                src, length, dst + Constants.UDP_HEADER_SIZE + 8, length);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(compressionMode), compressionMode, "Not supported!");
-                    }
-                    if (s > Constants.UDP_PACKET_SIZE_MAX)
-                    {
-                        throw new ArgumentOutOfRangeException(
-                            $"packet size of {Constants.UDP_PACKET_SIZE_MAX} exceeded (s: {s})");
-                    }
-
-                    if (s > 0)
-                    {
-                        size = Constants.UDP_HEADER_SIZE + 8 + s;
-                        *dst = (byte)(RESPONSE_1_BIT | (byte)CompressionMode.Lz4 | (byte)encryptionMode);
-                        *(uint*)(dst + 1) =
-                            ((uint)(s + 8) & DATA_LENGTH_MASK) |
-                            (commandID << COMMAND_ID_SHIFT);
-                        *(uint*)(dst + 5) = responseID;
-                        *(int*)(dst + 9)  = length;
-
-                        return;
-                    }
-                }
-
-                size = Constants.UDP_HEADER_SIZE + 4 + length;
-
-                *dst = (byte)(RESPONSE_1_BIT | (byte)encryptionMode);
-                *(uint*)(dst + 1) =
-                    ((uint)(length + 4) & DATA_LENGTH_MASK) |
-                    (commandID << COMMAND_ID_SHIFT);
-                *(uint*)(dst + 5) = responseID;
-                Mem.Cpy(dst + Constants.UDP_HEADER_SIZE + 4, src, length);
+                offset = 0;
             }
             else
             {
-                if (length >= LENGTH_THRESHOLD)
+                offset            =  4;
+                *dst              |= RESPONSE_1_BIT;
+                *(uint*)(dst + 5) =  responseID;
+            }
+
+            if (length >= LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
+            {
+                int s;
+                switch (compressionMode)
                 {
-                    int s;
-                    switch (compressionMode)
-                    {
-                        case CompressionMode.Lz4:
-                            s = LZ4Codec.Encode(
-                                src, length, dst + Constants.UDP_HEADER_SIZE + 4, length);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(compressionMode), compressionMode, "Not supported!");
-                    }
-                    if (s > Constants.UDP_PACKET_SIZE_MAX)
-                    {
+                    case CompressionMode.Lz4:
+                        s = LZ4Codec.Encode(
+                            src, length, dst + Constants.UDP_HEADER_SIZE + offset + 4, length);
+                        break;
+                    default:
                         throw new ArgumentOutOfRangeException(
-                            $"packet size of {Constants.UDP_PACKET_SIZE_MAX} exceeded (s: {s})");
-                    }
-                    if (s > 0)
-                    {
-                        size = Constants.UDP_HEADER_SIZE + 4 + s;
-
-                        *dst = (byte)((byte)CompressionMode.Lz4 | (byte)encryptionMode);
-                        *(uint*)(dst + 1) =
-                            ((uint)(s + 4) & DATA_LENGTH_MASK) |
-                            (commandID << COMMAND_ID_SHIFT);
-                        *(int*)(dst + 5) = length;
-
-                        return;
-                    }
+                            nameof(compressionMode), compressionMode, "Not supported!");
+                }
+                if (s > Constants.UDP_PACKET_SIZE_MAX)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        $"packet size of {Constants.UDP_PACKET_SIZE_MAX} exceeded (s: {s})");
                 }
 
-                size = Constants.UDP_HEADER_SIZE + length;
+                if (s > 0)
+                {
+                    size = Constants.UDP_HEADER_SIZE + offset + 4 + s;
 
-                *dst = (byte)encryptionMode;
-                *(uint*)(dst + 1) =
-                    ((uint)length & DATA_LENGTH_MASK) |
-                    (commandID << COMMAND_ID_SHIFT);
+                    *dst |= (byte)compressionMode;
+                    *(uint*)(dst + 1) =
+                        ((uint)(s + offset + 4) & DATA_LENGTH_MASK) | (commandID << COMMAND_ID_SHIFT);
+                    *(int*)(dst + offset + 5) = length;
 
-                Mem.Cpy(dst + Constants.UDP_HEADER_SIZE, src, length);
+                    return;
+                }
             }
+
+            size = Constants.UDP_HEADER_SIZE + offset + length;
+
+            *(uint*)(dst + 1) =
+                ((uint)(length + offset) & DATA_LENGTH_MASK) | (commandID << COMMAND_ID_SHIFT);
+            Mem.Cpy(dst + Constants.UDP_HEADER_SIZE + offset, src, length);
         }
 
         /// <summary>

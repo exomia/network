@@ -44,5 +44,10 @@ namespace Exomia.Network.Serialization
         ///     LENGTH_THRESHOLD 4096.
         /// </summary>
         private const int LENGTH_THRESHOLD = 1 << 12;
+
+        /// <summary>
+        ///     The splitted bit.
+        /// </summary>
+        private const byte SPLIT_1_BIT = 1 << 7;
     }
 }

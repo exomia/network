@@ -23,7 +23,7 @@ PM> Install-Package Exomia.Network
 -Client-UDP
 
 ```csharp
-static void Main(string[] args)
+static async Task Main(string[] args)
 {
 	using(UdpClientEap client = new UdpClientEap())
 	{
@@ -54,14 +54,14 @@ static void Main(string[] args)
 ```csharp
 class UdpServer : UdpServerEapBase<UdpServerClient>
 {
-    protected override bool CreateServerClient(EndPoint arg0, out UdpServerClient serverClient)
+    protected override bool CreateServerClient(EndPoint endpoint, out UdpServerClient serverClient)
     {
-        serverClient = new UdpServerClient(arg0);
+        serverClient = new UdpServerClient(endpoint);
         return true;
     }
 
     /// <inheritdoc />
-    public UdpServer(uint maxClients, int maxPacketSize = 65522)
+    public UdpServer(ushort maxClients, ushort maxPacketSize = 65522)
         : base(maxClients, maxPacketSize) { }
 }
 
@@ -76,13 +76,13 @@ static void Main(string[] args)
 {
 	using(UdpServer server = new UdpServer(32))
 	{
-		server.ClientConnected += (endpoint) =>
+		server.ClientConnected += (client) =>
 		{
-		    Console.WriteLine("Client connected: " + (endpoint as IPEndPoint));
+		    Console.WriteLine("Client connected: " + (client.IPAddress));
 		};
-		server.ClientDisconnected += (endpoint, reason) =>
+		server.ClientDisconnected += (client, reason) =>
 		{
-		    Console.WriteLine(reason + " Client disconnected: " + (endpoint as IPEndPoint));
+		    Console.WriteLine(reason + " Client disconnected: " + (client.IPAddress));
 		};
 		server.Run(3001);
 
@@ -95,7 +95,7 @@ static void Main(string[] args)
 -Client-TCP
 
 ```csharp
-static void Main(string[] args)
+static async Task Main(string[] args)
 {
 	using (TcpClientEap client = new TcpClientEap())
 	{
@@ -148,13 +148,13 @@ static void Main(string[] args)
 ```csharp
 class TcpServer : TcpServerEapBase<TcpServerClient>
 {
-    protected override bool CreateServerClient(Socket arg0, out TcpServerClient serverClient)
+    protected override bool CreateServerClient(Socket socket, out TcpServerClient serverClient)
     {
-        serverClient = new TcpServerClient(arg0);
+        serverClient = new TcpServerClient(socket);
         return true;
     }
 
-    public TcpServer(uint expectedMaxClient = 32, int maxPacketSize = 65520)
+    public TcpServer(ushort expectedMaxClient = 32, ushort maxPacketSize = 65520)
         : base(expectedMaxClient, maxPacketSize) { }
 }
 
@@ -169,13 +169,13 @@ static void Main(string[] args)
 {
 	using(TcpServer server = new TcpServer())
 	{
-		server.ClientConnected += (socket) =>
+		server.ClientConnected += (client) =>
 		{
-		    Console.WriteLine("Client connected: " + (socket.RemoteEndPoint as IPEndPoint));
+		    Console.WriteLine("Client connected: " + (client.IPAddress));
 		};
-		server.ClientDisconnected += (socket, reason) =>
+		server.ClientDisconnected += (client, reason) =>
 		{
-		    Console.WriteLine(reason + " Client disconnected: " + (socket.RemoteEndPoint as IPEndPoint));
+		    Console.WriteLine(reason + " Client disconnected: " + (client.IPAddress));
 		};
 
 		server.AddCommand(45, (in Packet packet) =>

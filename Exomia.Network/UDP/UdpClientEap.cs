@@ -10,79 +10,33 @@
 
 using System;
 using System.Net.Sockets;
-using Exomia.Network.Buffers;
-using Exomia.Network.Native;
-using Exomia.Network.Serialization;
-using K4os.Compression.LZ4;
 
 namespace Exomia.Network.UDP
 {
     /// <summary>
     ///     A UDP-Client build with the "Event-based Asynchronous Pattern" (EAP)
     /// </summary>
-    public sealed class UdpClientEap : ClientBase
+    public sealed class UdpClientEap : UdpClientBase
     {
         /// <summary>
-        ///     Size of the maximum packet.
+        ///     The receive event arguments pool.
         /// </summary>
-        private readonly int _maxPacketSize;
-
-        /// <summary>
-        ///     Socket asynchronous event information.
-        /// </summary>
-        private readonly SocketAsyncEventArgs _receiveEventArgs;
+        private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
 
         /// <summary>
         ///     The send event arguments pool.
         /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
-        /// <inheritdoc />
-        public UdpClientEap(int maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
-        {
-            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
-                ? maxPacketSize
-                : Constants.UDP_PACKET_SIZE_MAX;
-
-            _receiveEventArgs           =  new SocketAsyncEventArgs();
-            _receiveEventArgs.Completed += ReceiveAsyncCompleted;
-            _receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
-
-            _sendEventArgsPool = new SocketAsyncEventArgsPool();
-        }
-
         /// <summary>
-        ///     Attempts to create socket.
+        ///     Initializes a new instance of the <see cref="UdpClientEap" /> class.
         /// </summary>
-        /// <param name="socket"> [out] The socket. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
-        private protected override bool TryCreateSocket(out Socket socket)
+        /// <param name="maxPacketSize"> (Optional) Size of the maximum packet. </param>
+        public UdpClientEap(ushort maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
+            : base(maxPacketSize)
         {
-            try
-            {
-                if (Socket.OSSupportsIPv6)
-                {
-                    socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)
-                    {
-                        Blocking = false, DualMode = true
-                    };
-                }
-                else
-                {
-                    socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)
-                    {
-                        Blocking = false
-                    };
-                }
-                return true;
-            }
-            catch
-            {
-                socket = null;
-                return false;
-            }
+            _receiveEventArgsPool = new SocketAsyncEventArgsPool();
+            _sendEventArgsPool    = new SocketAsyncEventArgsPool();
         }
 
         /// <summary>
@@ -92,16 +46,35 @@ namespace Exomia.Network.UDP
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
+                SocketAsyncEventArgs receiveEventArgs = _receiveEventArgsPool.Rent();
+                if (receiveEventArgs == null)
+                {
+                    receiveEventArgs           =  new SocketAsyncEventArgs();
+                    receiveEventArgs.Completed += ReceiveAsyncCompleted;
+                    receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                }
                 try
                 {
-                    if (!_clientSocket.ReceiveAsync(_receiveEventArgs))
+                    if (!_clientSocket.ReceiveAsync(receiveEventArgs))
                     {
-                        ReceiveAsyncCompleted(_receiveEventArgs.AcceptSocket, _receiveEventArgs);
+                        ReceiveAsyncCompleted(receiveEventArgs.AcceptSocket, receiveEventArgs);
                     }
                 }
-                catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
-                catch (SocketException) { Disconnect(DisconnectReason.Error); }
-                catch { Disconnect(DisconnectReason.Unspecified); }
+                catch (ObjectDisposedException)
+                {
+                    Disconnect(DisconnectReason.Aborted);
+                    _receiveEventArgsPool.Return(receiveEventArgs);
+                }
+                catch (SocketException)
+                {
+                    Disconnect(DisconnectReason.Error);
+                    _receiveEventArgsPool.Return(receiveEventArgs);
+                }
+                catch
+                {
+                    Disconnect(DisconnectReason.Unspecified);
+                    _receiveEventArgsPool.Return(receiveEventArgs);
+                }
             }
         }
 
@@ -167,7 +140,7 @@ namespace Exomia.Network.UDP
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private unsafe void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
@@ -180,56 +153,8 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            e.Buffer.GetHeaderUdp(out byte packetHeader, out uint commandID, out int dataLength);
-
-            if (e.BytesTransferred == dataLength + Constants.UDP_HEADER_SIZE)
-            {
-                uint responseID = 0;
-                int  offset     = 0;
-                fixed (byte* src = e.Buffer)
-                {
-                    if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                    {
-                        responseID = *(uint*)src;
-                        offset     = 4;
-                    }
-                    byte[] payload;
-                    switch ((CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK))
-                    {
-                        case CompressionMode.Lz4:
-                            int l = *(int*)(src + offset);
-                            offset += 4;
-
-                            payload = ByteArrayPool.Rent(l);
-                            int s = LZ4Codec.Decode(
-                                e.Buffer, Constants.UDP_HEADER_SIZE + offset, dataLength - offset, payload, 0, l);
-                            if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
-                            ReceiveAsync();
-                            DeserializeData(commandID, payload, 0, l, responseID);
-                            break;
-                        case CompressionMode.None:
-                            dataLength -= offset;
-                            payload    =  ByteArrayPool.Rent(dataLength);
-
-                            fixed (byte* dest = payload)
-                            {
-                                Mem.Cpy(dest, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
-                            }
-
-                            ReceiveAsync();
-                            DeserializeData(commandID, payload, 0, dataLength, responseID);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(CompressionMode),
-                                (CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK),
-                                "Not supported!");
-                    }
-                }
-                return;
-            }
-            ReceiveAsync();
+            Receive(e.Buffer, e.BytesTransferred);
+            _receiveEventArgsPool.Return(e);
         }
 
         /// <summary>

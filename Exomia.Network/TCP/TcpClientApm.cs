@@ -11,16 +11,14 @@
 using System;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
-using Exomia.Network.Encoding;
 using Exomia.Network.Native;
-using K4os.Compression.LZ4;
 
 namespace Exomia.Network.TCP
 {
     /// <summary>
     ///     A TCP/UDP-Client build with the "Asynchronous Programming Model" (APM)
     /// </summary>
-    public sealed class TcpClientApm : ClientBase
+    public sealed class TcpClientApm : TcpClientBase
     {
         /// <summary>
         ///     Buffer for circular data.
@@ -37,48 +35,18 @@ namespace Exomia.Network.TCP
         /// </summary>
         private readonly byte[] _bufferRead;
 
-        /// <inheritdoc />
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="TcpClientApm" /> class.
+        /// </summary>
+        /// <param name="maxPacketSize"> (Optional) Size of the maximum packet. </param>
         public TcpClientApm(ushort maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
+            : base(maxPacketSize)
         {
             _bufferWrite = new byte[maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
                 ? maxPacketSize
                 : Constants.TCP_PACKET_SIZE_MAX];
             _bufferRead     = new byte[_bufferWrite.Length];
             _circularBuffer = new CircularBuffer(_bufferWrite.Length * 2);
-        }
-
-        /// <summary>
-        ///     Attempts to create socket.
-        /// </summary>
-        /// <param name="socket"> [out] The socket. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
-        private protected override bool TryCreateSocket(out Socket socket)
-        {
-            try
-            {
-                if (Socket.OSSupportsIPv6)
-                {
-                    socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp)
-                    {
-                        NoDelay = true, Blocking = false, DualMode = true
-                    };
-                }
-                else
-                {
-                    socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-                    {
-                        NoDelay = true, Blocking = false
-                    };
-                }
-                return true;
-            }
-            catch
-            {
-                socket = null;
-                return false;
-            }
         }
 
         /// <summary>
@@ -155,13 +123,12 @@ namespace Exomia.Network.TCP
         ///     Async callback, called on completion of receive Asynchronous callback.
         /// </summary>
         /// <param name="iar"> The iar. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private unsafe void ReceiveAsyncCallback(IAsyncResult iar)
+        private void ReceiveAsyncCallback(IAsyncResult iar)
         {
-            int length;
+            int bytesTransferred;
             try
             {
-                if ((length = _clientSocket.EndReceive(iar)) <= 0)
+                if ((bytesTransferred = _clientSocket.EndReceive(iar)) <= 0)
                 {
                     Disconnect(DisconnectReason.Graceful);
                     return;
@@ -183,79 +150,7 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            int size = _circularBuffer.Write(_bufferWrite, 0, length);
-            while (_circularBuffer.PeekHeader(
-                       0, out byte packetHeader, out uint commandID, out int dataLength, out ushort checksum)
-                && dataLength <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
-            {
-                if (_circularBuffer.PeekByte((Constants.TCP_HEADER_SIZE + dataLength) - 1, out byte b) &&
-                    b == Constants.ZERO_BYTE)
-                {
-                    fixed (byte* ptr = _bufferRead)
-                    {
-                        _circularBuffer.Read(ptr, 0, dataLength, Constants.TCP_HEADER_SIZE);
-                        if (size < length)
-                        {
-                            _circularBuffer.Write(_bufferWrite, size, length - size);
-                        }
-
-                        uint responseID = 0;
-                        int  offset     = 0;
-                        if ((packetHeader & Serialization.Serialization.RESPONSE_BIT_MASK) != 0)
-                        {
-                            responseID = *(uint*)ptr;
-                            offset     = 4;
-                        }
-
-                        CompressionMode compressionMode =
-                            (CompressionMode)(packetHeader & Serialization.Serialization.COMPRESSED_MODE_MASK);
-                        if (compressionMode != CompressionMode.None)
-                        {
-                            offset += 4;
-                        }
-
-                        byte[] deserializeBuffer = ByteArrayPool.Rent(dataLength);
-                        if (PayloadEncoding.Decode(
-                                ptr, offset, dataLength - 1, deserializeBuffer, out int bufferLength) == checksum)
-                        {
-                            switch (compressionMode)
-                            {
-                                case CompressionMode.None:
-                                    break;
-                                case CompressionMode.Lz4:
-                                    int l = *(int*)(ptr + offset);
-
-                                    byte[] buffer = ByteArrayPool.Rent(l);
-                                    int    s      = LZ4Codec.Decode(deserializeBuffer, 0, bufferLength, buffer, 0, l);
-                                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
-
-                                    ByteArrayPool.Return(deserializeBuffer);
-                                    deserializeBuffer = buffer;
-                                    bufferLength      = l;
-                                    break;
-                                default:
-                                    throw new ArgumentOutOfRangeException(
-                                        nameof(CompressionMode),
-                                        (CompressionMode)(packetHeader &
-                                                          Serialization.Serialization.COMPRESSED_MODE_MASK),
-                                        "Not supported!");
-                            }
-
-                            ReceiveAsync();
-                            DeserializeData(commandID, deserializeBuffer, 0, bufferLength, responseID);
-                            return;
-                        }
-                        break;
-                    }
-                }
-                bool skipped = _circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
-                if (size < length)
-                {
-                    size += _circularBuffer.Write(_bufferWrite, size, length - size);
-                }
-                if (!skipped && !_circularBuffer.SkipUntil(0, Constants.ZERO_BYTE)) { break; }
-            }
-            ReceiveAsync();
+            Receive(_circularBuffer, _bufferWrite, _bufferRead, bytesTransferred);
         }
 
         /// <summary>
