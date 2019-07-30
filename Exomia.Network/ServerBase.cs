@@ -354,36 +354,37 @@ namespace Exomia.Network
         #region Add & Remove
 
         /// <summary>
-        ///     add a command.
+        ///     add commands deserializers.
         /// </summary>
-        /// <param name="commandID">   Identifier for the command. </param>
         /// <param name="deserialize"> The deserialize handler. </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        public void AddCommand(uint commandID, DeserializePacketHandler<object> deserialize)
+        /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
+        ///                                                are null. </exception>
+        public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
-            if (commandID > Constants.USER_COMMAND_LIMIT)
-            {
-                throw new ArgumentOutOfRangeException(
-                    $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
-            }
-
+            if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
 
             bool lockTaken = false;
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<T, TServerClient> buffer))
+
+                foreach (uint commandID in commandIDs)
                 {
-                    buffer = new ServerClientEventEntry<T, TServerClient>(deserialize);
-                    _dataReceivedCallbacks.Add(commandID, buffer);
+                    if (commandID > Constants.USER_COMMAND_LIMIT)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+                    }
+                    if (!_dataReceivedCallbacks.TryGetValue(
+                        commandID, out ServerClientEventEntry<T, TServerClient> buffer))
+                    {
+                        buffer = new ServerClientEventEntry<T, TServerClient>(deserialize);
+                        _dataReceivedCallbacks.Add(commandID, buffer);
+                    }
                 }
             }
             finally
@@ -393,34 +394,36 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     remove a command.
+        ///     Removes the commands described by commandIDs.
         /// </summary>
-        /// <param name="commandID"> Identifier for the command. </param>
+        /// <param name="commandIDs"> A variable-length parameters list containing command ids. </param>
         /// <returns>
-        ///     True if it succeeds, false if it fails.
+        ///     True if at least one command is removed, false otherwise.
         /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        public bool RemoveCommand(uint commandID)
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
+        public bool RemoveCommands(params uint[] commandIDs)
         {
-            if (commandID > Constants.USER_COMMAND_LIMIT)
-            {
-                throw new ArgumentOutOfRangeException(
-                    $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
-            }
-
+            bool removed   = false;
             bool lockTaken = false;
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                return _dataReceivedCallbacks.Remove(commandID);
+                foreach (uint commandID in commandIDs)
+                {
+                    if (commandID > Constants.USER_COMMAND_LIMIT)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+                    }
+                    removed |= _dataReceivedCallbacks.Remove(commandID);
+                }
             }
             finally
             {
                 if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
             }
+            return removed;
         }
 
         /// <summary>
@@ -450,23 +453,22 @@ namespace Exomia.Network
 
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
-            ServerClientEventEntry<T, TServerClient> buffer;
-            bool                                     lockTaken = false;
+            bool lockTaken = false;
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandID, out buffer))
+                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<T, TServerClient> buffer))
                 {
                     throw new Exception(
-                        $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(uint, DeserializeData)' first.");
+                        $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(DeserializeData, params uint[])' first.");
                 }
+
+                buffer.Add(callback);
             }
             finally
             {
                 if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
             }
-
-            buffer.Add(callback);
         }
 
         /// <summary>
@@ -510,31 +512,32 @@ namespace Exomia.Network
                                                     uint   responseID);
 
         /// <inheritdoc />
-        SendError IServer<T, TServerClient>.SendTo(TServerClient client,
-                                                   uint          commandID,
-                                                   byte[]        data,
-                                                   int           offset,
-                                                   int           length,
-                                                   uint          responseID)
+        public SendError SendTo(TServerClient client,
+                                uint          commandID,
+                                byte[]        data,
+                                int           offset,
+                                int           length,
+                                uint          responseID)
         {
             return SendTo(client.Arg0, commandID, data, offset, length, responseID);
         }
 
         /// <inheritdoc />
-        SendError IServer<T, TServerClient>.SendTo(TServerClient client,
-                                                   uint          commandID,
-                                                   ISerializable serializable,
-                                                   uint          responseID)
+        public SendError SendTo(TServerClient client,
+                                uint          commandID,
+                                ISerializable serializable,
+                                uint          responseID)
         {
             byte[] dataB = serializable.Serialize(out int length);
             return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
         }
 
         /// <inheritdoc />
-        SendError IServer<T, TServerClient>.SendTo<T1>(TServerClient client,
-                                                       uint          commandID,
-                                                       in T1         data,
-                                                       uint          responseID)
+        public SendError SendTo<T1>(TServerClient client,
+                                    uint          commandID,
+                                    in T1         data,
+                                    uint          responseID)
+            where T1 : unmanaged
         {
             byte[] dataB = data.ToBytesUnsafe2(out int length);
             return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
@@ -565,14 +568,15 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        void IServer<T, TServerClient>.SendToAll<T1>(uint commandID, in T1 data)
+        public void SendToAll<T1>(uint commandID, in T1 data)
+            where T1 : unmanaged
         {
             byte[] buffer = data.ToBytesUnsafe2(out int length);
             SendToAll(commandID, buffer, 0, length);
         }
 
         /// <inheritdoc />
-        void IServer<T, TServerClient>.SendToAll(uint commandID, ISerializable serializable)
+        public void SendToAll(uint commandID, ISerializable serializable)
         {
             byte[] buffer = serializable.Serialize(out int length);
             SendToAll(commandID, buffer, 0, length);
