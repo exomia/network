@@ -18,9 +18,9 @@ namespace Exomia.Network
     /// <param name="server"> The server. </param>
     /// <param name="client"> The client. </param>
     /// <param name="reason"> The reason. </param>
-    public delegate void ClientDisconnectHandler<out T, TServerClient>(IServer<T, TServerClient> server,
-                                                                       TServerClient             client,
-                                                                       DisconnectReason          reason)
+    public delegate void ClientDisconnectHandler<out T, TServerClient>(IServer<TServerClient> server,
+                                                                       TServerClient          client,
+                                                                       DisconnectReason       reason)
         where T : class
         where TServerClient : ServerClientBase<T>;
 }
