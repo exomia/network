@@ -13,7 +13,6 @@ namespace Exomia.Network.Lib
     /// <summary>
     ///     A server client event entry. This class cannot be inherited.
     /// </summary>
-    /// <typeparam name="T">             Generic type parameter. </typeparam>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
     sealed class ServerClientEventEntry<TServerClient>
         where TServerClient : IServerClient

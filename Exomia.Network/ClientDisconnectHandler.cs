@@ -13,7 +13,6 @@ namespace Exomia.Network
     /// <summary>
     ///     Called than a client disconnects from the server.
     /// </summary>
-    /// <typeparam name="T">             Socket|EndPoint. </typeparam>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
     /// <param name="server"> The server. </param>
     /// <param name="client"> The client. </param>
