@@ -23,10 +23,5 @@ namespace Exomia.Network.TCP
         {
             get { return (_arg0.RemoteEndPoint as IPEndPoint)?.Address; }
         }
-
-        /// <summary>
-        ///     Initializes a new instance of the <see cref="TcpServerClientBase" /> class.
-        /// </summary>
-        protected TcpServerClientBase() { }
     }
 }

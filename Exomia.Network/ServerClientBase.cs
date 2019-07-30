@@ -14,10 +14,27 @@ using System.Net;
 namespace Exomia.Network
 {
     /// <summary>
+    ///     Interface for server client.
+    /// </summary>
+    public interface IServerClient
+    {
+        /// <summary>
+        ///     Gets the Date/Time of the last received packet time stamp.
+        /// </summary>
+        /// <value>
+        ///     The last received packet time stamp.
+        /// </value>
+        DateTime LastReceivedPacketTimeStamp { get; }
+
+        IPAddress IPAddress { get; }
+    }
+
+    /// <summary>
     ///     A server client base.
     /// </summary>
     /// <typeparam name="T"> Socket|EndPoint. </typeparam>
-    public abstract class ServerClientBase<T> where T : class
+    public abstract class ServerClientBase<T> : IServerClient
+        where T : class
     {
         /// <summary>
         ///     Socket|Endpoint.
@@ -29,24 +46,14 @@ namespace Exomia.Network
         /// </summary>
         private DateTime _lastReceivedPacketTimeStamp;
 
-        /// <summary>
-        ///     Gets the Date/Time of the last received packet time stamp.
-        /// </summary>
-        /// <value>
-        ///     The last received packet time stamp.
-        /// </value>
+        /// <inheritdoc />
+        public abstract IPAddress IPAddress { get; }
+
+        /// <inheritdoc />
         public DateTime LastReceivedPacketTimeStamp
         {
             get { return _lastReceivedPacketTimeStamp; }
         }
-
-        /// <summary>
-        ///     Gets the IP address.
-        /// </summary>
-        /// <value>
-        ///     The IP address.
-        /// </value>
-        public abstract IPAddress IPAddress { get; }
 
         /// <summary>
         ///     Gets the argument 0.

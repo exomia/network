@@ -22,10 +22,5 @@ namespace Exomia.Network.UDP
         {
             get { return (_arg0 as IPEndPoint)?.Address; }
         }
-
-        /// <summary>
-        ///     Initializes a new instance of the <see cref="UdpServerClientBase" /> class.
-        /// </summary>
-        protected UdpServerClientBase() { }
     }
 }

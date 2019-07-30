@@ -18,19 +18,9 @@ namespace Exomia.Network
     /// </summary>
     /// <typeparam name="T">             Generic type parameter. </typeparam>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
-    public interface IServer<in T, in TServerClient> : IDisposable
-        where T : class
-        where TServerClient : ServerClientBase<T>
+    public interface IServer<in TServerClient> : IDisposable
+        where TServerClient : IServerClient
     {
-        /// <summary>
-        ///     Runs.
-        /// </summary>
-        /// <param name="port"> The port. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
-        bool Run(int port);
-
         /// <summary>
         ///     Sends data to the client.
         /// </summary>

@@ -17,8 +17,8 @@ namespace Exomia.Network
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
     /// <param name="server"> The server. </param>
     /// <param name="client"> The client. </param>
-    public delegate void ClientActionHandler<out T, TServerClient>(IServer<T, TServerClient> server,
-                                                                   TServerClient             client)
+    public delegate void ClientActionHandler<out T, TServerClient>(IServer<TServerClient> server,
+                                                                   TServerClient          client)
         where T : class
         where TServerClient : ServerClientBase<T>;
 }

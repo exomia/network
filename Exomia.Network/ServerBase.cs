@@ -25,7 +25,7 @@ namespace Exomia.Network
     /// </summary>
     /// <typeparam name="T">             Socket|Endpoint. </typeparam>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
-    public abstract class ServerBase<T, TServerClient> : IServer<T, TServerClient>
+    public abstract class ServerBase<T, TServerClient> : IServer<TServerClient>
         where T : class
         where TServerClient : ServerClientBase<T>
     {
@@ -151,7 +151,13 @@ namespace Exomia.Network
             Dispose(false);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        ///     Runs.
+        /// </summary>
+        /// <param name="port"> Port. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
         public bool Run(int port)
         {
             if (_isRunning) { return true; }
@@ -264,7 +270,6 @@ namespace Exomia.Network
         /// <summary>
         ///     Create a new ServerClient than a client connects.
         /// </summary>
-        /// <param name="arg0">         Socket|EndPoint. </param>
         /// <param name="serverClient"> [out] out new ServerClient. </param>
         /// <returns>
         ///     <c>true</c> if the new ServerClient should be added to the clients list; <c>false</c>
@@ -358,10 +363,14 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="deserialize"> The deserialize handler. </param>
         /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
-        ///                                                the required range. </exception>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
-        ///                                                are null. </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
         public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
             if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
@@ -400,8 +409,10 @@ namespace Exomia.Network
         /// <returns>
         ///     True if at least one command is removed, false otherwise.
         /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
-        ///                                                the required range. </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
         public bool RemoveCommands(params uint[] commandIDs)
         {
             bool removed   = false;
