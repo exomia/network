@@ -54,9 +54,9 @@ static async Task Main(string[] args)
 ```csharp
 class UdpServer : UdpServerEapBase<UdpServerClient>
 {
-    protected override bool CreateServerClient(EndPoint endpoint, out UdpServerClient serverClient)
+    protected override bool CreateServerClient(out UdpServerClient serverClient)
     {
-        serverClient = new UdpServerClient(endpoint);
+        serverClient = new UdpServerClient();
         return true;
     }
 
@@ -67,7 +67,7 @@ class UdpServer : UdpServerEapBase<UdpServerClient>
 
 class UdpServerClient : UdpServerClientBase
 {
-    public UdpServerClient(EndPoint endPoint) : base(endPoint) { }
+    public UdpServerClient() { }
 }
 ```
 
@@ -148,9 +148,9 @@ static async Task Main(string[] args)
 ```csharp
 class TcpServer : TcpServerEapBase<TcpServerClient>
 {
-    protected override bool CreateServerClient(Socket socket, out TcpServerClient serverClient)
+    protected override bool CreateServerClient(out TcpServerClient serverClient)
     {
-        serverClient = new TcpServerClient(socket);
+        serverClient = new TcpServerClient();
         return true;
     }
 
@@ -160,7 +160,7 @@ class TcpServer : TcpServerEapBase<TcpServerClient>
 
 class TcpServerClient : TcpServerClientBase
 {
-    public TcpServerClient(Socket socket) : base(socket) { }
+    public TcpServerClient() { }
 }
 ```
 

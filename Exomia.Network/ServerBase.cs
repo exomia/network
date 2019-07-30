@@ -270,7 +270,7 @@ namespace Exomia.Network
         ///     <c>true</c> if the new ServerClient should be added to the clients list; <c>false</c>
         ///     otherwise.
         /// </returns>
-        protected abstract bool CreateServerClient(T arg0, out TServerClient serverClient);
+        protected abstract bool CreateServerClient(out TServerClient serverClient);
 
         /// <summary>
         ///     Executes the client disconnect on a different thread, and waits for the result.
@@ -332,8 +332,9 @@ namespace Exomia.Network
         /// <param name="arg0"> Socket|Endpoint. </param>
         private void InvokeClientConnected(T arg0)
         {
-            if (CreateServerClient(arg0, out TServerClient serverClient))
+            if (CreateServerClient(out TServerClient serverClient))
             {
+                serverClient.Arg0 = arg0;
                 bool lockTaken = false;
                 try
                 {

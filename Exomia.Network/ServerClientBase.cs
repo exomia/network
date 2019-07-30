@@ -57,16 +57,13 @@ namespace Exomia.Network
         internal T Arg0
         {
             get { return _arg0; }
+            set { _arg0 = value; }
         }
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="ServerClientBase{T}" />; class.
+        ///     Initializes a new instance of the <see cref="ServerClientBase{T}" /> class.
         /// </summary>
-        /// <param name="arg0"> Socket|Endpoint. </param>
-        private protected ServerClientBase(T arg0)
-        {
-            _arg0 = arg0;
-        }
+        private protected ServerClientBase() { }
 
         /// <summary>
         ///     Sets last received packet time stamp.

@@ -26,8 +26,6 @@ namespace Exomia.Network.UDP
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerClientBase" /> class.
         /// </summary>
-        /// <param name="endPoint"> The end point. </param>
-        protected UdpServerClientBase(EndPoint endPoint)
-            : base(endPoint) { }
+        protected UdpServerClientBase() { }
     }
 }

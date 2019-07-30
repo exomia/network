@@ -27,8 +27,6 @@ namespace Exomia.Network.TCP
         /// <summary>
         ///     Initializes a new instance of the <see cref="TcpServerClientBase" /> class.
         /// </summary>
-        /// <param name="socket"> The socket. </param>
-        protected TcpServerClientBase(Socket socket)
-            : base(socket) { }
+        protected TcpServerClientBase() { }
     }
 }
