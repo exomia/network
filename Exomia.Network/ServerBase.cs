@@ -161,13 +161,13 @@ namespace Exomia.Network
         public bool Run(int port)
         {
             if (_isRunning) { return true; }
-            _isRunning = true;
-            _port      = port;
+            _port = port;
 
             if (OnRun(port, out _listener))
             {
                 _state = RECEIVE_FLAG | SEND_FLAG;
                 ListenAsync();
+                _isRunning = true;
                 return true;
             }
             return false;
