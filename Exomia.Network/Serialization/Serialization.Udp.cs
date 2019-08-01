@@ -9,7 +9,6 @@
 #endregion
 
 using System;
-using System.Runtime.CompilerServices;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
 using K4os.Compression.LZ4;
@@ -17,175 +16,198 @@ using K4os.Compression.LZ4;
 namespace Exomia.Network.Serialization
 {
     /// <content>
-    ///     A serialization.
+    ///     A UDP serialization helper class.
     /// </content>
+    /// <remarks>
+    ///     8bit
+    ///     | IS_CHUNKED BIT | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
+    ///     | 7              | 6            | 5  4  3         | 2  1  0      |
+    ///     | VR: 0/1        | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
+    ///     -----------------------------------------------------------------------------------------------------------------------
+    ///     | 0              | 0            | 0  0  0         | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
+    ///     | 0              | 0            | 1  1  1         | 0  0  0      | COMPRESSED_MODE_MASK 0b00111000
+    ///     | 0              | 1            | 0  0  0         | 0  0  0      | RESPONSE_BIT_MASK    0b01000000
+    ///     | 1              | 0            | 0  0  0         | 0  0  0      | IS_CHUNKED_BIT_MASK  0b10000000
+    ///     32bit
+    ///     | COMMANDID 31-16 (16)bit                          | DATA LENGTH 15-0 (16)bit                        |
+    ///     | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
+    ///     | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE
+    ///     RANGE
+    ///     --------------------------------------------------------------------------------------------------------------------------------
+    ///     |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |
+    ///     DATA_LENGTH_MASK 0xFFFF
+    ///     |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |
+    ///     COMMANDID_MASK 0xFFFF0000
+    /// </remarks>
     static unsafe partial class Serialization
     {
         /// <summary>
         ///     Serialize UDP.
         /// </summary>
+        /// <param name="packetId">        Identifier for the packet. </param>
         /// <param name="commandID">       Identifier for the command. </param>
-        /// <param name="src">             [in,out] If non-null, source for the. </param>
-        /// <param name="length">          The length. </param>
         /// <param name="responseID">      Identifier for the response. </param>
+        /// <param name="src">             [in,out] If non-null, source for the. </param>
+        /// <param name="dst">             [in,out] If non-null, destination for the. </param>
+        /// <param name="chunkLength">     Length of the chunk. </param>
+        /// <param name="chunkOffset">     The chunk offset. </param>
+        /// <param name="length">          The length. </param>
         /// <param name="encryptionMode">  The encryption mode. </param>
         /// <param name="compressionMode"> The compression mode. </param>
-        /// <param name="dst">             [out] Destination for the. </param>
-        /// <param name="size">            [out] The size. </param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void SerializeUdp(uint            commandID,
-                                          byte*           src,
-                                          int             length,
-                                          uint            responseID,
-                                          EncryptionMode  encryptionMode,
-                                          CompressionMode compressionMode,
-                                          out byte[]      dst,
-                                          out int         size)
+        /// <returns>
+        ///     An int.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
+        internal static int SerializeUdp(int             packetId,
+                                         uint            commandID,
+                                         uint            responseID,
+                                         byte*           src,
+                                         byte*           dst,
+                                         int             chunkLength,
+                                         int             chunkOffset,
+                                         int             length,
+                                         EncryptionMode  encryptionMode,
+                                         CompressionMode compressionMode)
         {
-            dst = ByteArrayPool.Rent(Constants.UDP_HEADER_SIZE + 8 + length);
-            fixed (byte* ptr = dst)
-            {
-                SerializeUdp(commandID, src, length, responseID, encryptionMode, compressionMode, ptr, out size);
-            }
-        }
-
-        /// <summary>
-        ///     Serialize UDP.
-        /// </summary>
-        /// <param name="commandID">       Identifier for the command. </param>
-        /// <param name="src">             [in,out] If non-null, source for the. </param>
-        /// <param name="length">          The length. </param>
-        /// <param name="responseID">      Identifier for the response. </param>
-        /// <param name="encryptionMode">  The encryption mode. </param>
-        /// <param name="compressionMode"> The compression mode. </param>
-        /// <param name="dst">             [out] Destination for the. </param>
-        /// <param name="size">            [out] The size. </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        internal static void SerializeUdp(uint            commandID,
-                                          byte*           src,
-                                          int             length,
-                                          uint            responseID,
-                                          EncryptionMode  encryptionMode,
-                                          CompressionMode compressionMode,
-                                          byte*           dst,
-                                          out int         size)
-        {
-            // 8bit
-            // 
-            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
-            // | 7            | 6            | 5  4  3         | 2  1  0      |
-            // | VR: 0/1      | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
-            // ---------------------------------------------------------------------------------------------------------------------
-            // | 0            | 0            | 0  0  0         | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
-            // | 0            | 0            | 1  1  1         | 0  0  0      | COMPRESSED_MODE_MASK 0b00111000
-            // | 0            | 1            | 0  0  0         | 0  0  0      | RESPONSE_BIT_MASK    0b01000000
-            // | 1            | 0            | 0  0  0         | 0  0  0      | UNUSED_BIT_MASK      0b10000000
-
-            // 32bit
-            // 
-            // | COMMANDID 31-16 (16)bit                          | DATA LENGTH 15-0 (16)bit                        |
-            // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
-            // | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE RANGE
-            // --------------------------------------------------------------------------------------------------------------------------------
-            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0xFFFF
-            // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
-
             *dst = (byte)encryptionMode;
 
-            int offset;
-            if (responseID == 0)
+            int offset = 0;
+            if (chunkLength != length)
             {
-                offset = 0;
-            }
-            else
-            {
-                offset            =  4;
-                *dst              |= RESPONSE_1_BIT;
-                *(uint*)(dst + 5) =  responseID;
+                *dst                                         |= Constants.IS_CHUNKED_1_BIT;
+                *(int*)(dst + Constants.UDP_HEADER_SIZE)     =  packetId;
+                *(int*)(dst + Constants.UDP_HEADER_SIZE + 4) =  chunkOffset;
+                *(int*)(dst + Constants.UDP_HEADER_SIZE + 8) =  length;
+                offset                                       =  12;
             }
 
-            if (length >= LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
+            if (responseID != 0)
+            {
+                *dst                                               |= Constants.RESPONSE_1_BIT;
+                *(uint*)(dst + Constants.UDP_HEADER_SIZE + offset) =  responseID;
+                offset                                             += 4;
+            }
+
+            if (length >= Constants.LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
             {
                 int s;
                 switch (compressionMode)
                 {
                     case CompressionMode.Lz4:
-                        s = LZ4Codec.Encode(
-                            src, length, dst + Constants.UDP_HEADER_SIZE + offset + 4, length);
+                        s = LZ4Codec.Encode(src, length, dst + Constants.UDP_HEADER_SIZE + offset + 4, length);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(
                             nameof(compressionMode), compressionMode, "Not supported!");
                 }
-                if (s > Constants.UDP_PACKET_SIZE_MAX)
+                if (s > 0 && s < length)
                 {
-                    throw new ArgumentOutOfRangeException(
-                        $"packet size of {Constants.UDP_PACKET_SIZE_MAX} exceeded (s: {s})");
-                }
-
-                if (s > 0)
-                {
-                    size = Constants.UDP_HEADER_SIZE + offset + 4 + s;
-
                     *dst |= (byte)compressionMode;
                     *(uint*)(dst + 1) =
-                        ((uint)(s + offset + 4) & DATA_LENGTH_MASK) | (commandID << COMMAND_ID_SHIFT);
-                    *(int*)(dst + offset + 5) = length;
-
-                    return;
+                        ((uint)(s + offset + 4) & Constants.DATA_LENGTH_MASK) |
+                        (commandID << Constants.COMMAND_ID_SHIFT);
+                    *(int*)(dst + Constants.UDP_HEADER_SIZE + offset) = length;
+                    return Constants.UDP_HEADER_SIZE + offset + 4 + s;
                 }
             }
 
-            size = Constants.UDP_HEADER_SIZE + offset + length;
-
             *(uint*)(dst + 1) =
-                ((uint)(length + offset) & DATA_LENGTH_MASK) | (commandID << COMMAND_ID_SHIFT);
+                ((uint)(length + offset) & Constants.DATA_LENGTH_MASK) | (commandID << Constants.COMMAND_ID_SHIFT);
             Mem.Cpy(dst + Constants.UDP_HEADER_SIZE + offset, src, length);
+            return Constants.UDP_HEADER_SIZE + offset + length;
         }
 
-        /// <summary>
-        ///     A byte[] extension method that gets header UDP.
-        /// </summary>
-        /// <param name="header">       The header to act on. </param>
-        /// <param name="packetHeader"> [out] The packet header. </param>
-        /// <param name="commandID">    [out] Identifier for the command. </param>
-        /// <param name="dataLength">   [out] Length of the data. </param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void GetHeaderUdp(this byte[] header,
-                                          out  byte   packetHeader,
-                                          out  uint   commandID,
-                                          out  int    dataLength)
+        internal static bool DeserializeUdp(byte[]         buffer,
+                                            int            bytesTransferred,
+                                            BigDataHandler bigDataHandler,
+                                            out uint       commandID,
+                                            out uint       responseID,
+                                            out byte[]     data,
+                                            out int        dataLength)
         {
-            // 8bit
-            // 
-            // | UNUSED BIT   | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
-            // | 7            | 6            | 5  4  3         | 2  1  0      |
-            // | VR: 0/1      | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
-            // ---------------------------------------------------------------------------------------------------------------------
-            // | 0            | 0            | 0  0  0         | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
-            // | 0            | 0            | 1  1  1         | 0  0  0      | COMPRESSED_MODE_MASK 0b00111000
-            // | 0            | 1            | 0  0  0         | 0  0  0      | RESPONSE_BIT_MASK    0b01000000
-            // | 1            | 0            | 0  0  0         | 0  0  0      | UNUSED_BIT_MASK      0b10000000
-
-            // 32bit
-            // 
-            // | COMMANDID 31-16 (16)bit                          | DATA LENGTH 15-0 (16)bit                        |
-            // | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
-            // | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE RANGE
-            // --------------------------------------------------------------------------------------------------------------------------------
-            // |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 | DATA_LENGTH_MASK 0xFFFF
-            // |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 | COMMANDID_MASK 0xFFFF0000
-
-            fixed (byte* ptr = header)
+            fixed (byte* src = buffer)
             {
-                packetHeader = *ptr;
-                uint h2 = *(uint*)(ptr + 1);
-                commandID  = h2 >> COMMAND_ID_SHIFT;
-                dataLength = (int)(h2 & DATA_LENGTH_MASK);
+                byte packetHeader = *src;
+                uint h2           = *(uint*)(src + 1);
+                commandID  = h2 >> Constants.COMMAND_ID_SHIFT;
+                dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                responseID = 0;
+
+                if (bytesTransferred == dataLength + Constants.UDP_HEADER_SIZE)
+                {
+                    int offset = 0;
+                    if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
+                    {
+                        offset += 12;
+                    }
+
+                    if ((packetHeader & Constants.RESPONSE_BIT_MASK) != 0)
+                    {
+                        responseID =  *(uint*)(src + Constants.UDP_HEADER_SIZE + offset);
+                        offset     += 4;
+                    }
+
+                    switch ((CompressionMode)(packetHeader & Constants.COMPRESSED_MODE_MASK))
+                    {
+                        case CompressionMode.Lz4:
+                            int l = *(int*)(src + Constants.UDP_HEADER_SIZE + offset);
+                            offset -= 4;
+                            fixed (byte* dst = data = ByteArrayPool.Rent(l))
+                            {
+                                int s = LZ4Codec.Decode(
+                                    src + Constants.UDP_HEADER_SIZE + offset, dataLength - offset, dst, l);
+                                if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+
+                                if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
+                                {
+                                    data = bigDataHandler.Receive(
+                                        *(int*)(src + Constants.UDP_HEADER_SIZE + offset), dst, l,
+                                        *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 4),
+                                        *(int*)(src + offset + 8));
+                                    if (data != null)
+                                    {
+                                        dataLength = data.Length;
+                                        return true;
+                                    }
+                                    return false;
+                                }
+                            }
+                            dataLength = l;
+                            return true;
+                        case CompressionMode.None:
+                            dataLength -= offset;
+
+                            if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
+                            {
+                                data = bigDataHandler.Receive(
+                                    *(int*)(src + Constants.UDP_HEADER_SIZE + offset),
+                                    src + Constants.UDP_HEADER_SIZE + offset, dataLength,
+                                    *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 4),
+                                    *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 8));
+                                if (data != null)
+                                {
+                                    dataLength = data.Length;
+                                    return true;
+                                }
+                                return false;
+                            }
+
+                            fixed (byte* dst = data = ByteArrayPool.Rent(dataLength))
+                            {
+                                Mem.Cpy(dst, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
+                            }
+
+                            return true;
+                        default:
+                            throw new ArgumentOutOfRangeException(
+                                nameof(CompressionMode),
+                                (CompressionMode)(packetHeader & Constants.COMPRESSED_MODE_MASK),
+                                "Not supported!");
+                    }
+                }
             }
+            data = null;
+            return false;
         }
     }
 }

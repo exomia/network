@@ -76,57 +76,55 @@ namespace Exomia.Network.TCP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(uint   commandID,
-                                                                  byte[] data,
-                                                                  int    offset,
-                                                                  int    length,
-                                                                  uint   responseID)
+        private protected override unsafe SendError BeginSendData(int   packetID,
+                                                                  uint  commandID,
+                                                                  uint  responseID,
+                                                                  byte* src,
+                                                                  int   chunkLength,
+                                                                  int   chunkOffset,
+                                                                  int   length)
         {
-            if (_clientSocket == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
+            SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
+            if (sendEventArgs == null)
             {
-                SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
-                if (sendEventArgs == null)
-                {
-                    sendEventArgs           =  new SocketAsyncEventArgs();
-                    sendEventArgs.Completed += SendAsyncCompleted;
-                    sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
-                }
-
-                fixed (byte* src = data)
-                fixed (byte* dst = sendEventArgs.Buffer)
-                {
-                    Serialization.Serialization.SerializeTcp(
-                        commandID, src + offset, length, responseID, EncryptionMode.None,
-                        CompressionMode.Lz4, dst, out int size);
-                    sendEventArgs.SetBuffer(0, size);
-                }
-
-                try
-                {
-                    if (!_clientSocket.SendAsync(sendEventArgs))
-                    {
-                        SendAsyncCompleted(_clientSocket, sendEventArgs);
-                    }
-                    return SendError.None;
-                }
-                catch (ObjectDisposedException)
-                {
-                    Disconnect(DisconnectReason.Aborted);
-                    return SendError.Disposed;
-                }
-                catch (SocketException)
-                {
-                    Disconnect(DisconnectReason.Error);
-                    return SendError.Socket;
-                }
-                catch
-                {
-                    Disconnect(DisconnectReason.Unspecified);
-                    return SendError.Unknown;
-                }
+                sendEventArgs           =  new SocketAsyncEventArgs();
+                sendEventArgs.Completed += SendAsyncCompleted;
+                sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
             }
-            return SendError.Invalid;
+
+            fixed (byte* dst = sendEventArgs.Buffer)
+            {
+                sendEventArgs.SetBuffer(
+                    0,
+                    Serialization.Serialization.SerializeTcp(
+                        packetID, commandID, responseID,
+                        src, dst, chunkLength, chunkOffset, length,
+                        _encryptionMode, _compressionMode));
+            }
+
+            try
+            {
+                if (!_clientSocket.SendAsync(sendEventArgs))
+                {
+                    SendAsyncCompleted(_clientSocket, sendEventArgs);
+                }
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                Disconnect(DisconnectReason.Error);
+                return SendError.Socket;
+            }
+            catch
+            {
+                Disconnect(DisconnectReason.Unspecified);
+                return SendError.Unknown;
+            }
         }
 
         /// <inheritdoc />
@@ -155,7 +153,15 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            Receive(_circularBuffer, e.Buffer, _bufferRead, bytesTransferred);
+            if (Serialization.Serialization.DeserializeTcp(
+                _circularBuffer, e.Buffer, _bufferRead, bytesTransferred, _bigDataHandler,
+                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+            {
+                ReceiveAsync();
+                DeserializeData(commandID, data, 0, dataLength, responseID);
+                return;
+            }
+            ReceiveAsync();
         }
 
         /// <summary>

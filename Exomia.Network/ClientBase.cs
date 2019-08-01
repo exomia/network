@@ -71,6 +71,16 @@ namespace Exomia.Network
         public event Action<PingPacket> Ping;
 
         /// <summary>
+        ///     The big data handler.
+        /// </summary>
+        private protected readonly BigDataHandler _bigDataHandler;
+
+        /// <summary>
+        ///     Size of the maximum packet.
+        /// </summary>
+        protected readonly ushort _maxPacketSize;
+
+        /// <summary>
         ///     The client socket.
         /// </summary>
         private protected Socket _clientSocket;
@@ -79,6 +89,16 @@ namespace Exomia.Network
         ///     The state.
         /// </summary>
         private protected byte _state;
+
+        /// <summary>
+        ///     The compression mode.
+        /// </summary>
+        protected CompressionMode _compressionMode = CompressionMode.Lz4;
+
+        /// <summary>
+        ///     The encryption mode.
+        /// </summary>
+        private protected EncryptionMode _encryptionMode = EncryptionMode.None;
 
         /// <summary>
         ///     The connect checksum.
@@ -126,6 +146,11 @@ namespace Exomia.Network
         private string _serverAddress;
 
         /// <summary>
+        ///     Identifier for the packet.
+        /// </summary>
+        private int _packetID;
+
+        /// <summary>
         ///     Port.
         /// </summary>
         /// <value>
@@ -150,8 +175,11 @@ namespace Exomia.Network
         /// <summary>
         ///     Initializes a new instance of the <see cref="ClientBase" /> class.
         /// </summary>
-        private protected ClientBase()
+        /// <param name="maxPacketSize"> Size of the maximum packet. </param>
+        private protected ClientBase(ushort maxPacketSize)
         {
+            _maxPacketSize = maxPacketSize;
+
             _clientSocket          = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
             _taskCompletionSources =
@@ -159,7 +187,10 @@ namespace Exomia.Network
 
             _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
-            _responseID                = 1;
+
+            _responseID = 1;
+
+            _bigDataHandler = new BigDataHandler();
 
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
@@ -180,8 +211,6 @@ namespace Exomia.Network
         {
             Disconnect(DisconnectReason.Graceful);
 
-            _port = port;
-
             _manuelResetEvent.Reset();
 
             if (TryCreateSocket(out _clientSocket))
@@ -200,6 +229,7 @@ namespace Exomia.Network
                         ReceiveAsync();
                         if (SendConnect() == SendError.None)
                         {
+                            _port = port;
                             return _manuelResetEvent.WaitOne(timeout * 1000);
                         }
                     }
@@ -375,34 +405,41 @@ namespace Exomia.Network
         #region Add & Remove
 
         /// <summary>
-        ///     add a command.
+        ///     add commands deserializers.
         /// </summary>
-        /// <param name="commandID">   command id. </param>
-        /// <param name="deserialize"> . </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
+        /// <param name="deserialize"> The deserialize handler. </param>
+        /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
         /// <exception cref="ArgumentNullException">
         ///     Thrown when one or more required arguments
         ///     are null.
         /// </exception>
-        public void AddCommand(uint commandID, DeserializePacketHandler<object> deserialize)
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
-            if (commandID > Constants.USER_COMMAND_LIMIT)
-            {
-                throw new ArgumentOutOfRangeException(
-                    $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
-            }
+            if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
+
             bool lockTaken = false;
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry buffer))
+
+                foreach (uint commandID in commandIDs)
                 {
-                    buffer = new ClientEventEntry(deserialize);
-                    _dataReceivedCallbacks.Add(commandID, buffer);
+                    if (commandID > Constants.USER_COMMAND_LIMIT)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+                    }
+                    if (!_dataReceivedCallbacks.TryGetValue(
+                        commandID, out ClientEventEntry buffer))
+                    {
+                        buffer = new ClientEventEntry(deserialize);
+                        _dataReceivedCallbacks.Add(commandID, buffer);
+                    }
                 }
             }
             finally
@@ -412,37 +449,45 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     remove a command.
+        ///     Removes the commands described by commandIDs.
         /// </summary>
-        /// <param name="commandID"> command id. </param>
+        /// <param name="commandIDs"> A variable-length parameters list containing command ids. </param>
+        /// <returns>
+        ///     True if at least one command is removed, false otherwise.
+        /// </returns>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
         ///     the required range.
         /// </exception>
-        public void RemoveCommand(uint commandID)
+        public bool RemoveCommands(params uint[] commandIDs)
         {
-            if (commandID > Constants.USER_COMMAND_LIMIT)
-            {
-                throw new ArgumentOutOfRangeException(
-                    $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
-            }
+            bool removed   = false;
             bool lockTaken = false;
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                _dataReceivedCallbacks.Remove(commandID);
+                foreach (uint commandID in commandIDs)
+                {
+                    if (commandID > Constants.USER_COMMAND_LIMIT)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
+                    }
+                    removed |= _dataReceivedCallbacks.Remove(commandID);
+                }
             }
             finally
             {
                 if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
             }
+            return removed;
         }
 
         /// <summary>
         ///     add a data received callback.
         /// </summary>
-        /// <param name="commandID"> command id. </param>
-        /// <param name="callback">  callback. </param>
+        /// <param name="commandID"> Identifier for the command. </param>
+        /// <param name="callback">  The callback. </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
         ///     the required range.
@@ -462,30 +507,32 @@ namespace Exomia.Network
                 throw new ArgumentOutOfRangeException(
                     $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
+
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
-            ClientEventEntry buffer;
-            bool             lockTaken = false;
+
+            bool lockTaken = false;
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandID, out buffer))
+                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry buffer))
                 {
                     throw new Exception(
-                        $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(uint, DeserializeData)' first.");
+                        $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(DeserializeData, params uint[])' first.");
                 }
+
+                buffer.Add(callback);
             }
             finally
             {
                 if (lockTaken) { _dataReceivedCallbacksLock.Exit(false); }
             }
-            buffer.Add(callback);
         }
 
         /// <summary>
         ///     remove a data received callback.
         /// </summary>
-        /// <param name="commandID"> command id. </param>
-        /// <param name="callback">  DataReceivedHandler. </param>
+        /// <param name="commandID"> Identifier for the command. </param>
+        /// <param name="callback">  The callback. </param>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
         ///     the required range.
@@ -501,7 +548,9 @@ namespace Exomia.Network
                 throw new ArgumentOutOfRangeException(
                     $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
             }
+
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
+
             if (_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry buffer))
             {
                 buffer.Remove(callback);
@@ -512,22 +561,53 @@ namespace Exomia.Network
 
         #region Send
 
-        /// <summary>
-        ///     Begins send data.
-        /// </summary>
-        /// <param name="commandID">  command id. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length. </param>
-        /// <param name="responseID"> Identifier for the response. </param>
-        /// <returns>
-        ///     A SendError.
-        /// </returns>
-        private protected abstract SendError BeginSendData(uint   commandID,
-                                                           byte[] data,
-                                                           int    offset,
-                                                           int    length,
-                                                           uint   responseID);
+        private protected abstract unsafe SendError BeginSendData(int   packetID,
+                                                                  uint  commandID,
+                                                                  uint  responseID,
+                                                                  byte* src,
+                                                                  int   chunkLength,
+                                                                  int   chunkOffset,
+                                                                  int   length);
+
+        private unsafe SendError BeginSendData(uint   commandID,
+                                               byte[] data,
+                                               int    offset,
+                                               int    length,
+                                               uint   responseID)
+        {
+            if (_clientSocket == null) { return SendError.Invalid; }
+            if ((_state & SEND_FLAG) == SEND_FLAG)
+            {
+                fixed (byte* src = data)
+                {
+                    if (length > _maxPacketSize)
+                    {
+                        int packetID    = Interlocked.Increment(ref _packetID);
+                        int chunkOffset = 0;
+                        int chunkLength = length;
+                        while (chunkLength > _maxPacketSize)
+                        {
+                            SendError se = BeginSendData(
+                                packetID, commandID, responseID,
+                                src + offset + chunkOffset, _maxPacketSize, chunkOffset, length);
+                            if (se != SendError.None)
+                            {
+                                return se;
+                            }
+                            chunkLength -= _maxPacketSize;
+                            chunkOffset += _maxPacketSize;
+                        }
+                        return BeginSendData(
+                            packetID, commandID, responseID,
+                            src + offset + chunkOffset, _maxPacketSize, chunkOffset, length);
+                    }
+                    return BeginSendData(
+                        0, commandID, responseID,
+                        src + offset, length, 0, length);
+                }
+            }
+            return SendError.Invalid;
+        }
 
         /// <inheritdoc />
         public SendError Send(uint commandID, byte[] data, int offset, int length)

@@ -39,49 +39,47 @@ namespace Exomia.Network.UDP
         }
 
         private protected override unsafe SendError SendTo(EndPoint arg0,
+                                                           int      packetID,
                                                            uint     commandID,
-                                                           byte[]   data,
-                                                           int      offset,
-                                                           int      length,
-                                                           uint     responseID)
+                                                           uint     responseID,
+                                                           byte*    src,
+                                                           int      chunkLength,
+                                                           int      chunkOffset,
+                                                           int      length)
         {
-            if (_listener == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
+            int    size;
+            byte[] buffer = ByteArrayPool.Rent(Constants.UDP_HEADER_OFFSET + length);
+            fixed (byte* dst = buffer)
             {
-                byte[] send;
-                int    size;
-                fixed (byte* src = data)
-                {
-                    Serialization.Serialization.SerializeUdp(
-                        commandID, src + offset, length, responseID, EncryptionMode.None,
-                        CompressionMode.Lz4, out send, out size);
-                }
-
-                try
-                {
-                    _listener.BeginSendTo(send, 0, size, SocketFlags.None, arg0, SendDataToCallback, send);
-                    return SendError.None;
-                }
-                catch (ObjectDisposedException)
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
-                    ByteArrayPool.Return(send);
-                    return SendError.Disposed;
-                }
-                catch (SocketException)
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Error);
-                    ByteArrayPool.Return(send);
-                    return SendError.Socket;
-                }
-                catch
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
-                    ByteArrayPool.Return(send);
-                    return SendError.Unknown;
-                }
+                size = Serialization.Serialization.SerializeUdp(
+                    packetID, commandID, responseID,
+                    src, dst, chunkLength, chunkOffset, length,
+                    _encryptionMode, _compressionMode);
             }
-            return SendError.Invalid;
+
+            try
+            {
+                _listener.BeginSendTo(buffer, 0, size, SocketFlags.None, arg0, SendDataToCallback, buffer);
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
+                ByteArrayPool.Return(buffer);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Error);
+                ByteArrayPool.Return(buffer);
+                return SendError.Socket;
+            }
+            catch
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
+                ByteArrayPool.Return(buffer);
+                return SendError.Unknown;
+            }
         }
 
         /// <summary>
@@ -164,7 +162,12 @@ namespace Exomia.Network.UDP
 
             ListenAsync();
 
-            Receive(state.Buffer, bytesTransferred, state.EndPoint);
+            if (Serialization.Serialization.DeserializeUdp(
+                state.Buffer, bytesTransferred, _bigDataHandler,
+                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+            {
+                DeserializeData(state.EndPoint, commandID, data, 0, dataLength, responseID);
+            }
 
             _serverClientStateObjectPool.Return(state);
         }
