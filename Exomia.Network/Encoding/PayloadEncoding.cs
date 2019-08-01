@@ -141,7 +141,6 @@ namespace Exomia.Network.Encoding
         /// <param name="checksum"> [in,out] If non-null, the checksum. </param>
         /// <param name="dest">     [in,out] If non-null, destination for the. </param>
         /// <param name="src">      [in,out] If non-null, source for the. </param>
-        /// <param name="o2">       The second int. </param>
         /// <param name="size">     The size. </param>
         private static void Decode(uint* checksum, byte* dest, byte* src, int size)
         {

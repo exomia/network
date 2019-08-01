@@ -396,14 +396,10 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="deserialize"> The deserialize handler. </param>
         /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
+        ///                                                are null. </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
         public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
             if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
@@ -442,10 +438,8 @@ namespace Exomia.Network
         /// <returns>
         ///     True if at least one command is removed, false otherwise.
         /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
         public bool RemoveCommands(params uint[] commandIDs)
         {
             bool removed   = false;
@@ -475,18 +469,12 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        /// <exception cref="Exception">
-        ///     Thrown when an exception error condition
-        ///     occurs.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
+        ///                                                are null. </exception>
+        /// <exception cref="Exception">                   Thrown when an exception error condition
+        ///                                                occurs. </exception>
         public void AddDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
@@ -520,14 +508,10 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
+        ///                                                the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
+        ///                                                are null. </exception>
         public void RemoveDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
@@ -548,6 +532,20 @@ namespace Exomia.Network
 
         #region Send
 
+        /// <summary>
+        ///     Sends to.
+        /// </summary>
+        /// <param name="arg0">        Socket|Endpoint. </param>
+        /// <param name="packetID">    Identifier for the packet. </param>
+        /// <param name="commandID">   Identifier for the command. </param>
+        /// <param name="responseID">  Identifier for the response. </param>
+        /// <param name="src">         [in,out] If non-null, source for the. </param>
+        /// <param name="chunkLength"> Length of the chunk. </param>
+        /// <param name="chunkOffset"> The chunk offset. </param>
+        /// <param name="length">      The length. </param>
+        /// <returns>
+        ///     A SendError.
+        /// </returns>
         private protected abstract unsafe SendError SendTo(T     arg0,
                                                            int   packetID,
                                                            uint  commandID,
@@ -557,6 +555,18 @@ namespace Exomia.Network
                                                            int   chunkOffset,
                                                            int   length);
 
+        /// <summary>
+        ///     Sends to.
+        /// </summary>
+        /// <param name="arg0">       Socket|Endpoint. </param>
+        /// <param name="commandID">  Identifier for the command. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="offset">     The offset. </param>
+        /// <param name="length">     The length. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
+        /// <returns>
+        ///     A SendError.
+        /// </returns>
         private unsafe SendError SendTo(T      arg0,
                                         uint   commandID,
                                         byte[] data,
@@ -598,7 +608,7 @@ namespace Exomia.Network
             return SendError.Invalid;
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public SendError SendTo(TServerClient client,
                                 uint          commandID,
                                 byte[]        data,
@@ -609,7 +619,7 @@ namespace Exomia.Network
             return SendTo(client.Arg0, commandID, data, offset, length, responseID);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public SendError SendTo(TServerClient client,
                                 uint          commandID,
                                 ISerializable serializable,
@@ -619,7 +629,7 @@ namespace Exomia.Network
             return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public SendError SendTo<T1>(TServerClient client,
                                     uint          commandID,
                                     in T1         data,
@@ -630,7 +640,7 @@ namespace Exomia.Network
             return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void SendToAll(uint commandID, byte[] data, int offset, int length)
         {
             Dictionary<T, TServerClient> clients;
@@ -654,7 +664,7 @@ namespace Exomia.Network
             }
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void SendToAll<T1>(uint commandID, in T1 data)
             where T1 : unmanaged
         {
@@ -662,7 +672,7 @@ namespace Exomia.Network
             SendToAll(commandID, buffer, 0, length);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void SendToAll(uint commandID, ISerializable serializable)
         {
             byte[] buffer = serializable.Serialize(out int length);
@@ -678,7 +688,7 @@ namespace Exomia.Network
         /// </summary>
         private bool _disposed;
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void Dispose()
         {
             Dispose(true);
@@ -724,6 +734,9 @@ namespace Exomia.Network
         #endregion
     }
 
+    /// <summary>
+    ///     A big data handler.
+    /// </summary>
     class BigDataHandler
     {
         /// <summary>
@@ -809,14 +822,20 @@ namespace Exomia.Network
         /// </summary>
         private struct Buffer
         {
+            /// <summary>
+            ///     The data.
+            /// </summary>
             public readonly byte[] Data;
+            /// <summary>
+            ///     The bytes left.
+            /// </summary>
             public          int    BytesLeft;
 
             /// <summary>
-            ///     Initializes a new instance of the <see cref="BigDataBuffer" /> struct.
+            ///     Initializes a new instance of the <see cref="Buffer" /> struct.
             /// </summary>
-            /// <param name="data">       The data. </param>
-            /// <param name="bytesLeft">     The bytes left. </param>
+            /// <param name="data">      The data. </param>
+            /// <param name="bytesLeft"> The bytes left. </param>
             public Buffer(byte[] data, int bytesLeft)
             {
                 Data      = data;
