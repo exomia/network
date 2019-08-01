@@ -90,15 +90,15 @@ namespace Exomia.Network.UnitTest
             byte[]         buffer = { 45, 48, 72, 15 };
             fixed (byte* src = buffer)
             {
-                cb.Write(src, 0, 4);
+                cb.Write(src, 4);
 
                 Assert.AreEqual(cb.Count, 4);
 
-                cb.Write(src, 2, 2);
+                cb.Write(src + 2, 2);
 
                 Assert.AreEqual(cb.Count, 6);
 
-                cb.Write(src, 1, 2);
+                cb.Write(src + 1, 2);
 
                 Assert.AreEqual(cb.Count, 8);
             }
@@ -149,7 +149,7 @@ namespace Exomia.Network.UnitTest
             byte[] readBuffer = new byte[4];
             fixed (byte* src = readBuffer)
             {
-                cb.Read(src, 0, readBuffer.Length, 0);
+                cb.Read(src, readBuffer.Length, 0);
             }
 
             Assert.AreEqual(cb.Count, 0);
@@ -158,7 +158,7 @@ namespace Exomia.Network.UnitTest
             Assert.IsTrue(readBuffer.SequenceEqual(buffer));
             fixed (byte* src = readBuffer)
             {
-                Assert.AreEqual(0, cb.Read(src, 0, readBuffer.Length, 0));
+                Assert.AreEqual(0, cb.Read(src, readBuffer.Length, 0));
             }
 
             byte[] buffer2 = { 45, 48, 72, 1, 4, 87, 95 };
@@ -167,7 +167,7 @@ namespace Exomia.Network.UnitTest
             byte[] readBuffer2 = new byte[buffer2.Length];
             fixed (byte* src = readBuffer2)
             {
-                cb.Read(src, 0, buffer2.Length - 2, 2);
+                cb.Read(src, buffer2.Length - 2, 2);
             }
             Assert.IsTrue(readBuffer2.Take(buffer2.Length - 2).SequenceEqual(buffer2.Skip(2)));
 
@@ -210,15 +210,15 @@ namespace Exomia.Network.UnitTest
 
             fixed (byte* src = buffer)
             {
-                cb.Write(src, 0, buffer.Length);
+                cb.Write(src, buffer.Length);
 
                 Assert.AreEqual(cb.Count, 77);
 
-                cb.Write(src, 0, buffer.Length);
+                cb.Write(src, buffer.Length);
 
                 Assert.AreEqual(cb.Count, 128);
 
-                cb.Write(src, 0, buffer.Length);
+                cb.Write(src, buffer.Length);
 
                 Assert.AreEqual(cb.Count, 128);
             }
@@ -305,13 +305,13 @@ namespace Exomia.Network.UnitTest
             byte[]         dummy = new byte[100];
             fixed (byte* src = dummy)
             {
-                Assert.AreEqual(0, cb.Read(src, 0, 78, 0));
+                Assert.AreEqual(0, cb.Read(src, 78, 0));
             }
             cb.Write(buffer, 0, buffer.Length);
 
             fixed (byte* src = dummy)
             {
-                Assert.AreEqual(buffer.Length, cb.Read(src, 0, 78, 0));
+                Assert.AreEqual(buffer.Length, cb.Read(src, 78, 0));
             }
 
             cb.Dispose();
@@ -326,7 +326,7 @@ namespace Exomia.Network.UnitTest
             byte[] readBuffer2 = new byte[9];
             fixed (byte* src = readBuffer2)
             {
-                Assert.AreEqual(readBuffer2.Length, cb.Read(src, 0, readBuffer2.Length, 0));
+                Assert.AreEqual(readBuffer2.Length, cb.Read(src, readBuffer2.Length, 0));
             }
 
             Assert.AreEqual(cb.Count, 16 - 9);
@@ -342,7 +342,7 @@ namespace Exomia.Network.UnitTest
             byte[] readBuffer4 = new byte[9];
             fixed (byte* src = readBuffer4)
             {
-                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
+                Assert.AreEqual(9, cb.Read(src, readBuffer4.Length, 0));
             }
 
             Assert.AreEqual(cb.Count, 0);
@@ -351,7 +351,7 @@ namespace Exomia.Network.UnitTest
             cb.Write(buffer, 0, buffer.Length);
             fixed (byte* src = readBuffer4)
             {
-                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
+                Assert.AreEqual(9, cb.Read(src, readBuffer4.Length, 0));
             }
             Assert.AreEqual(cb.Count, 0);
             Assert.IsTrue(cb.IsEmpty);
@@ -362,7 +362,7 @@ namespace Exomia.Network.UnitTest
             cb.Write(buffer, 0, buffer.Length);
             fixed (byte* src = readBuffer4)
             {
-                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
+                Assert.AreEqual(9, cb.Read(src, readBuffer4.Length, 0));
             }
             Assert.AreEqual(cb.Count, 0);
             Assert.IsTrue(cb.IsEmpty);
@@ -370,7 +370,7 @@ namespace Exomia.Network.UnitTest
             cb.Write(buffer, 0, buffer.Length);
             fixed (byte* src = readBuffer4)
             {
-                Assert.AreEqual(1, cb.Read(src, 0, 1, 8));
+                Assert.AreEqual(1, cb.Read(src, 1, 8));
             }
             Assert.AreEqual(cb.Count, 0);
             Assert.IsTrue(cb.IsEmpty);
@@ -424,7 +424,7 @@ namespace Exomia.Network.UnitTest
 
             fixed (byte* dest = peekBuffer)
             {
-                cb.Peek(dest, 0, peekBuffer.Length, 0);
+                cb.Peek(dest, peekBuffer.Length, 0);
             }
             Assert.AreEqual(cb.Count, 4);
             Assert.IsFalse(cb.IsEmpty);
@@ -440,7 +440,7 @@ namespace Exomia.Network.UnitTest
 
             fixed (byte* dest = peekBuffer2)
             {
-                cb.Peek(peekBuffer2, 0, buffer2.Length - 2, 4 + 2);
+                cb.Peek(dest, buffer2.Length - 2, 4 + 2);
             }
             Assert.IsTrue(peekBuffer2.Take(buffer2.Length - 2).SequenceEqual(buffer2.Skip(2)));
 
@@ -530,13 +530,13 @@ namespace Exomia.Network.UnitTest
 
             fixed (byte* src = dummy)
             {
-                Assert.AreEqual(0, cb.Peek(src, 0, 78, 0));
+                Assert.AreEqual(0, cb.Peek(src, 78, 0));
             }
 
             cb.Write(buffer, 0, buffer.Length);
             fixed (byte* src = dummy)
             {
-                Assert.AreEqual(buffer.Length, cb.Peek(src, 0, 78, 0));
+                Assert.AreEqual(buffer.Length, cb.Peek(src, 78, 0));
             }
             cb.Dispose();
 
@@ -550,7 +550,7 @@ namespace Exomia.Network.UnitTest
             byte[] readBuffer2 = new byte[9];
             fixed (byte* src = readBuffer2)
             {
-                Assert.AreEqual(7, cb.Peek(src, 0, readBuffer2.Length, 9));
+                Assert.AreEqual(7, cb.Peek(src, readBuffer2.Length, 9));
             }
             Assert.AreEqual(cb.Count, 16);
             Assert.IsFalse(cb.IsEmpty);
@@ -565,7 +565,7 @@ namespace Exomia.Network.UnitTest
             byte[] readBuffer4 = new byte[9];
             fixed (byte* src = readBuffer4)
             {
-                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
+                Assert.AreEqual(9, cb.Read(src, readBuffer4.Length, 0));
             }
             Assert.AreEqual(0, cb.Count);
             Assert.IsTrue(cb.IsEmpty);
@@ -573,7 +573,7 @@ namespace Exomia.Network.UnitTest
             cb.Write(buffer, 0, buffer.Length);
             fixed (byte* src = readBuffer4)
             {
-                Assert.AreEqual(9, cb.Peek(src, 0, readBuffer4.Length, 0));
+                Assert.AreEqual(9, cb.Peek(src, readBuffer4.Length, 0));
             }
             Assert.AreEqual(cb.Count, 9);
             Assert.IsFalse(cb.IsEmpty);
@@ -584,7 +584,7 @@ namespace Exomia.Network.UnitTest
             cb.Write(buffer, 0, buffer.Length);
             fixed (byte* src = readBuffer4)
             {
-                Assert.AreEqual(9, cb.Read(src, 0, readBuffer4.Length, 0));
+                Assert.AreEqual(9, cb.Read(src, readBuffer4.Length, 0));
             }
             Assert.AreEqual(0, cb.Count);
             Assert.IsTrue(cb.IsEmpty);
@@ -592,7 +592,7 @@ namespace Exomia.Network.UnitTest
             cb.Write(buffer, 0, buffer.Length);
             fixed (byte* src = readBuffer4)
             {
-                Assert.AreEqual(1, cb.Peek(src, 0, 1, 8));
+                Assert.AreEqual(1, cb.Peek(src, 1, 8));
             }
             Assert.AreEqual(9, cb.Count);
             Assert.IsFalse(cb.IsEmpty);

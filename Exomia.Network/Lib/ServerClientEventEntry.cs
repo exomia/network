@@ -33,8 +33,8 @@ namespace Exomia.Network.Lib
         /// <param name="deserialize"> The deserialize. </param>
         public ServerClientEventEntry(DeserializePacketHandler<object> deserialize)
         {
-            _dataReceived = new Event<ClientDataReceivedHandler<TServerClient>>();
             _deserialize  = deserialize;
+            _dataReceived = new Event<ClientDataReceivedHandler<TServerClient>>();
         }
 
         /// <summary>

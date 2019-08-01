@@ -30,50 +30,49 @@ namespace Exomia.Network.TCP
             : base(maxPacketSize) { }
 
         private protected override unsafe SendError SendTo(Socket arg0,
+                                                           int    packetID,
                                                            uint   commandID,
-                                                           byte[] data,
-                                                           int    offset,
-                                                           int    length,
-                                                           uint   responseID)
+                                                           uint   responseID,
+                                                           byte*  src,
+                                                           int    chunkLength,
+                                                           int    chunkOffset,
+                                                           int    length)
         {
-            if (_listener == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
+            SendStateObject state;
+            state.Buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + length + 1);
+            state.Socket = arg0;
+            int size;
+            fixed (byte* dst = state.Buffer)
             {
-                SendStateObject state;
-                state.Socket = arg0;
-                int size;
-                fixed (byte* src = data)
-                {
-                    Serialization.Serialization.SerializeTcp(
-                        commandID, src + offset, length, responseID, EncryptionMode.None,
-                        CompressionMode.Lz4, out state.Buffer, out size);
-                }
-
-                try
-                {
-                    arg0.BeginSend(state.Buffer, 0, size, SocketFlags.None, BeginSendCallback, state);
-                    return SendError.None;
-                }
-                catch (ObjectDisposedException)
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
-                    ByteArrayPool.Return(state.Buffer);
-                    return SendError.Disposed;
-                }
-                catch (SocketException)
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Error);
-                    ByteArrayPool.Return(state.Buffer);
-                    return SendError.Socket;
-                }
-                catch
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
-                    ByteArrayPool.Return(state.Buffer);
-                    return SendError.Unknown;
-                }
+                size = Serialization.Serialization.SerializeTcp(
+                    packetID, commandID, responseID,
+                    src, dst, chunkLength, chunkOffset, length,
+                    _encryptionMode, _compressionMode);
             }
-            return SendError.Invalid;
+
+            try
+            {
+                arg0.BeginSend(state.Buffer, 0, size, SocketFlags.None, BeginSendCallback, state);
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Error);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Socket;
+            }
+            catch
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Unknown;
+            }
         }
 
         /// <summary>
@@ -201,7 +200,15 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            Receive(state.Socket, state.CircularBuffer, state.BufferWrite, state.BufferRead, bytesTransferred);
+            if (Serialization.Serialization.DeserializeTcp(
+                state.CircularBuffer, state.BufferWrite, state.BufferRead, bytesTransferred,
+                _bigDataHandler,
+                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+            {
+                ReceiveAsync(state);
+                DeserializeData(state.Socket, commandID, data, 0, dataLength, responseID);
+                return;
+            }
 
             ReceiveAsync(state);
         }

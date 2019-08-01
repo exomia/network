@@ -16,6 +16,7 @@ using System.Threading;
 using Exomia.Network.Buffers;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
+using Exomia.Network.Native;
 using Exomia.Network.Serialization;
 
 namespace Exomia.Network
@@ -79,6 +80,16 @@ namespace Exomia.Network
         protected readonly Dictionary<T, TServerClient> _clients;
 
         /// <summary>
+        ///     Size of the maximum packet.
+        /// </summary>
+        protected readonly ushort _maxPacketSize;
+
+        /// <summary>
+        ///     The big data handler.
+        /// </summary>
+        private protected readonly BigDataHandler _bigDataHandler;
+
+        /// <summary>
         ///     The listener.
         /// </summary>
         private protected Socket _listener;
@@ -92,6 +103,16 @@ namespace Exomia.Network
         ///     The state.
         /// </summary>
         private protected byte _state;
+
+        /// <summary>
+        ///     The compression mode.
+        /// </summary>
+        protected CompressionMode _compressionMode = CompressionMode.Lz4;
+
+        /// <summary>
+        ///     The encryption mode.
+        /// </summary>
+        private protected EncryptionMode _encryptionMode = EncryptionMode.None;
 
         /// <summary>
         ///     The data received callbacks.
@@ -119,6 +140,11 @@ namespace Exomia.Network
         private bool _isRunning;
 
         /// <summary>
+        ///     Identifier for the packet.
+        /// </summary>
+        private int _packetID;
+
+        /// <summary>
         ///     Gets the port.
         /// </summary>
         /// <value>
@@ -132,15 +158,24 @@ namespace Exomia.Network
         /// <summary>
         ///     Initializes a new instance of the <see cref="ServerBase{T, TServerClient}" /> class.
         /// </summary>
-        private protected ServerBase()
+        /// <param name="maxPacketSize"> Size of the maximum packet. </param>
+        private protected ServerBase(ushort maxPacketSize)
         {
+            _maxPacketSize = maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
+                ? maxPacketSize
+                : Constants.UDP_PACKET_SIZE_MAX;
+
             _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<TServerClient>>(INITIAL_QUEUE_SIZE);
             _clients               = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
 
             _clientsLock               = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
 
+            _packetID = 1;
+
             _clientDataReceived = new Event<ClientCommandDataReceivedHandler<TServerClient>>();
+
+            _bigDataHandler = new BigDataHandler();
         }
 
         /// <summary>
@@ -161,14 +196,12 @@ namespace Exomia.Network
         public bool Run(int port)
         {
             if (_isRunning) { return true; }
-            _port = port;
-
             if (OnRun(port, out _listener))
             {
+                _port  = port;
                 _state = RECEIVE_FLAG | SEND_FLAG;
                 ListenAsync();
-                _isRunning = true;
-                return true;
+                return _isRunning = true;
             }
             return false;
         }
@@ -363,10 +396,14 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="deserialize"> The deserialize handler. </param>
         /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
-        ///                                                are null. </exception>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
-        ///                                                the required range. </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
         public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
             if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
@@ -405,8 +442,10 @@ namespace Exomia.Network
         /// <returns>
         ///     True if at least one command is removed, false otherwise.
         /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
-        ///                                                the required range. </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
         public bool RemoveCommands(params uint[] commandIDs)
         {
             bool removed   = false;
@@ -436,12 +475,18 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
-        ///                                                the required range. </exception>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
-        ///                                                are null. </exception>
-        /// <exception cref="Exception">                   Thrown when an exception error condition
-        ///                                                occurs. </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="Exception">
+        ///     Thrown when an exception error condition
+        ///     occurs.
+        /// </exception>
         public void AddDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
@@ -475,10 +520,14 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside
-        ///                                                the required range. </exception>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments
-        ///                                                are null. </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
         public void RemoveDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
@@ -499,12 +548,55 @@ namespace Exomia.Network
 
         #region Send
 
-        private protected abstract SendError SendTo(T      arg0,
-                                                    uint   commandID,
-                                                    byte[] data,
-                                                    int    offset,
-                                                    int    length,
-                                                    uint   responseID);
+        private protected abstract unsafe SendError SendTo(T     arg0,
+                                                           int   packetID,
+                                                           uint  commandID,
+                                                           uint  responseID,
+                                                           byte* src,
+                                                           int   chunkLength,
+                                                           int   chunkOffset,
+                                                           int   length);
+
+        private unsafe SendError SendTo(T      arg0,
+                                        uint   commandID,
+                                        byte[] data,
+                                        int    offset,
+                                        int    length,
+                                        uint   responseID)
+        {
+            if (_listener == null) { return SendError.Invalid; }
+            if ((_state & SEND_FLAG) == SEND_FLAG)
+            {
+                fixed (byte* src = data)
+                {
+                    if (length > _maxPacketSize)
+                    {
+                        int packetID    = Interlocked.Increment(ref _packetID);
+                        int chunkOffset = 0;
+                        int chunkLength = length;
+                        while (chunkLength > _maxPacketSize)
+                        {
+                            SendError se = SendTo(
+                                arg0, packetID, commandID, responseID,
+                                src + offset + chunkOffset, _maxPacketSize, chunkOffset, length);
+                            if (se != SendError.None)
+                            {
+                                return se;
+                            }
+                            chunkLength -= _maxPacketSize;
+                            chunkOffset += _maxPacketSize;
+                        }
+                        return SendTo(
+                            arg0, packetID, commandID, responseID,
+                            src + offset + chunkOffset, _maxPacketSize, chunkOffset, length);
+                    }
+                    return SendTo(
+                        arg0, 0, commandID, responseID,
+                        src + offset, length, 0, length);
+                }
+            }
+            return SendError.Invalid;
+        }
 
         /// <inheritdoc />
         public SendError SendTo(TServerClient client,
@@ -630,5 +722,106 @@ namespace Exomia.Network
         protected virtual void OnDispose(bool disposing) { }
 
         #endregion
+    }
+
+    class BigDataHandler
+    {
+        /// <summary>
+        ///     The big data buffers.
+        /// </summary>
+        private readonly Dictionary<int, Buffer> _bigDataBuffers;
+
+        /// <summary>
+        ///     The big data buffer lock.
+        /// </summary>
+        private SpinLock _bigDataBufferLock;
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="BigDataHandler" /> class.
+        /// </summary>
+        public BigDataHandler()
+        {
+            _bigDataBufferLock = new SpinLock(Debugger.IsAttached);
+            _bigDataBuffers    = new Dictionary<int, Buffer>(16);
+        }
+
+        /// <summary>
+        ///     Receives.
+        /// </summary>
+        /// <param name="key">         The key. </param>
+        /// <param name="src">         [in,out] If non-null, source for the. </param>
+        /// <param name="chunkLength"> Length of the chunk. </param>
+        /// <param name="chunkOffset"> The chunk offset. </param>
+        /// <param name="length">      The length. </param>
+        /// <returns>
+        ///     A byte[] or null.
+        /// </returns>
+        internal unsafe byte[] Receive(int   key,
+                                       byte* src,
+                                       int   chunkLength,
+                                       int   chunkOffset,
+                                       int   length)
+        {
+            if (!_bigDataBuffers.TryGetValue(key, out Buffer bdb))
+            {
+                bool lockTaken = false;
+                try
+                {
+                    _bigDataBufferLock.Enter(ref lockTaken);
+                    if (!_bigDataBuffers.TryGetValue(key, out bdb))
+                    {
+                        _bigDataBuffers.Add(
+                            key,
+                            bdb = new Buffer(new byte[length], length));
+                    }
+                }
+                finally
+                {
+                    if (lockTaken) { _bigDataBufferLock.Exit(false); }
+                }
+            }
+
+            fixed (byte* dst2 = bdb.Data)
+            {
+                Mem.Cpy(dst2 + chunkOffset, src, chunkLength);
+            }
+
+            bdb.BytesLeft -= chunkLength;
+            if (bdb.BytesLeft == 0)
+            {
+                bool lockTaken = false;
+                try
+                {
+                    _bigDataBufferLock.Enter(ref lockTaken);
+                    _bigDataBuffers.Remove(key);
+                }
+                finally
+                {
+                    if (lockTaken) { _bigDataBufferLock.Exit(false); }
+                }
+                return bdb.Data;
+            }
+            return null;
+        }
+
+        /// <summary>
+        ///     Buffer for big data.
+        /// </summary>
+        private struct Buffer
+        {
+            public readonly byte[] Data;
+            public          int    BytesLeft;
+
+            /// <summary>
+            ///     Initializes a new instance of the <see cref="BigDataBuffer" /> struct.
+            /// </summary>
+            /// <param name="data">       The data. </param>
+            /// <param name="bytesLeft">     The bytes left. </param>
+            public Buffer(byte[] data, int bytesLeft)
+            {
+                Data      = data;
+                BytesLeft = bytesLeft;
+            }
+        }
     }
 }

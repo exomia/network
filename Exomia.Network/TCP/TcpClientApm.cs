@@ -67,50 +67,48 @@ namespace Exomia.Network.TCP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(uint   commandID,
-                                                                  byte[] data,
-                                                                  int    offset,
-                                                                  int    length,
-                                                                  uint   responseID)
+        private protected override unsafe SendError BeginSendData(int   packetID,
+                                                                  uint  commandID,
+                                                                  uint  responseID,
+                                                                  byte* src,
+                                                                  int   chunkLength,
+                                                                  int   chunkOffset,
+                                                                  int   length)
         {
-            if (_clientSocket == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
+            int    size;
+            byte[] buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + length + 1);
+            fixed (byte* dst = buffer)
             {
-                byte[] send;
-                int    size;
-                fixed (byte* src = data)
-                {
-                    Serialization.Serialization.SerializeTcp(
-                        commandID, src + offset, length, responseID, EncryptionMode.None,
-                        CompressionMode.Lz4, out send, out size);
-                }
-
-                try
-                {
-                    _clientSocket.BeginSend(
-                        send, 0, size, SocketFlags.None, SendDataCallback, send);
-                    return SendError.None;
-                }
-                catch (ObjectDisposedException)
-                {
-                    ByteArrayPool.Return(send);
-                    Disconnect(DisconnectReason.Aborted);
-                    return SendError.Disposed;
-                }
-                catch (SocketException)
-                {
-                    ByteArrayPool.Return(send);
-                    Disconnect(DisconnectReason.Error);
-                    return SendError.Socket;
-                }
-                catch
-                {
-                    ByteArrayPool.Return(send);
-                    Disconnect(DisconnectReason.Unspecified);
-                    return SendError.Unknown;
-                }
+                size = Serialization.Serialization.SerializeTcp(
+                    packetID, commandID, responseID,
+                    src, dst, chunkLength, chunkOffset, length,
+                    _encryptionMode, _compressionMode);
             }
-            return SendError.Invalid;
+
+            try
+            {
+                _clientSocket.BeginSend(
+                    buffer, 0, size, SocketFlags.None, SendDataCallback, buffer);
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                ByteArrayPool.Return(buffer);
+                Disconnect(DisconnectReason.Aborted);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                ByteArrayPool.Return(buffer);
+                Disconnect(DisconnectReason.Error);
+                return SendError.Socket;
+            }
+            catch
+            {
+                ByteArrayPool.Return(buffer);
+                Disconnect(DisconnectReason.Unspecified);
+                return SendError.Unknown;
+            }
         }
 
         /// <inheritdoc />
@@ -150,7 +148,16 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            Receive(_circularBuffer, _bufferWrite, _bufferRead, bytesTransferred);
+            if (Serialization.Serialization.DeserializeTcp(
+                _circularBuffer, _bufferWrite, _bufferRead, bytesTransferred, _bigDataHandler,
+                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+            {
+                ReceiveAsync();
+                DeserializeData(commandID, data, 0, dataLength, responseID);
+                return;
+            }
+
+            ReceiveAsync();
         }
 
         /// <summary>

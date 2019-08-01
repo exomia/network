@@ -3,9 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2015
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Exomia.Network", "Exomia.Network\Exomia.Network.csproj", "{4A17DCCB-D3DE-48DF-97A7-F46936096CA6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Exomia.Network", "Exomia.Network\Exomia.Network.csproj", "{4A17DCCB-D3DE-48DF-97A7-F46936096CA6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Exomia.Network.UnitTest", "Exomia.Network.UnitTest\Exomia.Network.UnitTest.csproj", "{C70AE613-9A81-4063-8F4A-6F09F145EE85}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Example", "Example", "{4E24C133-E6A0-4BE2-9F75-8DC1827A7361}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example.Client", "Example.Client\Example.Client.csproj", "{90A9560E-16E9-4008-B061-B5827AF69880}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example.Server", "Example.Server\Example.Server.csproj", "{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,9 +47,37 @@ Global
 		{C70AE613-9A81-4063-8F4A-6F09F145EE85}.Release|x64.Build.0 = Release|Any CPU
 		{C70AE613-9A81-4063-8F4A-6F09F145EE85}.Release|x86.ActiveCfg = Release|Any CPU
 		{C70AE613-9A81-4063-8F4A-6F09F145EE85}.Release|x86.Build.0 = Release|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Debug|x64.Build.0 = Debug|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Debug|x86.Build.0 = Debug|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Release|x64.ActiveCfg = Release|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Release|x64.Build.0 = Release|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Release|x86.ActiveCfg = Release|Any CPU
+		{90A9560E-16E9-4008-B061-B5827AF69880}.Release|x86.Build.0 = Release|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Debug|x64.Build.0 = Debug|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Debug|x86.Build.0 = Debug|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Release|x64.ActiveCfg = Release|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Release|x64.Build.0 = Release|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Release|x86.ActiveCfg = Release|Any CPU
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{90A9560E-16E9-4008-B061-B5827AF69880} = {4E24C133-E6A0-4BE2-9F75-8DC1827A7361}
+		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF} = {4E24C133-E6A0-4BE2-9F75-8DC1827A7361}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4676E067-560B-4A5F-A7E7-9698C96317D0}

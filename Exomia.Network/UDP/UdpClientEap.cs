@@ -78,60 +78,59 @@ namespace Exomia.Network.UDP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(uint   commandID,
-                                                                  byte[] data,
-                                                                  int    offset,
-                                                                  int    length,
-                                                                  uint   responseID)
+        /// <inheritdoc />
+        private protected override unsafe SendError BeginSendData(int   packetID,
+                                                                  uint  commandID,
+                                                                  uint  responseID,
+                                                                  byte* src,
+                                                                  int   chunkLength,
+                                                                  int   chunkOffset,
+                                                                  int   length)
         {
-            if (_clientSocket == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
+            SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
+            if (sendEventArgs == null)
             {
-                SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
-                if (sendEventArgs == null)
-                {
-                    sendEventArgs           =  new SocketAsyncEventArgs();
-                    sendEventArgs.Completed += SendAsyncCompleted;
-                    sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
-                }
-
-                fixed (byte* src = data)
-                fixed (byte* dst = sendEventArgs.Buffer)
-                {
-                    Serialization.Serialization.SerializeUdp(
-                        commandID, src + offset, length, responseID, EncryptionMode.None,
-                        CompressionMode.Lz4, dst, out int size);
-                    sendEventArgs.SetBuffer(0, size);
-                }
-
-                try
-                {
-                    if (!_clientSocket.SendAsync(sendEventArgs))
-                    {
-                        SendAsyncCompleted(_clientSocket, sendEventArgs);
-                    }
-                    return SendError.None;
-                }
-                catch (ObjectDisposedException)
-                {
-                    Disconnect(DisconnectReason.Aborted);
-                    _sendEventArgsPool.Return(sendEventArgs);
-                    return SendError.Disposed;
-                }
-                catch (SocketException)
-                {
-                    Disconnect(DisconnectReason.Error);
-                    _sendEventArgsPool.Return(sendEventArgs);
-                    return SendError.Socket;
-                }
-                catch
-                {
-                    Disconnect(DisconnectReason.Unspecified);
-                    _sendEventArgsPool.Return(sendEventArgs);
-                    return SendError.Unknown;
-                }
+                sendEventArgs           =  new SocketAsyncEventArgs();
+                sendEventArgs.Completed += SendAsyncCompleted;
+                sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
             }
-            return SendError.Invalid;
+
+            fixed (byte* dst = sendEventArgs.Buffer)
+            {
+                sendEventArgs.SetBuffer(
+                    0,
+                    Serialization.Serialization.SerializeUdp(
+                        packetID, commandID, responseID,
+                        src, dst, chunkLength, chunkOffset, length,
+                        _encryptionMode, _compressionMode));
+            }
+
+            try
+            {
+                if (!_clientSocket.SendAsync(sendEventArgs))
+                {
+                    SendAsyncCompleted(sendEventArgs.RemoteEndPoint, sendEventArgs);
+                }
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                Disconnect(DisconnectReason.Error);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Socket;
+            }
+            catch
+            {
+                Disconnect(DisconnectReason.Unspecified);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Unknown;
+            }
         }
 
         /// <summary>
@@ -153,8 +152,14 @@ namespace Exomia.Network.UDP
                 return;
             }
 
-            Receive(e.Buffer, e.BytesTransferred);
-            _receiveEventArgsPool.Return(e);
+            ReceiveAsync();
+
+            if (Serialization.Serialization.DeserializeUdp(
+                e.Buffer, e.BytesTransferred, _bigDataHandler,
+                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+            {
+                DeserializeData(commandID, data, 0, dataLength, responseID);
+            }
         }
 
         /// <summary>

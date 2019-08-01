@@ -58,36 +58,6 @@ namespace Exomia.Network.Encoding
         private static readonly uint s_h0 = H0 ^ Math2.R1(H0, 12);
 
         /// <summary>
-        ///     Decodes the data.
-        /// </summary>
-        /// <param name="src">          [in,out] If non-null, the decode source. </param>
-        /// <param name="offset">       The offset. </param>
-        /// <param name="length">       The length. </param>
-        /// <param name="buffer">       The buffer. </param>
-        /// <param name="bufferLength"> [out] Length of the buffer. </param>
-        /// <returns>
-        ///     An ushort.
-        /// </returns>
-        internal static ushort Decode(byte* src, int offset, int length, byte[] buffer, out int bufferLength)
-        {
-            bufferLength = length - Math2.Ceiling(length / 8.0);
-            uint checksum = s_h0;
-            int  o1       = 0;
-            fixed (byte* dest = buffer)
-            {
-                while (offset + 8 < length)
-                {
-                    Decode(&checksum, dest, o1, src, offset, 8);
-                    o1     += 7;
-                    offset += 8;
-                }
-                Decode(&checksum, dest, o1, src, offset, length - offset);
-            }
-
-            return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
-        }
-
-        /// <summary>
         ///     Encodes the data.
         /// </summary>
         /// <param name="data">         The data. </param>
@@ -109,6 +79,36 @@ namespace Exomia.Network.Encoding
                 length -= 7;
             }
             Encode(&checksum, buffer, data, length);
+
+            return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
+        }
+
+        /// <summary>
+        ///     Decodes the data.
+        /// </summary>
+        /// <param name="src">          [in,out] If non-null, the decode source. </param>
+        /// <param name="length">       The length. </param>
+        /// <param name="buffer">       The buffer. </param>
+        /// <param name="bufferLength"> [out] Length of the buffer. </param>
+        /// <returns>
+        ///     An ushort.
+        /// </returns>
+        internal static ushort Decode(byte* src, int length, byte[] buffer, out int bufferLength)
+        {
+            bufferLength = length - Math2.Ceiling(length / 8.0);
+            uint checksum = s_h0;
+            fixed (byte* dest = buffer)
+            {
+                byte* d = dest;
+                while (length > 8)
+                {
+                    Decode(&checksum, d, src, 8);
+                    d      += 7;
+                    src    += 8;
+                    length -= 8;
+                }
+                Decode(&checksum, d, src, length);
+            }
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
@@ -140,18 +140,17 @@ namespace Exomia.Network.Encoding
         /// </summary>
         /// <param name="checksum"> [in,out] If non-null, the checksum. </param>
         /// <param name="dest">     [in,out] If non-null, destination for the. </param>
-        /// <param name="o1">       The first int. </param>
         /// <param name="src">      [in,out] If non-null, source for the. </param>
         /// <param name="o2">       The second int. </param>
         /// <param name="size">     The size. </param>
-        private static void Decode(uint* checksum, byte* dest, int o1, byte* src, int o2, int size)
+        private static void Decode(uint* checksum, byte* dest, byte* src, int size)
         {
-            byte b = *((src + o2 + size) - 1);
+            byte b = *((src + size) - 1);
             for (int i = 0; i < size - 1; ++i)
             {
-                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + o2 + i) & MASK1));
-                *(dest + o1 + i) =  d;
-                *checksum        ^= d + C0;
+                byte d = (byte)(((b & (MASK2 >> i)) << (i + 1)) | (*(src + i) & MASK1));
+                *(dest + i) =  d;
+                *checksum   ^= d + C0;
             }
             *checksum += Math2.R1(b, 23) + C1;
         }

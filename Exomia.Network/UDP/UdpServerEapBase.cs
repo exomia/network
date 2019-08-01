@@ -43,65 +43,6 @@ namespace Exomia.Network.UDP
             _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients + 5));
         }
 
-        private protected override unsafe SendError SendTo(EndPoint arg0,
-                                                           uint     commandID,
-                                                           byte[]   data,
-                                                           int      offset,
-                                                           int      length,
-                                                           uint     responseID)
-        {
-            if (_listener == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
-            {
-                SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
-                if (sendEventArgs == null)
-                {
-                    sendEventArgs           =  new SocketAsyncEventArgs();
-                    sendEventArgs.Completed += SendToAsyncCompleted;
-                    sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
-                }
-
-                fixed (byte* src = data)
-                fixed (byte* dst = sendEventArgs.Buffer)
-                {
-                    Serialization.Serialization.SerializeUdp(
-                        commandID, src + offset, length, responseID, EncryptionMode.None,
-                        CompressionMode.Lz4, dst, out int size);
-                    sendEventArgs.SetBuffer(0, size);
-                }
-
-                sendEventArgs.RemoteEndPoint = arg0;
-
-                try
-                {
-                    if (!_listener.SendToAsync(sendEventArgs))
-                    {
-                        SendToAsyncCompleted(arg0, sendEventArgs);
-                    }
-                    return SendError.None;
-                }
-                catch (ObjectDisposedException)
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
-                    _sendEventArgsPool.Return(sendEventArgs);
-                    return SendError.Disposed;
-                }
-                catch (SocketException)
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Error);
-                    _sendEventArgsPool.Return(sendEventArgs);
-                    return SendError.Socket;
-                }
-                catch
-                {
-                    InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
-                    _sendEventArgsPool.Return(sendEventArgs);
-                    return SendError.Unknown;
-                }
-            }
-            return SendError.Invalid;
-        }
-
         /// <summary>
         ///     Listen asynchronous.
         /// </summary>
@@ -143,6 +84,63 @@ namespace Exomia.Network.UDP
             }
         }
 
+        /// <inheritdoc />
+        private protected override unsafe SendError SendTo(EndPoint arg0,
+                                                           int      packetID,
+                                                           uint     commandID,
+                                                           uint     responseID,
+                                                           byte*    src,
+                                                           int      chunkLength,
+                                                           int      chunkOffset,
+                                                           int      length)
+        {
+            SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
+            if (sendEventArgs == null)
+            {
+                sendEventArgs           =  new SocketAsyncEventArgs();
+                sendEventArgs.Completed += SendToAsyncCompleted;
+                sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+            }
+            sendEventArgs.RemoteEndPoint = arg0;
+
+            fixed (byte* dst = sendEventArgs.Buffer)
+            {
+                sendEventArgs.SetBuffer(
+                    0,
+                    Serialization.Serialization.SerializeUdp(
+                        packetID, commandID, responseID,
+                        src, dst, chunkLength, chunkOffset, length,
+                        _encryptionMode, _compressionMode));
+            }
+
+            try
+            {
+                if (!_listener.SendToAsync(sendEventArgs))
+                {
+                    SendToAsyncCompleted(sendEventArgs.RemoteEndPoint, sendEventArgs);
+                }
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Aborted);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Error);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Socket;
+            }
+            catch
+            {
+                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Unspecified);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Unknown;
+            }
+        }
+
         /// <summary>
         ///     Receive from asynchronous completed.
         /// </summary>
@@ -164,7 +162,12 @@ namespace Exomia.Network.UDP
 
             ListenAsync();
 
-            Receive(e.Buffer, e.BytesTransferred, e.RemoteEndPoint);
+            if (Serialization.Serialization.DeserializeUdp(
+                e.Buffer, e.BytesTransferred, _bigDataHandler,
+                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+            {
+                DeserializeData(e.RemoteEndPoint, commandID, data, 0, dataLength, responseID);
+            }
 
             _receiveEventArgsPool.Return(e);
         }

@@ -37,7 +37,7 @@ static async Task Main(string[] args)
 			if (res)
 			{
 				Console.WriteLine(i +
-					"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
+					"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.Timestamp) / 2)
 						.TotalMilliseconds);
 			}
 			else { Console.WriteLine("error receiving response"); }
@@ -120,7 +120,7 @@ static async Task Main(string[] args)
 			if (res)
 			{
 				Console.WriteLine(i +
-					"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.TimeStamp) / 2)
+					"ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.Timestamp) / 2)
 						.TotalMilliseconds);
 			}
 			else { Console.WriteLine("error receiving response"); }
