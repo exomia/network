@@ -33,7 +33,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The TCP maximum payload size.
         /// </summary>
-        internal const ushort TCP_PAYLOAD_SIZE_MAX = ushort.MaxValue - TCP_HEADER_OFFSET - 1 - 8189;
+        internal const ushort TCP_PAYLOAD_SIZE_MAX = 65535 - TCP_HEADER_OFFSET - 1 - 8189;
 
         /// <summary>
         ///     Size of the UDP header.
@@ -48,7 +48,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The UDP maximum payload size.
         /// </summary>
-        internal const ushort UDP_PAYLOAD_SIZE_MAX = ushort.MaxValue - UDP_HEADER_OFFSET;
+        internal const ushort UDP_PAYLOAD_SIZE_MAX = 65507 - UDP_HEADER_OFFSET;
 
         /// <summary>
         ///     The user command limit.

@@ -117,6 +117,11 @@ namespace Exomia.Network
         private readonly Dictionary<uint, TaskCompletionSource<Packet>> _taskCompletionSources;
 
         /// <summary>
+        ///     The listener count.
+        /// </summary>
+        private readonly byte _listenerCount;
+
+        /// <summary>
         ///     The data received callbacks lock.
         /// </summary>
         private SpinLock _dataReceivedCallbacksLock;
@@ -176,8 +181,9 @@ namespace Exomia.Network
         /// <summary>
         ///     Initializes a new instance of the <see cref="ClientBase" /> class.
         /// </summary>
-        private protected ClientBase()
+        private protected ClientBase(byte listenerCount = 1)
         {
+            _listenerCount         = listenerCount;
             _clientSocket          = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
             _taskCompletionSources =
@@ -224,7 +230,10 @@ namespace Exomia.Network
                     if (result)
                     {
                         _state = RECEIVE_FLAG | SEND_FLAG;
-                        ReceiveAsync();
+                        for (int i = 0; i < _listenerCount; i++)
+                        {
+                            ReceiveAsync();
+                        }
                         if (SendConnect() == SendError.None)
                         {
                             _port = port;
@@ -320,17 +329,11 @@ namespace Exomia.Network
         /// <summary>
         ///     Deserialize data.
         /// </summary>
-        /// <param name="commandID">  command id. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length. </param>
-        /// <param name="responseID"> The responseID. </param>
-        private protected unsafe void DeserializeData(uint   commandID,
-                                                      byte[] data,
-                                                      int    offset,
-                                                      int    length,
-                                                      uint   responseID)
+        /// <param name="deserializePacketInfo"> Information describing the deserialize packet. </param>
+        private protected unsafe void DeserializeData(in DeserializePacketInfo deserializePacketInfo)
         {
+            uint commandID  = deserializePacketInfo.CommandID;
+            uint responseID = deserializePacketInfo.ResponseID;
             if (responseID != 0)
             {
                 TaskCompletionSource<Packet> cs;
@@ -348,9 +351,9 @@ namespace Exomia.Network
                     if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
                 }
                 if (cs != null && !cs.TrySetResult(
-                        new Packet(data, offset, length)))
+                        new Packet(deserializePacketInfo.Data, 0, deserializePacketInfo.Length)))
                 {
-                    ByteArrayPool.Return(data);
+                    ByteArrayPool.Return(deserializePacketInfo.Data);
                 }
                 return;
             }
@@ -359,16 +362,16 @@ namespace Exomia.Network
                 case CommandID.PING:
                     {
                         PingPacket pingStruct;
-                        fixed (byte* ptr = data)
+                        fixed (byte* ptr = deserializePacketInfo.Data)
                         {
-                            pingStruct = *(PingPacket*)(ptr + offset);
+                            pingStruct = *(PingPacket*)ptr;
                         }
                         Ping?.Invoke(pingStruct);
                         break;
                     }
                 case CommandID.CONNECT:
                     {
-                        data.FromBytesUnsafe(offset, out ConnectPacket connectPacket);
+                        deserializePacketInfo.Data.FromBytesUnsafe(out ConnectPacket connectPacket);
                         fixed (byte* ptr = _connectChecksum)
                         {
                             if (SequenceEqual(connectPacket.Checksum, ptr, 16))
@@ -383,12 +386,12 @@ namespace Exomia.Network
                         if (commandID <= Constants.USER_COMMAND_LIMIT &&
                             _dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry cee))
                         {
-                            Packet packet = new Packet(data, offset, length);
+                            Packet packet = new Packet(deserializePacketInfo.Data, 0, deserializePacketInfo.Length);
                             ThreadPool.QueueUserWorkItem(
                                 x =>
                                 {
                                     object res = cee._deserialize(in packet);
-                                    ByteArrayPool.Return(data);
+                                    ByteArrayPool.Return(packet.Buffer);
 
                                     if (res != null) { cee.Raise(this, res); }
                                 });
@@ -397,7 +400,7 @@ namespace Exomia.Network
                         break;
                     }
             }
-            ByteArrayPool.Return(data);
+            ByteArrayPool.Return(deserializePacketInfo.Data);
         }
 
         #region Add & Remove

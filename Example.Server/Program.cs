@@ -8,17 +8,16 @@
 
 #endregion
 
-#define TCP
+#define TCP9
 
-using System;
-using System.Text;
-using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
-
 #else
 using Exomia.Network.UDP;
 #endif
+using System;
+using System.Text;
+using Exomia.Network;
 
 namespace Example.Server
 {
@@ -45,8 +44,7 @@ namespace Example.Server
                     45, (server1, client, data, responseid) =>
                     {
                         string request = (string)data;
-
-                        //Console.WriteLine($"Request: {request}");
+                        Console.WriteLine($"Request: {request}");
                         byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
                         server1.SendTo(client, 45, buffer, 0, buffer.Length, responseid);
                         return true;
@@ -66,14 +64,14 @@ namespace Example.Server
     class Server : UdpServerEapBase<ServerClient>
 #endif
     {
+        public Server(ushort expectedMaxClient = 32, ushort expectedMaxPayloadSize = 512)
+            : base(expectedMaxClient, expectedMaxPayloadSize) { }
+
         protected override bool CreateServerClient(out ServerClient serverClient)
         {
             serverClient = new ServerClient();
             return true;
         }
-
-        public Server(ushort expectedMaxClient = 32, ushort expectedMaxPayloadSize = 8096)
-            : base(expectedMaxClient, expectedMaxPayloadSize) { }
     }
 
 #if TCP

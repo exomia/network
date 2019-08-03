@@ -147,10 +147,10 @@ namespace Exomia.Network.TCP
 
             if (Serialization.Serialization.DeserializeTcp(
                 _circularBuffer, e.Buffer, _bufferRead, bytesTransferred, _bigDataHandler,
-                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+                out DeserializePacketInfo deserializePacketInfo))
             {
                 ReceiveAsync();
-                DeserializeData(commandID, data, 0, dataLength, responseID);
+                DeserializeData(in deserializePacketInfo);
                 return;
             }
             ReceiveAsync();

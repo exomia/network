@@ -33,6 +33,7 @@ namespace Exomia.Network.UDP
         /// </summary>
         /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
         private protected UdpClientBase(ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+            : base(4)
         {
             _maxPayloadSize =
                 expectedMaxPayloadSize > 0 && expectedMaxPayloadSize < Constants.UDP_PAYLOAD_SIZE_MAX

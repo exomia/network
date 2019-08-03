@@ -8,20 +8,20 @@
 
 #endregion
 
-#define TCP
+#define TCP9
 
+#if TCP
+using Exomia.Network.TCP;
+#else
+using Exomia.Network.UDP;
+#endif
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network;
-#if TCP
-using Exomia.Network.TCP;
-
-#else
-using Exomia.Network.UDP;
-#endif
 
 namespace Example.Client
 {
@@ -30,9 +30,9 @@ namespace Example.Client
         private static async Task Main(string[] args)
         {
 #if TCP
-            TcpClientEap client = new TcpClientEap(8096);
+            TcpClientEap client = new TcpClientEap(512);
 #else
-            var client = new UdpClientEap(8096);
+            UdpClientEap client = new UdpClientEap(512);
 #endif
             client.Disconnected += (c, r) => { Console.WriteLine(r + " | Disconnected"); };
             client.AddCommand(
@@ -47,10 +47,10 @@ namespace Example.Client
                     Console.WriteLine(data + " -- OK");
                     return true;
                 });
-
+            Thread.Sleep(100);
             Console.WriteLine(client.Connect("127.0.0.1", 3000) ? "CONNECTED" : "CONNECT FAILED");
 
-            byte[] request = Encoding.UTF8.GetBytes(string.Join(" ", Enumerable.Range(1, 10_000)));
+            byte[] request = Encoding.UTF8.GetBytes(string.Join(" ", Enumerable.Range(1, 1_000)));
             Console.WriteLine(request.Length);
             for (int i = 0; i < 10; i++)
             {

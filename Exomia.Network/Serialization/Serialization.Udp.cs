@@ -87,29 +87,26 @@ namespace Exomia.Network.Serialization
             return Constants.UDP_HEADER_SIZE + offset + packetInfo.ChunkLength;
         }
 
-        internal static bool DeserializeUdp(byte[]         buffer,
-                                            int            bytesTransferred,
-                                            BigDataHandler bigDataHandler,
-                                            out uint       commandID,
-                                            out uint       responseID,
-                                            out byte[]     data,
-                                            out int        dataLength)
+        internal static bool DeserializeUdp(byte[]                    buffer,
+                                            int                       bytesTransferred,
+                                            BigDataHandler            bigDataHandler,
+                                            out DeserializePacketInfo deserializePacketInfo)
         {
             fixed (byte* src = buffer)
             {
                 byte packetHeader = *src;
                 uint h2           = *(uint*)(src + 1);
-                commandID  = h2 >> Constants.COMMAND_ID_SHIFT;
-                dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
-                responseID = 0;
+                deserializePacketInfo.CommandID  = h2 >> Constants.COMMAND_ID_SHIFT;
+                deserializePacketInfo.Length     = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                deserializePacketInfo.ResponseID = 0;
 
-                if (bytesTransferred == dataLength + Constants.UDP_HEADER_SIZE)
+                if (bytesTransferred == deserializePacketInfo.Length + Constants.UDP_HEADER_SIZE)
                 {
                     int offset = 0;
                     if ((packetHeader & Constants.RESPONSE_BIT_MASK) != 0)
                     {
-                        responseID = *(uint*)(src + Constants.UDP_HEADER_SIZE);
-                        offset     = 4;
+                        deserializePacketInfo.ResponseID = *(uint*)(src + Constants.UDP_HEADER_SIZE);
+                        offset                           = 4;
                     }
 
                     int l = 0;
@@ -126,24 +123,28 @@ namespace Exomia.Network.Serialization
                         int cl = *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 8);
                         byte[] bdb = bigDataHandler.Receive(
                             *(int*)(src + Constants.UDP_HEADER_SIZE + offset),
-                            src + Constants.UDP_HEADER_SIZE + offset + 12, dataLength - offset - 12,
+                            src + Constants.UDP_HEADER_SIZE + offset + 12, deserializePacketInfo.Length - offset - 12,
                             *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 4),
                             cl);
-                        dataLength = cl;
+                        deserializePacketInfo.Length = cl;
                         if (bdb != null)
                         {
                             switch (compressionMode)
                             {
                                 case CompressionMode.Lz4:
                                     fixed (byte* srcB = bdb)
-                                    fixed (byte* dst = data = ByteArrayPool.Rent(l))
+                                    fixed (byte* dst = deserializePacketInfo.Data = ByteArrayPool.Rent(l))
                                     {
-                                        dataLength = LZ4Codec.Decode(srcB, dataLength, dst, l);
-                                        if (dataLength != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                                        deserializePacketInfo.Length = LZ4Codec.Decode(
+                                            srcB, deserializePacketInfo.Length, dst, l);
+                                        if (deserializePacketInfo.Length != l)
+                                        {
+                                            throw new Exception("LZ4.Decode FAILED!");
+                                        }
                                     }
                                     return true;
                                 case CompressionMode.None:
-                                    data = bdb;
+                                    deserializePacketInfo.Data = bdb;
                                     return true;
                                 default:
                                     throw new ArgumentOutOfRangeException(
@@ -153,21 +154,26 @@ namespace Exomia.Network.Serialization
                     }
                     else
                     {
-                        dataLength -= offset;
+                        deserializePacketInfo.Length -= offset;
                         switch (compressionMode)
                         {
                             case CompressionMode.None:
-                                fixed (byte* dst = data = ByteArrayPool.Rent(dataLength))
+                                fixed (byte* dst = deserializePacketInfo.Data =
+                                    ByteArrayPool.Rent(deserializePacketInfo.Length))
                                 {
-                                    Mem.Cpy(dst, src + Constants.UDP_HEADER_SIZE + offset, dataLength);
+                                    Mem.Cpy(
+                                        dst, src + Constants.UDP_HEADER_SIZE + offset, deserializePacketInfo.Length);
                                 }
                                 return true;
                             case CompressionMode.Lz4:
-                                fixed (byte* dst = data = ByteArrayPool.Rent(l))
+                                fixed (byte* dst = deserializePacketInfo.Data = ByteArrayPool.Rent(l))
                                 {
-                                    dataLength = LZ4Codec.Decode(
-                                        src + Constants.UDP_HEADER_SIZE + offset, dataLength, dst, l);
-                                    if (dataLength != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                                    deserializePacketInfo.Length = LZ4Codec.Decode(
+                                        src + Constants.UDP_HEADER_SIZE + offset, deserializePacketInfo.Length, dst, l);
+                                    if (deserializePacketInfo.Length != l)
+                                    {
+                                        throw new Exception("LZ4.Decode FAILED!");
+                                    }
                                 }
                                 return true;
                             default:
@@ -177,7 +183,7 @@ namespace Exomia.Network.Serialization
                     }
                 }
             }
-            data = null;
+            deserializePacketInfo.Data = null;
             return false;
         }
     }

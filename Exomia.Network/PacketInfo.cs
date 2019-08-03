@@ -10,17 +10,59 @@
 
 namespace Exomia.Network
 {
+    /// <summary>
+    ///     Information about the packet.
+    /// </summary>
     unsafe struct PacketInfo
     {
-        public int             PacketID;
-        public uint            CommandID;
-        public uint            ResponseID;
-        public byte*           Src;
-        public int             ChunkLength;
-        public int             ChunkOffset;
-        public int             Length;
-        public bool            IsChunked;
+        /// <summary>
+        ///     Identifier for the packet.
+        /// </summary>
+        public int PacketID;
+
+        /// <summary>
+        ///     Identifier for the command.
+        /// </summary>
+        public uint CommandID;
+
+        /// <summary>
+        ///     Identifier for the response.
+        /// </summary>
+        public uint ResponseID;
+
+        /// <summary>
+        ///     Source for the.
+        /// </summary>
+        public byte* Src;
+
+        /// <summary>
+        ///     Length of the chunk.
+        /// </summary>
+        public int ChunkLength;
+
+        /// <summary>
+        ///     The chunk offset.
+        /// </summary>
+        public int ChunkOffset;
+
+        /// <summary>
+        ///     The length.
+        /// </summary>
+        public int Length;
+
+        /// <summary>
+        ///     True if this object is chunked.
+        /// </summary>
+        public bool IsChunked;
+
+        /// <summary>
+        ///     The compression mode.
+        /// </summary>
         public CompressionMode CompressionMode;
-        public int             CompressedLength;
+
+        /// <summary>
+        ///     Length of the compressed.
+        /// </summary>
+        public int CompressedLength;
     }
 }

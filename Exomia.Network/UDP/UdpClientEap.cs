@@ -151,9 +151,9 @@ namespace Exomia.Network.UDP
 
             if (Serialization.Serialization.DeserializeUdp(
                 e.Buffer, e.BytesTransferred, _bigDataHandler,
-                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+                out DeserializePacketInfo deserializePacketInfo))
             {
-                DeserializeData(commandID, data, 0, dataLength, responseID);
+                DeserializeData(in deserializePacketInfo);
             }
         }
 

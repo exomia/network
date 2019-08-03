@@ -120,6 +120,11 @@ namespace Exomia.Network
         private readonly Event<ClientCommandDataReceivedHandler<TServerClient>> _clientDataReceived;
 
         /// <summary>
+        ///     The listener count.
+        /// </summary>
+        private readonly byte _listenerCount;
+
+        /// <summary>
         ///     The clients lock.
         /// </summary>
         private SpinLock _clientsLock;
@@ -158,8 +163,10 @@ namespace Exomia.Network
         /// <summary>
         ///     Initializes a new instance of the <see cref="ServerBase{T, TServerClient}" /> class.
         /// </summary>
-        private protected ServerBase()
+        /// <param name="listenerCount"> (Optional) The listener count. </param>
+        private protected ServerBase(byte listenerCount = 1)
         {
+            _listenerCount         = listenerCount;
             _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<TServerClient>>(INITIAL_QUEUE_SIZE);
             _clients               = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
 
@@ -195,7 +202,10 @@ namespace Exomia.Network
             {
                 _port  = port;
                 _state = RECEIVE_FLAG | SEND_FLAG;
-                ListenAsync();
+                for (int i = 0; i < _listenerCount; i++)
+                {
+                    ListenAsync();
+                }
                 return _isRunning = true;
             }
             return false;
@@ -219,30 +229,30 @@ namespace Exomia.Network
         /// <summary>
         ///     Deserialize data.
         /// </summary>
-        /// <param name="arg0">       Socket|Endpoint. </param>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length. </param>
-        /// <param name="responseID"> Identifier for the response. </param>
-        private protected void DeserializeData(T      arg0,
-                                               uint   commandID,
-                                               byte[] data,
-                                               int    offset,
-                                               int    length,
-                                               uint   responseID)
+        /// <param name="arg0">                  Socket|Endpoint. </param>
+        /// <param name="deserializePacketInfo"> Information describing the deserialize packet. </param>
+        private protected void DeserializeData(T                        arg0,
+                                               in DeserializePacketInfo deserializePacketInfo)
         {
+            uint commandID  = deserializePacketInfo.CommandID;
+            uint responseID = deserializePacketInfo.ResponseID;
             switch (commandID)
             {
                 case CommandID.PING:
                     {
-                        SendTo(arg0, CommandID.PING, data, offset, length, responseID);
+                        SendTo(
+                            arg0, CommandID.PING,
+                            deserializePacketInfo.Data, 0, deserializePacketInfo.Length,
+                            responseID);
                         break;
                     }
                 case CommandID.CONNECT:
                     {
                         InvokeClientConnected(arg0);
-                        SendTo(arg0, CommandID.CONNECT, data, offset, length, responseID);
+                        SendTo(
+                            arg0, CommandID.CONNECT,
+                            deserializePacketInfo.Data, 0, deserializePacketInfo.Length,
+                            responseID);
                         break;
                     }
                 case CommandID.DISCONNECT:
@@ -263,19 +273,19 @@ namespace Exomia.Network
                             {
                                 sClient.SetLastReceivedPacketTimeStamp();
 
-                                Packet packet = new Packet(data, offset, length);
+                                Packet packet = new Packet(deserializePacketInfo.Data, 0, deserializePacketInfo.Length);
                                 ThreadPool.QueueUserWorkItem(
                                     x =>
                                     {
                                         object res = scee._deserialize(in packet);
-                                        ByteArrayPool.Return(data);
+                                        ByteArrayPool.Return(packet.Buffer);
 
                                         if (res != null)
                                         {
                                             for (int i = _clientDataReceived.Count - 1; i >= 0; --i)
                                             {
                                                 _clientDataReceived[i]
-                                                    .Invoke(this, sClient, commandID, data, responseID);
+                                                    .Invoke(this, sClient, commandID, res, responseID);
                                             }
                                             scee.Raise(this, sClient, res, responseID);
                                         }
@@ -286,7 +296,7 @@ namespace Exomia.Network
                         break;
                     }
             }
-            ByteArrayPool.Return(data);
+            ByteArrayPool.Return(deserializePacketInfo.Data);
         }
 
         /// <summary>

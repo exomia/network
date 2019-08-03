@@ -41,7 +41,7 @@ namespace Exomia.Network.TCP
         ///     Initializes a new instance of the <see cref="TcpServerBase{TServerClient}" /> class.
         /// </summary>
         /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
-        protected TcpServerBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
+        private protected TcpServerBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
         {
             _maxPayloadSize = expectedMaxPayloadSize > 0 && expectedMaxPayloadSize < Constants.TCP_PAYLOAD_SIZE_MAX
                 ? expectedMaxPayloadSize
