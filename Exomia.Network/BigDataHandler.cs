@@ -84,8 +84,6 @@ namespace Exomia.Network
                     Mem.Cpy(dst2 + chunkOffset, src, chunkLength);
                 }
                 bdb.BytesLeft -= chunkLength;
-                Console.WriteLine();
-                Console.WriteLine(bdb.BytesLeft);
                 if (bdb.BytesLeft == 0)
                 {
                     bool lockTaken = false;
