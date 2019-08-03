@@ -8,9 +8,9 @@
 
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
@@ -77,27 +77,24 @@ namespace Exomia.Network
                 }
             }
 
-            lock (bdb)
+            fixed (byte* dst2 = bdb.Data)
             {
-                fixed (byte* dst2 = bdb.Data)
+                Mem.Cpy(dst2 + chunkOffset, src, chunkLength);
+            }
+
+            if (bdb.AddBytes(chunkLength) == 0)
+            {
+                bool lockTaken = false;
+                try
                 {
-                    Mem.Cpy(dst2 + chunkOffset, src, chunkLength);
+                    _bigDataBufferLock.Enter(ref lockTaken);
+                    _bigDataBuffers.Remove(key);
                 }
-                bdb.BytesLeft -= chunkLength;
-                if (bdb.BytesLeft == 0)
+                finally
                 {
-                    bool lockTaken = false;
-                    try
-                    {
-                        _bigDataBufferLock.Enter(ref lockTaken);
-                        _bigDataBuffers.Remove(key);
-                    }
-                    finally
-                    {
-                        if (lockTaken) { _bigDataBufferLock.Exit(false); }
-                    }
-                    return bdb.Data;
+                    if (lockTaken) { _bigDataBufferLock.Exit(false); }
                 }
+                return bdb.Data;
             }
 
             return null;
@@ -116,7 +113,12 @@ namespace Exomia.Network
             /// <summary>
             ///     The bytes left.
             /// </summary>
-            public int BytesLeft;
+            private int _bytesLeft;
+
+            /// <summary>
+            ///     The big data buffer lock.
+            /// </summary>
+            private SpinLock _thisLock;
 
             /// <summary>
             ///     Initializes a new instance of the <see cref="Buffer" /> struct.
@@ -125,8 +127,24 @@ namespace Exomia.Network
             /// <param name="bytesLeft"> The bytes left. </param>
             public Buffer(byte[] data, int bytesLeft)
             {
-                Data      = data;
-                BytesLeft = bytesLeft;
+                Data       = data;
+                _bytesLeft = bytesLeft;
+                _thisLock  = new SpinLock(Debugger.IsAttached);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public int AddBytes(int count)
+            {
+                bool lockTaken = false;
+                try
+                {
+                    _thisLock.Enter(ref lockTaken);
+                    return _bytesLeft -= count;
+                }
+                finally
+                {
+                    if (lockTaken) { _thisLock.Exit(false); }
+                }
             }
         }
     }

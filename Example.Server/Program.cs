@@ -8,17 +8,17 @@
 
 #endregion
 
-#define TCP0
+#define TCP
 
 using System;
 using System.Text;
 using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
+
 #else
 using Exomia.Network.UDP;
 #endif
-
 
 namespace Example.Server
 {
@@ -46,7 +46,7 @@ namespace Example.Server
                     {
                         string request = (string)data;
 
-                        Console.WriteLine($"Request: {request}");
+                        //Console.WriteLine($"Request: {request}");
                         byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
                         server1.SendTo(client, 45, buffer, 0, buffer.Length, responseid);
                         return true;

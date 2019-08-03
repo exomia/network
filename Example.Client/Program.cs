@@ -11,12 +11,14 @@
 #define TCP
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
+
 #else
 using Exomia.Network.UDP;
 #endif
@@ -61,14 +63,16 @@ namespace Example.Client
                 //                                   .TotalMilliseconds);
                 //}
                 //else { Console.WriteLine("error receiving response"); }
-
+                Stopwatch sw = Stopwatch.StartNew();
                 Response<string> res2 = await client.SendR(
                     45, request, 0, request.Length, (in Packet packet) =>
                     {
                         return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
                     });
 
-                Console.WriteLine(res2 ? res2.Result : "error receiving response");
+                sw.Stop();
+                Console.WriteLine(
+                    (res2 ? res2.Result : "error receiving response") + " - " + sw.ElapsedMilliseconds + "ms");
                 Console.ReadKey();
             }
 

@@ -110,7 +110,7 @@ namespace Exomia.Network
         ///     The data received callbacks.
         /// </summary>
         private readonly Dictionary<uint, ClientEventEntry> _dataReceivedCallbacks;
-        
+
         /// <summary>
         ///     The task completion sources.
         /// </summary>
