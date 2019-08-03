@@ -27,25 +27,19 @@ namespace Exomia.Network.TCP
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <summary>
-        ///     Initializes a new instance of the &lt;see cref="TcpServerEapBase&lt;TServerClient&gt;
-        ///     "/&gt; class.
+        ///     Initializes a new instance of the <see cref="TcpServerEapBase{TServerClient}" /> class.
         /// </summary>
         /// <param name="expectedMaxClients"> (Optional) The expected maximum clients. </param>
-        /// <param name="maxPacketSize">      (Optional) Size of the maximum packet. </param>
-        protected TcpServerEapBase(ushort expectedMaxClients = 32, ushort maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
-            : base(maxPacketSize)
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        protected TcpServerEapBase(ushort expectedMaxClients     = 32,
+                                   ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
+            : base(expectedMaxPayloadSize)
         {
             _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClients);
         }
 
-        private protected override unsafe SendError SendTo(Socket arg0,
-                                                           int    packetID,
-                                                           uint   commandID,
-                                                           uint   responseID,
-                                                           byte*  src,
-                                                           int    chunkLength,
-                                                           int    chunkOffset,
-                                                           int    length)
+        private protected override unsafe SendError SendTo(Socket        arg0,
+                                                           in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
 
@@ -53,7 +47,9 @@ namespace Exomia.Network.TCP
             {
                 sendEventArgs           =  new SocketAsyncEventArgs();
                 sendEventArgs.Completed += SendAsyncCompleted;
-                sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                sendEventArgs.SetBuffer(
+                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
+                    _payloadSize + Constants.TCP_HEADER_OFFSET);
             }
             sendEventArgs.AcceptSocket = arg0;
 
@@ -61,10 +57,7 @@ namespace Exomia.Network.TCP
             {
                 sendEventArgs.SetBuffer(
                     0,
-                    Serialization.Serialization.SerializeTcp(
-                        packetID, commandID, responseID,
-                        src, dst, chunkLength, chunkOffset, length,
-                        _encryptionMode, _compressionMode));
+                    Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode));
             }
 
             try
@@ -148,10 +141,13 @@ namespace Exomia.Network.TCP
             {
                 SocketAsyncEventArgs receiveArgs = new SocketAsyncEventArgs { AcceptSocket = e.AcceptSocket };
                 receiveArgs.Completed += ReceiveAsyncCompleted;
-                receiveArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                receiveArgs.SetBuffer(
+                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
+                    _payloadSize + Constants.TCP_HEADER_OFFSET);
                 receiveArgs.UserToken = new ServerClientStateObject
                 {
-                    BufferRead = new byte[_maxPacketSize], CircularBuffer = new CircularBuffer(_maxPacketSize * 2)
+                    BufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
+                    CircularBuffer = new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2)
                 };
 
                 ListenAsync(e);

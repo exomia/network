@@ -24,9 +24,9 @@ namespace Exomia.Network.UDP
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpClientApm" /> class.
         /// </summary>
-        /// <param name="maxPacketSize"> (Optional) Size of the maximum packet. </param>
-        public UdpClientApm(ushort maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
-            : base(maxPacketSize)
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        public UdpClientApm(ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+            : base(expectedMaxPayloadSize)
         {
             _clientStateObjectPool = new ObjectPool<ClientStateObject>();
         }
@@ -39,7 +39,7 @@ namespace Exomia.Network.UDP
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
                 ClientStateObject state = _clientStateObjectPool.Rent() ??
-                                          new ClientStateObject(new byte[_maxPacketSize]);
+                                          new ClientStateObject(new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET]);
                 try
                 {
                     _clientSocket.BeginReceive(
@@ -64,22 +64,13 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-        private protected override unsafe SendError BeginSendData(int   packetID,
-                                                                  uint  commandID,
-                                                                  uint  responseID,
-                                                                  byte* src,
-                                                                  int   chunkLength,
-                                                                  int   chunkOffset,
-                                                                  int   length)
+        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
         {
             int    size;
-            byte[] buffer = ByteArrayPool.Rent(Constants.UDP_HEADER_OFFSET + length);
+            byte[] buffer = ByteArrayPool.Rent(Constants.UDP_HEADER_OFFSET + packetInfo.ChunkLength);
             fixed (byte* dst = buffer)
             {
-                size = Serialization.Serialization.SerializeUdp(
-                    packetID, commandID, responseID,
-                    src, dst, chunkLength, chunkOffset, length,
-                    _encryptionMode, _compressionMode);
+                size = Serialization.Serialization.SerializeUdp(in packetInfo, dst, _encryptionMode);
             }
 
             try

@@ -31,9 +31,9 @@ namespace Exomia.Network.UDP
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpClientEap" /> class.
         /// </summary>
-        /// <param name="maxPacketSize"> (Optional) Size of the maximum packet. </param>
-        public UdpClientEap(ushort maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
-            : base(maxPacketSize)
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        public UdpClientEap(ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+            : base(expectedMaxPayloadSize)
         {
             _receiveEventArgsPool = new SocketAsyncEventArgsPool();
             _sendEventArgsPool    = new SocketAsyncEventArgsPool();
@@ -51,13 +51,15 @@ namespace Exomia.Network.UDP
                 {
                     receiveEventArgs           =  new SocketAsyncEventArgs();
                     receiveEventArgs.Completed += ReceiveAsyncCompleted;
-                    receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                    receiveEventArgs.SetBuffer(
+                        new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
+                        0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
                 }
                 try
                 {
                     if (!_clientSocket.ReceiveAsync(receiveEventArgs))
                     {
-                        ReceiveAsyncCompleted(receiveEventArgs.AcceptSocket, receiveEventArgs);
+                        ReceiveAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
                     }
                 }
                 catch (ObjectDisposedException)
@@ -79,30 +81,23 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-        private protected override unsafe SendError BeginSendData(int   packetID,
-                                                                  uint  commandID,
-                                                                  uint  responseID,
-                                                                  byte* src,
-                                                                  int   chunkLength,
-                                                                  int   chunkOffset,
-                                                                  int   length)
+        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
             {
                 sendEventArgs           =  new SocketAsyncEventArgs();
                 sendEventArgs.Completed += SendAsyncCompleted;
-                sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                sendEventArgs.SetBuffer(
+                    new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
+                    0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
             }
 
             fixed (byte* dst = sendEventArgs.Buffer)
             {
                 sendEventArgs.SetBuffer(
                     0,
-                    Serialization.Serialization.SerializeUdp(
-                        packetID, commandID, responseID,
-                        src, dst, chunkLength, chunkOffset, length,
-                        _encryptionMode, _compressionMode));
+                    Serialization.Serialization.SerializeUdp(in packetInfo, dst, _encryptionMode));
             }
 
             try

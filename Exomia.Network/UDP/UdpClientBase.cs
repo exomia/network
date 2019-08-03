@@ -18,14 +18,27 @@ namespace Exomia.Network.UDP
     public abstract class UdpClientBase : ClientBase
     {
         /// <summary>
-        ///     Initializes a new instance of the <see cref="UdpClientBase" /> class.
+        ///     Size of the maximum payload.
         /// </summary>
-        /// <param name="maxPacketSize"> Size of the maximum packet. </param>
-        private protected UdpClientBase(ushort maxPacketSize)
-            : base(
-                maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
-                    ? maxPacketSize
-                    : Constants.UDP_PACKET_SIZE_MAX) { }
+        private readonly ushort _maxPayloadSize;
+
+        /// <inheritdoc />
+        private protected override ushort MaxPayloadSize
+        {
+            get { return _maxPayloadSize; }
+        }
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="UdpServerEapBase{TServerClient}" /> class.
+        /// </summary>
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        private protected UdpClientBase(ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+        {
+            _maxPayloadSize =
+                expectedMaxPayloadSize > 0 && expectedMaxPayloadSize < Constants.UDP_PAYLOAD_SIZE_MAX
+                    ? expectedMaxPayloadSize
+                    : Constants.TCP_PAYLOAD_SIZE_MAX;
+        }
 
         /// <inheritdoc />
         private protected override bool TryCreateSocket(out Socket socket)

@@ -21,14 +21,27 @@ namespace Exomia.Network.UDP
         where TServerClient : ServerClientBase<EndPoint>
     {
         /// <summary>
+        ///     Size of the maximum payload.
+        /// </summary>
+        private readonly ushort _maxPayloadSize;
+
+        /// <inheritdoc />
+        private protected override ushort MaxPayloadSize
+        {
+            get { return _maxPayloadSize; }
+        }
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerEapBase{TServerClient}" /> class.
         /// </summary>
-        /// <param name="maxPacketSize"> Size of the maximum packet. </param>
-        protected UdpServerBase(ushort maxPacketSize)
-            : base(
-                maxPacketSize > 0 && maxPacketSize < Constants.UDP_PACKET_SIZE_MAX
-                    ? maxPacketSize
-                    : Constants.UDP_PACKET_SIZE_MAX) { }
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        private protected UdpServerBase(ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+        {
+            _maxPayloadSize =
+                expectedMaxPayloadSize > 0 && expectedMaxPayloadSize < Constants.UDP_PAYLOAD_SIZE_MAX
+                    ? expectedMaxPayloadSize
+                    : Constants.TCP_PAYLOAD_SIZE_MAX;
+        }
 
         /// <summary>
         ///     Executes the run action.

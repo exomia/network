@@ -25,29 +25,20 @@ namespace Exomia.Network.TCP
         /// <summary>
         ///     Initializes a new instance of the <see cref="TcpServerApmBase{TServerClient}" /> class.
         /// </summary>
-        /// <param name="maxPacketSize"> (Optional) Size of the maximum packet. </param>
-        protected TcpServerApmBase(ushort maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
-            : base(maxPacketSize) { }
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        protected TcpServerApmBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
+            : base(expectedMaxPayloadSize) { }
 
-        private protected override unsafe SendError SendTo(Socket arg0,
-                                                           int    packetID,
-                                                           uint   commandID,
-                                                           uint   responseID,
-                                                           byte*  src,
-                                                           int    chunkLength,
-                                                           int    chunkOffset,
-                                                           int    length)
+        private protected override unsafe SendError SendTo(Socket        arg0,
+                                                           in PacketInfo packetInfo)
         {
             SendStateObject state;
-            state.Buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + length + 1);
+            state.Buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
             state.Socket = arg0;
             int size;
             fixed (byte* dst = state.Buffer)
             {
-                size = Serialization.Serialization.SerializeTcp(
-                    packetID, commandID, responseID,
-                    src, dst, chunkLength, chunkOffset, length,
-                    _encryptionMode, _compressionMode);
+                size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
             }
 
             try
@@ -127,9 +118,9 @@ namespace Exomia.Network.TCP
                 {
                     //0.2mb
                     Socket         = socket,
-                    BufferWrite    = new byte[_maxPacketSize],
-                    BufferRead     = new byte[_maxPacketSize],
-                    CircularBuffer = new CircularBuffer(_maxPacketSize * 2)
+                    BufferWrite    = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
+                    BufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
+                    CircularBuffer = new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2)
                 };
 
                 ReceiveAsync(state);

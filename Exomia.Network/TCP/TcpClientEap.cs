@@ -42,16 +42,16 @@ namespace Exomia.Network.TCP
         /// <summary>
         ///     Initializes a new instance of the <see cref="TcpClientEap" /> class.
         /// </summary>
-        /// <param name="maxPacketSize"> (Optional) Size of the maximum packet. </param>
-        public TcpClientEap(ushort maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
-            : base(maxPacketSize)
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        public TcpClientEap(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
+            : base(expectedMaxPayloadSize)
         {
-            _bufferRead     = new byte[maxPacketSize];
-            _circularBuffer = new CircularBuffer(maxPacketSize * 2);
+            _bufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET + 1];
+            _circularBuffer = new CircularBuffer(_bufferRead.Length * 2);
 
             _receiveEventArgs           =  new SocketAsyncEventArgs();
             _receiveEventArgs.Completed += ReceiveAsyncCompleted;
-            _receiveEventArgs.SetBuffer(new byte[maxPacketSize], 0, maxPacketSize);
+            _receiveEventArgs.SetBuffer(new byte[_bufferRead.Length], 0, _bufferRead.Length);
 
             _sendEventArgsPool = new SocketAsyncEventArgsPool();
         }
@@ -76,30 +76,22 @@ namespace Exomia.Network.TCP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(int   packetID,
-                                                                  uint  commandID,
-                                                                  uint  responseID,
-                                                                  byte* src,
-                                                                  int   chunkLength,
-                                                                  int   chunkOffset,
-                                                                  int   length)
+        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
             {
                 sendEventArgs           =  new SocketAsyncEventArgs();
                 sendEventArgs.Completed += SendAsyncCompleted;
-                sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                sendEventArgs.SetBuffer(
+                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
+                    _payloadSize + Constants.TCP_HEADER_OFFSET);
             }
 
             fixed (byte* dst = sendEventArgs.Buffer)
             {
                 sendEventArgs.SetBuffer(
-                    0,
-                    Serialization.Serialization.SerializeTcp(
-                        packetID, commandID, responseID,
-                        src, dst, chunkLength, chunkOffset, length,
-                        _encryptionMode, _compressionMode));
+                    0, Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode));
             }
 
             try
