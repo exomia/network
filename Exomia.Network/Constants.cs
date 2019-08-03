@@ -31,9 +31,9 @@ namespace Exomia.Network
         internal const int TCP_HEADER_OFFSET = TCP_HEADER_SIZE + SAFETY_PAYLOAD_OFFSET;
 
         /// <summary>
-        ///     The TCP packet size maximum.
+        ///     The TCP maximum payload size.
         /// </summary>
-        internal const ushort TCP_PACKET_SIZE_MAX = 65535 - TCP_HEADER_OFFSET;
+        internal const ushort TCP_PAYLOAD_SIZE_MAX = ushort.MaxValue - TCP_HEADER_OFFSET - 1 - 8189;
 
         /// <summary>
         ///     Size of the UDP header.
@@ -43,12 +43,12 @@ namespace Exomia.Network
         /// <summary>
         ///     The UDP header offset.
         /// </summary>
-        internal const int UDP_HEADER_OFFSET = TCP_HEADER_SIZE + SAFETY_PAYLOAD_OFFSET;
+        internal const int UDP_HEADER_OFFSET = UDP_HEADER_SIZE + SAFETY_PAYLOAD_OFFSET;
 
         /// <summary>
-        ///     The UDP packet size maximum.
+        ///     The UDP maximum payload size.
         /// </summary>
-        internal const ushort UDP_PACKET_SIZE_MAX = 65535 - UDP_HEADER_OFFSET;
+        internal const ushort UDP_PAYLOAD_SIZE_MAX = ushort.MaxValue - UDP_HEADER_OFFSET;
 
         /// <summary>
         ///     The user command limit.

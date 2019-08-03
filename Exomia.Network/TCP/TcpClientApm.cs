@@ -11,6 +11,7 @@
 using System;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
+using Exomia.Network.Encoding;
 using Exomia.Network.Native;
 
 namespace Exomia.Network.TCP
@@ -38,13 +39,12 @@ namespace Exomia.Network.TCP
         /// <summary>
         ///     Initializes a new instance of the <see cref="TcpClientApm" /> class.
         /// </summary>
-        /// <param name="maxPacketSize"> (Optional) Size of the maximum packet. </param>
-        public TcpClientApm(ushort maxPacketSize = Constants.TCP_PACKET_SIZE_MAX)
-            : base(maxPacketSize)
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        public TcpClientApm(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
+            : base(expectedMaxPayloadSize)
         {
-            _bufferWrite = new byte[maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
-                ? maxPacketSize
-                : Constants.TCP_PACKET_SIZE_MAX];
+            _bufferWrite =
+                new byte[PayloadEncoding.EncodedPayloadLength(_payloadSize + Constants.TCP_HEADER_OFFSET)];
             _bufferRead     = new byte[_bufferWrite.Length];
             _circularBuffer = new CircularBuffer(_bufferWrite.Length * 2);
         }
@@ -67,22 +67,13 @@ namespace Exomia.Network.TCP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(int   packetID,
-                                                                  uint  commandID,
-                                                                  uint  responseID,
-                                                                  byte* src,
-                                                                  int   chunkLength,
-                                                                  int   chunkOffset,
-                                                                  int   length)
+        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
         {
             int    size;
-            byte[] buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + length + 1);
+            byte[] buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
             fixed (byte* dst = buffer)
             {
-                size = Serialization.Serialization.SerializeTcp(
-                    packetID, commandID, responseID,
-                    src, dst, chunkLength, chunkOffset, length,
-                    _encryptionMode, _compressionMode);
+                size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
             }
 
             try

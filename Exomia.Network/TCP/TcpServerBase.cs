@@ -10,6 +10,7 @@
 
 using System.Net;
 using System.Net.Sockets;
+using Exomia.Network.Encoding;
 
 namespace Exomia.Network.TCP
 {
@@ -21,14 +22,32 @@ namespace Exomia.Network.TCP
         where TServerClient : ServerClientBase<Socket>
     {
         /// <summary>
+        ///     Size of the payload.
+        /// </summary>
+        private protected readonly ushort _payloadSize;
+
+        /// <summary>
+        ///     Size of the maximum payload.
+        /// </summary>
+        private readonly ushort _maxPayloadSize;
+
+        /// <inheritdoc />
+        private protected override ushort MaxPayloadSize
+        {
+            get { return _maxPayloadSize; }
+        }
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="TcpServerBase{TServerClient}" /> class.
         /// </summary>
-        /// <param name="maxPacketSize"> Size of the maximum packet. </param>
-        private protected TcpServerBase(ushort maxPacketSize)
-            : base(
-                maxPacketSize > 0 && maxPacketSize < Constants.TCP_PACKET_SIZE_MAX
-                    ? maxPacketSize
-                    : Constants.TCP_PACKET_SIZE_MAX) { }
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        protected TcpServerBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
+        {
+            _maxPayloadSize = expectedMaxPayloadSize > 0 && expectedMaxPayloadSize < Constants.TCP_PAYLOAD_SIZE_MAX
+                ? expectedMaxPayloadSize
+                : Constants.TCP_PAYLOAD_SIZE_MAX;
+            _payloadSize = (ushort)(PayloadEncoding.EncodedPayloadLength(_maxPayloadSize) + 1);
+        }
 
         /// <inheritdoc />
         private protected override bool OnRun(int port, out Socket listener)

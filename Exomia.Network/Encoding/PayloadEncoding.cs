@@ -8,6 +8,7 @@
 
 #endregion
 
+using System.Runtime.CompilerServices;
 using Exomia.Network.Lib;
 
 namespace Exomia.Network.Encoding
@@ -57,6 +58,18 @@ namespace Exomia.Network.Encoding
         /// </summary>
         private static readonly uint s_h0 = H0 ^ Math2.R1(H0, 12);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int EncodedPayloadLength(int length)
+        {
+            return length + Math2.Ceiling(length / 7.0f);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int DecodedPayloadLength(int length)
+        {
+            return length - Math2.Ceiling(length / 8.0);
+        }
+
         /// <summary>
         ///     Encodes the data.
         /// </summary>
@@ -69,7 +82,7 @@ namespace Exomia.Network.Encoding
         /// </returns>
         internal static ushort Encode(byte* data, int length, byte* buffer, out int bufferLength)
         {
-            bufferLength = length + Math2.Ceiling(length / 7.0f);
+            bufferLength = EncodedPayloadLength(length);
             uint checksum = s_h0;
             while (length > 7)
             {
@@ -86,29 +99,26 @@ namespace Exomia.Network.Encoding
         /// <summary>
         ///     Decodes the data.
         /// </summary>
-        /// <param name="src">          [in,out] If non-null, the decode source. </param>
-        /// <param name="length">       The length. </param>
-        /// <param name="buffer">       The buffer. </param>
-        /// <param name="bufferLength"> [out] Length of the buffer. </param>
+        /// <param name="src">       [in,out] If non-null, the decode source. </param>
+        /// <param name="length">    The length. </param>
+        /// <param name="dst">       [in,out] The buffer. </param>
+        /// <param name="dstLength"> [out] Length of the destination. </param>
         /// <returns>
         ///     An ushort.
         /// </returns>
-        internal static ushort Decode(byte* src, int length, byte[] buffer, out int bufferLength)
+        internal static ushort Decode(byte* src, int length, byte* dst, out int dstLength)
         {
-            bufferLength = length - Math2.Ceiling(length / 8.0);
+            dstLength = DecodedPayloadLength(length);
             uint checksum = s_h0;
-            fixed (byte* dest = buffer)
+
+            while (length > 8)
             {
-                byte* d = dest;
-                while (length > 8)
-                {
-                    Decode(&checksum, d, src, 8);
-                    d      += 7;
-                    src    += 8;
-                    length -= 8;
-                }
-                Decode(&checksum, d, src, length);
+                Decode(&checksum, dst, src, 8);
+                dst    += 7;
+                src    += 8;
+                length -= 8;
             }
+            Decode(&checksum, dst, src, length);
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }

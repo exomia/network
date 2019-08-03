@@ -34,10 +34,11 @@ namespace Exomia.Network.UDP
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerEapBase{TServerClient}" /> class.
         /// </summary>
-        /// <param name="expectedMaxClients"> The expected maximum clients. </param>
-        /// <param name="maxPacketSize">      (Optional) Size of the maximum packet. </param>
-        protected UdpServerEapBase(ushort expectedMaxClients, ushort maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
-            : base(maxPacketSize)
+        /// <param name="expectedMaxClients">     The expected maximum clients. </param>
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        protected UdpServerEapBase(ushort expectedMaxClients,
+                                   ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+            : base(expectedMaxPayloadSize)
         {
             _receiveEventArgsPool = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients + 5));
             _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients + 5));
@@ -55,7 +56,9 @@ namespace Exomia.Network.UDP
                 {
                     receiveEventArgs           =  new SocketAsyncEventArgs();
                     receiveEventArgs.Completed += ReceiveFromAsyncCompleted;
-                    receiveEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                    receiveEventArgs.SetBuffer(
+                        new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
+                        0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
                 }
 
                 receiveEventArgs.RemoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
@@ -64,7 +67,7 @@ namespace Exomia.Network.UDP
                 {
                     if (!_listener.ReceiveFromAsync(receiveEventArgs))
                     {
-                        ReceiveFromAsyncCompleted(receiveEventArgs.AcceptSocket, receiveEventArgs);
+                        ReceiveFromAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
                     }
                 }
                 catch
@@ -85,21 +88,17 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-        private protected override unsafe SendError SendTo(EndPoint arg0,
-                                                           int      packetID,
-                                                           uint     commandID,
-                                                           uint     responseID,
-                                                           byte*    src,
-                                                           int      chunkLength,
-                                                           int      chunkOffset,
-                                                           int      length)
+        private protected override unsafe SendError SendTo(EndPoint      arg0,
+                                                           in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
             {
                 sendEventArgs           =  new SocketAsyncEventArgs();
                 sendEventArgs.Completed += SendToAsyncCompleted;
-                sendEventArgs.SetBuffer(new byte[_maxPacketSize], 0, _maxPacketSize);
+                sendEventArgs.SetBuffer(
+                    new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
+                    0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
             }
             sendEventArgs.RemoteEndPoint = arg0;
 
@@ -107,10 +106,7 @@ namespace Exomia.Network.UDP
             {
                 sendEventArgs.SetBuffer(
                     0,
-                    Serialization.Serialization.SerializeUdp(
-                        packetID, commandID, responseID,
-                        src, dst, chunkLength, chunkOffset, length,
-                        _encryptionMode, _compressionMode));
+                    Serialization.Serialization.SerializeUdp(in packetInfo, dst, _encryptionMode));
             }
 
             try
@@ -149,6 +145,8 @@ namespace Exomia.Network.UDP
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveFromAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
+            ListenAsync();
+
             if (e.SocketError != SocketError.Success)
             {
                 InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Error);
@@ -159,8 +157,6 @@ namespace Exomia.Network.UDP
                 InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Graceful);
                 return;
             }
-
-            ListenAsync();
 
             if (Serialization.Serialization.DeserializeUdp(
                 e.Buffer, e.BytesTransferred, _bigDataHandler,

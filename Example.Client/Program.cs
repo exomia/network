@@ -11,11 +11,15 @@
 #define TCP
 
 using System;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Exomia.Network;
-using Exomia.Network.DefaultPackets;
+#if TCP
 using Exomia.Network.TCP;
+#else
+using Exomia.Network.UDP;
+#endif
 
 namespace Example.Client
 {
@@ -24,52 +28,54 @@ namespace Example.Client
         private static async Task Main(string[] args)
         {
 #if TCP
-            using (TcpClientEap client = new TcpClientEap())
+            TcpClientEap client = new TcpClientEap(8096);
 #else
-            using (var client = new UdpClientEap())
+            var client = new UdpClientEap(8096);
 #endif
+            client.Disconnected += (c, r) => { Console.WriteLine(r + " | Disconnected"); };
+            client.AddCommand(
+                (in Packet packet) =>
+                {
+                    return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
+                }, 45);
+
+            client.AddDataReceivedCallback(
+                45, (client1, data) =>
+                {
+                    Console.WriteLine(data + " -- OK");
+                    return true;
+                });
+
+            Console.WriteLine(client.Connect("127.0.0.1", 3000) ? "CONNECTED" : "CONNECT FAILED");
+
+            byte[] request = Encoding.UTF8.GetBytes(string.Join(" ", Enumerable.Range(1, 10_000)));
+            Console.WriteLine(request.Length);
+            for (int i = 0; i < 10; i++)
             {
-                client.Disconnected += (c, r) => { Console.WriteLine(r + " | Disconnected"); };
-                client.AddCommand(
-                    (in Packet packet) =>
+                //Response<PingPacket> res = await client.SendRPing();
+                //if (res)
+                //{
+                //    Console.WriteLine(
+                //        i +
+                //        "ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.Timestamp) / 2)
+                //                                   .TotalMilliseconds);
+                //}
+                //else { Console.WriteLine("error receiving response"); }
+
+                Response<string> res2 = await client.SendR(
+                    45, request, 0, request.Length, (in Packet packet) =>
                     {
                         return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
-                    }, 45);
-
-                client.AddDataReceivedCallback(
-                    45, (client1, data) =>
-                    {
-                        Console.WriteLine(data + " -- OK");
-                        return true;
                     });
 
-                Console.WriteLine(client.Connect("127.0.0.1", 3000) ? "CONNECTED" : "CONNECT FAILED");
-                
-                byte[] request = Encoding.UTF8.GetBytes("get time");
-                for (int i = 0; i < 10; i++)
-                {
-                    Response<PingPacket> res = await client.SendRPing();
-                    if (res)
-                    {
-                        Console.WriteLine(
-                            i +
-                            "ping received " + TimeSpan.FromTicks((DateTime.Now.Ticks - res.Result.Timestamp) / 2)
-                                                       .TotalMilliseconds);
-                    }
-                    else { Console.WriteLine("error receiving response"); }
-                    
-                    Response<string> res2 = await client.SendR(
-                        45, request, 0, request.Length, (in Packet packet) =>
-                        {
-                            return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
-                        });
-
-                    Console.WriteLine(res2 ? res2.Result : "error receiving response");
-                }
-
-                Console.WriteLine("press any key to exit...");
+                Console.WriteLine(res2 ? res2.Result : "error receiving response");
                 Console.ReadKey();
             }
+
+            Console.WriteLine("press any key to exit...");
+            Console.ReadKey();
+
+            client.Dispose();
         }
     }
 }

@@ -71,6 +71,10 @@ namespace Exomia.Network.Buffers
         internal static byte[] Rent(int size)
         {
             int bucketIndex = SelectBucketIndex(size);
+            if (bucketIndex >= s_buffers.Length)
+            {
+                return new byte[size];
+            }
 
             byte[] buffer    = null;
             bool   lockTaken = false;
@@ -89,13 +93,12 @@ namespace Exomia.Network.Buffers
                     buffer                        = s_buffers[bucketIndex][index];
                     s_buffers[bucketIndex][index] = null;
                 }
+                return buffer ?? new byte[s_bufferLength[bucketIndex]];
             }
             finally
             {
                 if (lockTaken) { s_lock.Exit(false); }
             }
-
-            return buffer ?? new byte[s_bufferLength[bucketIndex]];
         }
 
         /// <summary>
@@ -109,9 +112,9 @@ namespace Exomia.Network.Buffers
         internal static void Return(byte[] array)
         {
             int bucketIndex = SelectBucketIndex(array.Length);
-            if (array.Length != s_bufferLength[bucketIndex])
+            if (bucketIndex >= s_bufferLength.Length || array.Length != s_bufferLength[bucketIndex])
             {
-                throw new ArgumentException($"{nameof(array)} ({array.Length} != {s_bufferLength[bucketIndex]})");
+                return;
             }
 
             bool lockTaken = false;

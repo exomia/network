@@ -31,30 +31,22 @@ namespace Exomia.Network.UDP
         ///     Initializes a new instance of the <see cref="UdpServerApmBase{TServerClien}" /> class.
         /// </summary>
         /// <param name="expectedMaxClients"> The expected maximum clients. </param>
-        /// <param name="maxPacketSize">      (Optional) Size of the maximum packet. </param>
-        protected UdpServerApmBase(ushort expectedMaxClients, ushort maxPacketSize = Constants.UDP_PACKET_SIZE_MAX)
-            : base(maxPacketSize)
+        /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
+        protected UdpServerApmBase(ushort expectedMaxClients,
+                                   ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+            : base(expectedMaxPayloadSize)
         {
             _serverClientStateObjectPool = new ObjectPool<ServerClientStateObject>(expectedMaxClients);
         }
 
-        private protected override unsafe SendError SendTo(EndPoint arg0,
-                                                           int      packetID,
-                                                           uint     commandID,
-                                                           uint     responseID,
-                                                           byte*    src,
-                                                           int      chunkLength,
-                                                           int      chunkOffset,
-                                                           int      length)
+        private protected override unsafe SendError SendTo(EndPoint      arg0,
+                                                           in PacketInfo packetInfo)
         {
             int    size;
-            byte[] buffer = ByteArrayPool.Rent(Constants.UDP_HEADER_OFFSET + length);
+            byte[] buffer = ByteArrayPool.Rent(Constants.UDP_HEADER_OFFSET + packetInfo.ChunkLength);
             fixed (byte* dst = buffer)
             {
-                size = Serialization.Serialization.SerializeUdp(
-                    packetID, commandID, responseID,
-                    src, dst, chunkLength, chunkOffset, length,
-                    _encryptionMode, _compressionMode);
+                size = Serialization.Serialization.SerializeUdp(in packetInfo, dst, _encryptionMode);
             }
 
             try
@@ -90,7 +82,8 @@ namespace Exomia.Network.UDP
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
                 ServerClientStateObject state = _serverClientStateObjectPool.Rent()
-                                             ?? new ServerClientStateObject(new byte[_maxPacketSize]);
+                                             ?? new ServerClientStateObject(
+                                                    new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET]);
                 state.EndPoint = new IPEndPoint(IPAddress.Any, 0);
                 try
                 {

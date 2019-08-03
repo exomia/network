@@ -17,120 +17,79 @@ using K4os.Compression.LZ4;
 
 namespace Exomia.Network.Serialization
 {
+    /// 8bit
+    /// | IS_CHUNKED BIT | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
+    /// | 7              | 6            | 5  4  3         | 2  1  0      |
+    /// | VR: 0/1        | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
+    /// -----------------------------------------------------------------------------------------------------------------------
+    /// | 0              | 0            | 0  0  0         | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
+    /// | 0              | 0            | 1  1  1         | 0  0  0      | COMPRESSED_MODE_MASK 0b00111000
+    /// | 0              | 1            | 0  0  0         | 0  0  0      | RESPONSE_BIT_MASK    0b01000000
+    /// | 1              | 0            | 0  0  0         | 0  0  0      | IS_CHUNKED_BIT_MASK  0b10000000
+    /// 32bit
+    /// | COMMANDID 31-16 (16)bit                          | DATA LENGTH 15-0 (16)bit                        |
+    /// | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
+    /// | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE_RANGE
+    /// --------------------------------------------------------------------------------------------------------------------------------
+    /// |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |DATA_LENGTH_MASK 0xFFFF
+    /// |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |COMMANDID_MASK 0xFFFF0000
+    /// 16bit   -    CHECKSUM
     /// <content>
     ///     A TCP serialization helper class.
     /// </content>
-    /// <remarks>
-    ///     8bit
-    ///     | IS_CHUNKED BIT | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
-    ///     | 7              | 6            | 5  4  3         | 2  1  0      |
-    ///     | VR: 0/1        | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
-    ///     -----------------------------------------------------------------------------------------------------------------------
-    ///     | 0              | 0            | 0  0  0         | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
-    ///     | 0              | 0            | 1  1  1         | 0  0  0      | COMPRESSED_MODE_MASK 0b00111000
-    ///     | 0              | 1            | 0  0  0         | 0  0  0      | RESPONSE_BIT_MASK    0b01000000
-    ///     | 1              | 0            | 0  0  0         | 0  0  0      | IS_CHUNKED_BIT_MASK  0b10000000
-    ///     32bit
-    ///     | COMMANDID 31-16 (16)bit                          | DATA LENGTH 15-0 (16)bit                        |
-    ///     | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
-    ///     | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE
-    ///     RANGE
-    ///     --------------------------------------------------------------------------------------------------------------------------------
-    ///     |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1 |
-    ///     DATA_LENGTH_MASK 0xFFFF
-    ///     |  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  1  |  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 |
-    ///     COMMANDID_MASK 0xFFFF0000
-    ///     16bit   -    CHECKSUM
-    /// </remarks>
     static unsafe partial class Serialization
     {
         /// <summary>
         ///     Serialize TCP.
         /// </summary>
-        /// <param name="packetId">        Identifier for the packet. </param>
-        /// <param name="commandID">       Identifier for the command. </param>
-        /// <param name="responseID">      Identifier for the response. </param>
-        /// <param name="src">             [in,out] If non-null, source for the. </param>
+        /// <param name="packetInfo">      Identifier for the packet. </param>
         /// <param name="dst">             [in,out] If non-null, destination for the. </param>
-        /// <param name="chunkLength">     Length of the chunk. </param>
-        /// <param name="chunkOffset">     The chunk offset. </param>
-        /// <param name="length">          The length. </param>
         /// <param name="encryptionMode">  The encryption mode. </param>
-        /// <param name="compressionMode"> The compression mode. </param>
+        /// <returns>
+        ///     An int.
+        /// </returns>
         /// <exception cref="ArgumentOutOfRangeException">
         ///     Thrown when one or more arguments are outside
         ///     the required range.
         /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static int SerializeTcp(int             packetId,
-                                         uint            commandID,
-                                         uint            responseID,
-                                         byte*           src,
-                                         byte*           dst,
-                                         int             chunkLength,
-                                         int             chunkOffset,
-                                         int             length,
-                                         EncryptionMode  encryptionMode,
-                                         CompressionMode compressionMode)
+        internal static int SerializeTcp(in PacketInfo  packetInfo,
+                                         byte*          dst,
+                                         EncryptionMode encryptionMode)
         {
             *dst = (byte)encryptionMode;
 
             int offset = 0;
-            if (chunkLength != length)
+            if (packetInfo.ResponseID != 0)
             {
-                *dst                                         |= Constants.IS_CHUNKED_1_BIT;
-                *(int*)(dst + Constants.TCP_HEADER_SIZE)     =  packetId;
-                *(int*)(dst + Constants.TCP_HEADER_SIZE + 4) =  chunkOffset;
-                *(int*)(dst + Constants.TCP_HEADER_SIZE + 8) =  length;
-                offset                                       =  12;
+                *dst                                      |= Constants.RESPONSE_1_BIT;
+                *(uint*)(dst + Constants.TCP_HEADER_SIZE) =  packetInfo.ResponseID;
+                offset                                    =  4;
             }
 
-            if (responseID != 0)
+            if (packetInfo.CompressionMode != CompressionMode.None)
             {
-                *dst                                               |= Constants.RESPONSE_1_BIT;
-                *(uint*)(dst + Constants.TCP_HEADER_SIZE + offset) =  responseID;
-                offset                                             += 4;
+                *dst                                              |= (byte)packetInfo.CompressionMode;
+                *(int*)(dst + Constants.TCP_HEADER_SIZE + offset) =  packetInfo.Length;
+                offset                                            += 4;
             }
 
-            int    l;
-            ushort checksum;
-
-            if (chunkLength >= Constants.LENGTH_THRESHOLD && compressionMode != CompressionMode.None)
+            if (packetInfo.IsChunked)
             {
-                byte[] buffer = ByteArrayPool.Rent(chunkLength);
-                fixed (byte* bPtr = buffer)
-                {
-                    int s;
-                    switch (compressionMode)
-                    {
-                        case CompressionMode.Lz4:
-                            s = LZ4Codec.Encode(src, chunkLength, bPtr, chunkLength);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(compressionMode), compressionMode, "Not supported!");
-                    }
-                    if (s > 0 && s < chunkLength)
-                    {
-                        checksum = PayloadEncoding.Encode(bPtr, s, dst + Constants.TCP_HEADER_SIZE + offset + 4, out l);
-                        ByteArrayPool.Return(buffer);
-
-                        *dst |= (byte)compressionMode;
-                        *(uint*)(dst + 1) =
-                            ((uint)(s + offset + 5) & Constants.DATA_LENGTH_MASK) |
-                            (commandID << Constants.COMMAND_ID_SHIFT);
-                        *(ushort*)(dst + 5)                                       = checksum;
-                        *(int*)(dst + Constants.TCP_HEADER_SIZE + offset)         = chunkLength;
-                        *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + 4 + l) = Constants.ZERO_BYTE;
-                        return Constants.TCP_HEADER_SIZE + offset + s + 5;
-                    }
-                    ByteArrayPool.Return(buffer);
-                }
+                *dst                                                  |= Constants.IS_CHUNKED_1_BIT;
+                *(int*)(dst + Constants.TCP_HEADER_SIZE + offset)     =  packetInfo.PacketID;
+                *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + 4) =  packetInfo.ChunkOffset;
+                *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + 8) =  packetInfo.CompressedLength;
+                offset                                                += 12;
             }
 
-            checksum = PayloadEncoding.Encode(src, chunkLength, dst + Constants.TCP_HEADER_SIZE + offset, out l);
+            ushort checksum = PayloadEncoding.Encode(
+                packetInfo.Src + packetInfo.ChunkOffset, packetInfo.ChunkLength,
+                dst + Constants.TCP_HEADER_SIZE + offset, out int l);
+
             *(uint*)(dst + 1) =
-                ((uint)(l + offset + 1) & Constants.DATA_LENGTH_MASK) | (commandID << Constants.COMMAND_ID_SHIFT);
+                ((uint)(l + offset + 1) & Constants.DATA_LENGTH_MASK) |
+                (packetInfo.CommandID << Constants.COMMAND_ID_SHIFT);
             *(ushort*)(dst + 5)                                   = checksum;
             *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
 
@@ -164,72 +123,84 @@ namespace Exomia.Network.Serialization
                         }
 
                         responseID = 0;
-                        int packetId    = 0;
-                        int chunkOffset = 0;
-                        int length      = 0;
-                        int offset      = 0;
-                        if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
-                        {
-                            packetId    = *(int*)(ptr + offset);
-                            chunkOffset = *(int*)(ptr + offset + 4);
-                            length      = *(int*)(ptr + offset + 8);
-
-                            offset += 12;
-                        }
-
+                        int offset = 0;
                         if ((packetHeader & Constants.RESPONSE_BIT_MASK) != 0)
                         {
-                            responseID =  *(uint*)(ptr + offset);
-                            offset     += 4;
+                            responseID = *(uint*)(ptr + offset);
+                            offset     = 4;
                         }
 
+                        int l = 0;
                         CompressionMode compressionMode =
                             (CompressionMode)(packetHeader & Constants.COMPRESSED_MODE_MASK);
                         if (compressionMode != CompressionMode.None)
                         {
+                            l      =  *(int*)(ptr + offset);
                             offset += 4;
                         }
 
-                        data = ByteArrayPool.Rent(dataLength);
-                        if (PayloadEncoding.Decode(
-                                ptr + offset, dataLength - offset - 1, data, out dataLength) == checksum)
+                        int packetId    = 0;
+                        int chunkOffset = 0;
+                        int cl          = 0;
+                        if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
                         {
-                            switch (compressionMode)
-                            {
-                                case CompressionMode.None:
-                                    break;
-                                case CompressionMode.Lz4:
-                                    int    l      = *(int*)((ptr + offset) - 4);
-                                    byte[] buffer = ByteArrayPool.Rent(l);
-                                    int    s      = LZ4Codec.Decode(data, 0, dataLength, buffer, 0, l);
-                                    if (s != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                            packetId    = *(int*)(ptr + offset);
+                            chunkOffset = *(int*)(ptr + offset + 4);
+                            cl          = *(int*)(ptr + offset + 8);
 
-                                    ByteArrayPool.Return(data);
-                                    data       = buffer;
-                                    dataLength = l;
-                                    break;
-                                default:
-                                    throw new ArgumentOutOfRangeException(
-                                        nameof(CompressionMode), compressionMode, "Not supported!");
-                            }
-
-                            if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
-                            {
-                                fixed (byte* dst = data)
-                                {
-                                    data = bigDataHandler.Receive(packetId, dst, dataLength, chunkOffset, length);
-                                }
-                                if (data != null)
-                                {
-                                    dataLength = data.Length;
-                                    return true;
-                                }
-                                return false;
-                            }
-
-                            return true;
+                            offset += 12;
                         }
-                        return false;
+
+                        fixed (byte* dst = data = ByteArrayPool.Rent(dataLength))
+                        {
+                            if (PayloadEncoding.Decode(
+                                    ptr + offset, dataLength - offset - 1, dst, out dataLength) == checksum)
+                            {
+                                if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
+                                {
+                                    data       = bigDataHandler.Receive(packetId, dst, dataLength, chunkOffset, cl);
+                                    dataLength = cl;
+                                    if (data != null)
+                                    {
+                                        switch (compressionMode)
+                                        {
+                                            case CompressionMode.Lz4:
+                                                byte[] buffer = ByteArrayPool.Rent(l);
+                                                dataLength = LZ4Codec.Decode(data, 0, dataLength, buffer, 0, l);
+                                                if (dataLength != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                                                ByteArrayPool.Return(data);
+                                                data       = buffer;
+                                                dataLength = l;
+                                                return true;
+                                            case CompressionMode.None:
+                                                return true;
+                                            default:
+                                                throw new ArgumentOutOfRangeException(
+                                                    nameof(CompressionMode), compressionMode, "Not supported!");
+                                        }
+                                    }
+                                    return false;
+                                }
+
+                                switch (compressionMode)
+                                {
+                                    case CompressionMode.None:
+                                        return true;
+                                    case CompressionMode.Lz4:
+                                        byte[] buffer = ByteArrayPool.Rent(l);
+                                        fixed (byte* bPtr = buffer)
+                                        {
+                                            dataLength = LZ4Codec.Decode(dst, dataLength, bPtr, l);
+                                            if (dataLength != l) { throw new Exception("LZ4.Decode FAILED!"); }
+                                        }
+                                        return true;
+                                    default:
+                                        throw new ArgumentOutOfRangeException(
+                                            nameof(CompressionMode), compressionMode, "Not supported!");
+                                }
+                            }
+                            return false;
+                        }
                     }
                 }
                 bool skipped = circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
