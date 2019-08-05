@@ -136,9 +136,9 @@ namespace Exomia.Network.UDP
             ClientStateObject state = (ClientStateObject)iar.AsyncState;
             if (Serialization.Serialization.DeserializeUdp(
                 state.Buffer, bytesTransferred, _bigDataHandler,
-                out uint commandID, out uint responseID, out byte[] data, out int dataLength))
+                out DeserializePacketInfo deserializePacketInfo))
             {
-                DeserializeData(commandID, data, 0, dataLength, responseID);
+                DeserializeData(in deserializePacketInfo);
             }
             _clientStateObjectPool.Return(state);
         }
