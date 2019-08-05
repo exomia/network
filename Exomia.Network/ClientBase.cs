@@ -67,6 +67,15 @@ namespace Exomia.Network
         public event DisconnectedHandler Disconnected;
 
         /// <summary>
+        ///     Occurs when data from a client is received.
+        /// </summary>
+        public event CommandDataReceivedHandler DataReceived
+        {
+            add { _dataReceived.Add(value); }
+            remove { _dataReceived.Remove(value); }
+        }
+
+        /// <summary>
         ///     called than a ping is received.
         /// </summary>
         public event Action<PingPacket> Ping;
@@ -120,6 +129,11 @@ namespace Exomia.Network
         ///     The listener count.
         /// </summary>
         private readonly byte _listenerCount;
+
+        /// <summary>
+        ///     The client data received event handler.
+        /// </summary>
+        private readonly Event<CommandDataReceivedHandler> _dataReceived;
 
         /// <summary>
         ///     The data received callbacks lock.
@@ -191,6 +205,8 @@ namespace Exomia.Network
 
             _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
+
+            _dataReceived = new Event<CommandDataReceivedHandler>();
 
             _responseID = 1;
 
@@ -393,7 +409,14 @@ namespace Exomia.Network
                                     object res = cee._deserialize(in packet);
                                     ByteArrayPool.Return(packet.Buffer);
 
-                                    if (res != null) { cee.Raise(this, res); }
+                                    if (res != null)
+                                    {
+                                        for (int i = _dataReceived.Count - 1; i >= 0; --i)
+                                        {
+                                            _dataReceived[i].Invoke(this, commandID, res);
+                                        }
+                                        cee.Raise(this, res);
+                                    }
                                 });
                             return;
                         }
