@@ -284,8 +284,11 @@ namespace Exomia.Network
                                         {
                                             for (int i = _clientDataReceived.Count - 1; i >= 0; --i)
                                             {
-                                                _clientDataReceived[i]
-                                                    .Invoke(this, sClient, commandID, res, responseID);
+                                                if (!_clientDataReceived[i]
+                                                    .Invoke(this, sClient, commandID, res, responseID))
+                                                {
+                                                    _clientDataReceived.Remove(i);
+                                                }
                                             }
                                             scee.Raise(this, sClient, res, responseID);
                                         }
@@ -310,8 +313,7 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="serverClient"> [out] out new ServerClient. </param>
         /// <returns>
-        ///     <c>true</c> if the new ServerClient should be added to the clients list; <c>false</c>
-        ///     otherwise.
+        ///     <c>true</c> if the new ServerClient should be added to the clients list; <c>false</c> otherwise.
         /// </returns>
         protected abstract bool CreateServerClient(out TServerClient serverClient);
 
@@ -322,7 +324,7 @@ namespace Exomia.Network
         /// <param name="reason"> DisconnectReason. </param>
         private protected void InvokeClientDisconnect(T arg0, DisconnectReason reason)
         {
-            if (_clients.TryGetValue(arg0, out TServerClient client))
+            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient client))
             {
                 InvokeClientDisconnect(client, reason);
             }
@@ -480,18 +482,9 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        /// <exception cref="Exception">
-        ///     Thrown when an exception error condition
-        ///     occurs.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
+        /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
         public void AddDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
@@ -525,14 +518,8 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
         public void RemoveDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
@@ -662,6 +649,15 @@ namespace Exomia.Network
         /// <inheritdoc />
         public SendError SendTo(TServerClient client,
                                 uint          commandID,
+                                byte[]        data,
+                                uint          responseID)
+        {
+            return SendTo(client.Arg0, commandID, data, 0, data.Length, responseID);
+        }
+
+        /// <inheritdoc />
+        public SendError SendTo(TServerClient client,
+                                uint          commandID,
                                 ISerializable serializable,
                                 uint          responseID)
         {
@@ -702,6 +698,12 @@ namespace Exomia.Network
                     SendTo(arg0, commandID, data, offset, length, 0);
                 }
             }
+        }
+
+        /// <inheritdoc />
+        public void SendToAll(uint commandID, byte[] data)
+        {
+            SendToAll(commandID, data, 0, data.Length);
         }
 
         /// <inheritdoc />

@@ -37,6 +37,18 @@ namespace Exomia.Network
         /// <summary>
         ///     Sends data to the client.
         /// </summary>
+        /// <param name="client">     The client. </param>
+        /// <param name="commandID">  Identifier for the command. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
+        /// <returns>
+        ///     A SendError.
+        /// </returns>
+        SendError SendTo(TServerClient client, uint commandID, byte[] data, uint responseID);
+
+        /// <summary>
+        ///     Sends data to the client.
+        /// </summary>
         /// <param name="client">       The client. </param>
         /// <param name="commandID">    Identifier for the command. </param>
         /// <param name="serializable"> The serializable. </param>
@@ -67,6 +79,13 @@ namespace Exomia.Network
         /// <param name="offset">    The offset. </param>
         /// <param name="length">    The length. </param>
         void SendToAll(uint commandID, byte[] data, int offset, int length);
+
+        /// <summary>
+        ///     Sends data to all clients.
+        /// </summary>
+        /// <param name="commandID"> Identifier for the command. </param>
+        /// <param name="data">      The data. </param>
+        void SendToAll(uint commandID, byte[] data);
 
         /// <summary>
         ///     Sends data to all clients.

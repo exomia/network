@@ -4,7 +4,7 @@
     <Authors>exomia</Authors>
     <Description>tcp / udp client and server</Description>
 	<Copyright>Copyright © $([System.DateTime]::Now.Year) exomia</Copyright>
-    <Version>1.6.2.0</Version>
+    <Version>1.6.3.0</Version>
     <PackageLicenseUrl>https://raw.githubusercontent.com/exomia/network/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/exomia/network</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
