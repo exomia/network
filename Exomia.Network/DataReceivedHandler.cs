@@ -19,8 +19,8 @@ namespace Exomia.Network
     /// <returns>
     ///     A bool.
     /// </returns>
-    public delegate bool CommandDataReceivedHandler(IClient client,uint commandID, object data);
-    
+    public delegate bool CommandDataReceivedHandler(IClient client, uint commandID, object data);
+
     /// <summary>
     ///     Called than a client received data from the server.
     /// </summary>

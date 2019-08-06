@@ -190,11 +190,15 @@ namespace Exomia.Network
         /// <summary>
         ///     Gets the maximum size of the payload.
         /// </summary>
+        /// <value>
+        ///     The size of the maximum payload.
+        /// </value>
         private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="ClientBase" /> class.
         /// </summary>
+        /// <param name="listenerCount"> (Optional) The listener count. </param>
         private protected ClientBase(byte listenerCount = 1)
         {
             _listenerCount         = listenerCount;
@@ -413,7 +417,10 @@ namespace Exomia.Network
                                     {
                                         for (int i = _dataReceived.Count - 1; i >= 0; --i)
                                         {
-                                            _dataReceived[i].Invoke(this, commandID, res);
+                                            if (!_dataReceived[i].Invoke(this, commandID, res))
+                                            {
+                                                _dataReceived.Remove(i);
+                                            }
                                         }
                                         cee.Raise(this, res);
                                     }
@@ -433,14 +440,8 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="deserialize"> The deserialize handler. </param>
         /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
             if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
@@ -479,10 +480,7 @@ namespace Exomia.Network
         /// <returns>
         ///     True if at least one command is removed, false otherwise.
         /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         public bool RemoveCommands(params uint[] commandIDs)
         {
             bool removed   = false;
@@ -512,18 +510,9 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  The callback. </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        /// <exception cref="Exception">
-        ///     Thrown when an exception error condition
-        ///     occurs.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
+        /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
         public void AddDataReceivedCallback(uint commandID, DataReceivedHandler callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
@@ -557,14 +546,8 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  The callback. </param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
         public void RemoveDataReceivedCallback(uint commandID, DataReceivedHandler callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
@@ -605,6 +588,7 @@ namespace Exomia.Network
         /// <returns>
         ///     A SendError.
         /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         private unsafe SendError BeginSendData(uint   commandID,
                                                byte[] data,
                                                int    offset,
@@ -682,6 +666,19 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
+        public SendError Send(uint commandID, byte[] data)
+        {
+            return BeginSendData(commandID, data, 0, data.Length, 0);
+        }
+
+        /// <inheritdoc />
+        public Task<Response<TResult>> SendR<TResult>(uint commandID, byte[] data)
+            where TResult : unmanaged
+        {
+            return SendR(commandID, data, 0, data.Length, DeserializeResponse<TResult>, s_defaultTimeout);
+        }
+
+        /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint commandID, byte[] data, int offset, int length)
             where TResult : unmanaged
         {
@@ -699,6 +696,14 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+                                                      byte[]                            data,
+                                                      DeserializePacketHandler<TResult> deserialize)
+        {
+            return SendR(commandID, data, 0, data.Length, deserialize, s_defaultTimeout);
+        }
+
+        /// <inheritdoc />
         public Task<Response<TResult>> SendR<TResult>(uint     commandID,
                                                       byte[]   data,
                                                       int      offset,
@@ -707,6 +712,24 @@ namespace Exomia.Network
             where TResult : unmanaged
         {
             return SendR(commandID, data, offset, length, DeserializeResponse<TResult>, timeout);
+        }
+
+        /// <inheritdoc />
+        public Task<Response<TResult>> SendR<TResult>(uint     commandID,
+                                                      byte[]   data,
+                                                      TimeSpan timeout)
+            where TResult : unmanaged
+        {
+            return SendR(commandID, data, 0, data.Length, DeserializeResponse<TResult>, timeout);
+        }
+
+        /// <inheritdoc />
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+                                                      byte[]                            data,
+                                                      DeserializePacketHandler<TResult> deserialize,
+                                                      TimeSpan                          timeout)
+        {
+            return SendR(commandID, data, 0, data.Length, deserialize, timeout);
         }
 
         /// <inheritdoc />
