@@ -586,7 +586,7 @@ namespace Exomia.Network
                     switch (_compressionMode)
                     {
                         case CompressionMode.Lz4:
-                            s = LZ4Codec.Encode(data, 0, length, buffer, 0, buffer.Length);
+                            s = LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length);
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(
@@ -597,6 +597,7 @@ namespace Exomia.Network
                         packetInfo.CompressedLength = s;
                         packetInfo.CompressionMode  = _compressionMode;
                         data                        = buffer;
+                        offset                      = 0;
                     }
                 }
 
@@ -608,7 +609,6 @@ namespace Exomia.Network
                         packetInfo.PacketID    = 0;
                         packetInfo.ChunkOffset = 0;
                         packetInfo.ChunkLength = packetInfo.CompressedLength;
-                        packetInfo.Src         = src + offset;
                         packetInfo.IsChunked   = false;
                         return SendTo(arg0, in packetInfo);
                     }

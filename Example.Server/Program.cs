@@ -8,16 +8,16 @@
 
 #endregion
 
-#define TCP9
+#define TCP
 
+using System;
+using System.Text;
+using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
 #else
 using Exomia.Network.UDP;
 #endif
-using System;
-using System.Text;
-using Exomia.Network;
 
 namespace Example.Server
 {
@@ -38,8 +38,24 @@ namespace Example.Server
                 server.AddCommand(
                     (in Packet packet) =>
                     {
+                        Console.WriteLine(
+                            "{0} >= {1}  ==  {2}", packet.Buffer.Length, packet.Length,
+                            packet.Buffer.Length >= packet.Length);
+                        return packet.Length;
+                    }, 1);
+                server.AddDataReceivedCallback(
+                    1, (server1, client, data, responseid) =>
+                    {
+                        int l = (int)data;
+                        server1.SendTo(client, 1, new byte[l], 0, l, responseid);
+                        return true;
+                    });
+                server.AddCommand(
+                    (in Packet packet) =>
+                    {
                         return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
                     }, 45);
+
                 server.AddDataReceivedCallback(
                     45, (server1, client, data, responseid) =>
                     {

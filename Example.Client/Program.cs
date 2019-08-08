@@ -8,13 +8,8 @@
 
 #endregion
 
-#define TCP9
+#define TCP
 
-#if TCP
-using Exomia.Network.TCP;
-#else
-using Exomia.Network.UDP;
-#endif
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -22,6 +17,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network;
+#if TCP
+using Exomia.Network.TCP;
+#else
+using Exomia.Network.UDP;
+#endif
 
 namespace Example.Client
 {
@@ -38,6 +38,15 @@ namespace Example.Client
             client.AddCommand(
                 (in Packet packet) =>
                 {
+                    Console.WriteLine(
+                        "{0} >= {1}  ==  {2}", packet.Buffer.Length, packet.Length,
+                        packet.Buffer.Length >= packet.Length);
+                    return null;
+                }, 1);
+
+            client.AddCommand(
+                (in Packet packet) =>
+                {
                     return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
                 }, 45);
 
@@ -50,6 +59,11 @@ namespace Example.Client
             Thread.Sleep(100);
             Console.WriteLine(client.Connect("127.0.0.1", 3000) ? "CONNECTED" : "CONNECT FAILED");
 
+            for (int n = 1; n <= 8; n++)
+            {
+                byte[] b = new byte[4096 * n];
+                client.Send(1, b, 0, b.Length);
+            }
             byte[] request = Encoding.UTF8.GetBytes(string.Join(" ", Enumerable.Range(1, 1_000)));
             Console.WriteLine(request.Length);
             for (int i = 0; i < 10; i++)
@@ -72,8 +86,7 @@ namespace Example.Client
 
                 sw.Stop();
                 Console.WriteLine(
-                    (res2 ? res2.Result : "error receiving response") + " - " + sw.ElapsedMilliseconds + "ms");
-                Console.ReadKey();
+                    (res2 ? res2.Result : "error receiving response") + " - " + (sw.ElapsedMilliseconds / 2) + "ms");
             }
 
             Console.WriteLine("press any key to exit...");

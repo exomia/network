@@ -12,7 +12,6 @@ using System;
 using System.Runtime.CompilerServices;
 using Exomia.Network.Buffers;
 using Exomia.Network.Encoding;
-using Exomia.Network.Native;
 using K4os.Compression.LZ4;
 
 namespace Exomia.Network.Serialization
@@ -96,134 +95,106 @@ namespace Exomia.Network.Serialization
             return Constants.TCP_HEADER_SIZE + offset + l + 1;
         }
 
-        internal static bool DeserializeTcp(CircularBuffer            circularBuffer,
-                                            byte[]                    bufferWrite,
-                                            byte[]                    bufferRead,
-                                            int                       bytesTransferred,
-                                            BigDataHandler            bigDataHandler,
-                                            out DeserializePacketInfo deserializePacketInfo)
+        /// <summary>
+        ///     Deserialize TCP.
+        /// </summary>
+        /// <param name="packetHeader">   The packet header. </param>
+        /// <param name="checksum">       The checksum. </param>
+        /// <param name="source">         Source for the. </param>
+        /// <param name="bigDataHandler"> The big data handler. </param>
+        /// <param name="payload">        [out] The payload. </param>
+        /// <param name="length">         [in,out] The length. </param>
+        /// <param name="responseID">     [out] Identifier for the response. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
+        /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
+        internal static bool DeserializeTcp(byte           packetHeader,
+                                            ushort         checksum,
+                                            byte[]         source,
+                                            BigDataHandler bigDataHandler,
+                                            out byte[]     payload,
+                                            ref int        length,
+                                            out uint       responseID)
         {
-            int size = circularBuffer.Write(bufferWrite, 0, bytesTransferred);
-            while (circularBuffer.PeekHeader(
-                       0, out byte packetHeader, out deserializePacketInfo.CommandID, out deserializePacketInfo.Length,
-                       out ushort checksum)
-                && deserializePacketInfo.Length <= circularBuffer.Count - Constants.TCP_HEADER_SIZE)
+            fixed (byte* ptr = source)
             {
-                if (circularBuffer.PeekByte(
-                        (Constants.TCP_HEADER_SIZE + deserializePacketInfo.Length) - 1, out byte b) &&
-                    b == Constants.ZERO_BYTE)
+                responseID = 0;
+                int offset = 0;
+                if ((packetHeader & Constants.RESPONSE_BIT_MASK) != 0)
                 {
-                    fixed (byte* ptr = bufferRead)
+                    responseID = *(uint*)(ptr + offset);
+                    offset     = 4;
+                }
+
+                int l = 0;
+                CompressionMode compressionMode =
+                    (CompressionMode)(packetHeader & Constants.COMPRESSED_MODE_MASK);
+                if (compressionMode != CompressionMode.None)
+                {
+                    l      =  *(int*)(ptr + offset);
+                    offset += 4;
+                }
+
+                int packetId    = 0;
+                int chunkOffset = 0;
+                int cl          = 0;
+                if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
+                {
+                    packetId    = *(int*)(ptr + offset);
+                    chunkOffset = *(int*)(ptr + offset + 4);
+                    cl          = *(int*)(ptr + offset + 8);
+
+                    offset += 12;
+                }
+
+                fixed (byte* dst = payload = ByteArrayPool.Rent(length))
+                {
+                    if (PayloadEncoding.Decode(
+                            ptr + offset, length - offset - 1, dst,
+                            out length) != checksum)
                     {
-                        circularBuffer.Read(ptr, deserializePacketInfo.Length, Constants.TCP_HEADER_SIZE);
-                        if (size < bytesTransferred)
+                        return false;
+                    }
+
+                    if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
+                    {
+                        byte[] buffer = bigDataHandler.Receive(
+                            packetId, dst, length, chunkOffset, cl);
+                        if (buffer == null)
                         {
-                            circularBuffer.Write(bufferWrite, size, bytesTransferred - size);
-                        }
-
-                        deserializePacketInfo.ResponseID = 0;
-                        int offset = 0;
-                        if ((packetHeader & Constants.RESPONSE_BIT_MASK) != 0)
-                        {
-                            deserializePacketInfo.ResponseID = *(uint*)(ptr + offset);
-                            offset                           = 4;
-                        }
-
-                        int l = 0;
-                        CompressionMode compressionMode =
-                            (CompressionMode)(packetHeader & Constants.COMPRESSED_MODE_MASK);
-                        if (compressionMode != CompressionMode.None)
-                        {
-                            l      =  *(int*)(ptr + offset);
-                            offset += 4;
-                        }
-
-                        int packetId    = 0;
-                        int chunkOffset = 0;
-                        int cl          = 0;
-                        if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
-                        {
-                            packetId    = *(int*)(ptr + offset);
-                            chunkOffset = *(int*)(ptr + offset + 4);
-                            cl          = *(int*)(ptr + offset + 8);
-
-                            offset += 12;
-                        }
-
-                        fixed (byte* dst =
-                            deserializePacketInfo.Data = ByteArrayPool.Rent(deserializePacketInfo.Length))
-                        {
-                            if (PayloadEncoding.Decode(
-                                    ptr + offset, deserializePacketInfo.Length - offset - 1, dst,
-                                    out deserializePacketInfo.Length) == checksum)
-                            {
-                                if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
-                                {
-                                    deserializePacketInfo.Data = bigDataHandler.Receive(
-                                        packetId, dst, deserializePacketInfo.Length, chunkOffset, cl);
-                                    deserializePacketInfo.Length = cl;
-                                    if (deserializePacketInfo.Data != null)
-                                    {
-                                        switch (compressionMode)
-                                        {
-                                            case CompressionMode.Lz4:
-                                                byte[] buffer = ByteArrayPool.Rent(l);
-                                                deserializePacketInfo.Length = LZ4Codec.Decode(
-                                                    deserializePacketInfo.Data, 0, deserializePacketInfo.Length, buffer,
-                                                    0, l);
-                                                if (deserializePacketInfo.Length != l)
-                                                {
-                                                    throw new Exception("LZ4.Decode FAILED!");
-                                                }
-                                                ByteArrayPool.Return(deserializePacketInfo.Data);
-                                                deserializePacketInfo.Data   = buffer;
-                                                deserializePacketInfo.Length = l;
-                                                return true;
-                                            case CompressionMode.None:
-                                                return true;
-                                            default:
-                                                throw new ArgumentOutOfRangeException(
-                                                    nameof(CompressionMode), compressionMode, "Not supported!");
-                                        }
-                                    }
-                                    return false;
-                                }
-
-                                switch (compressionMode)
-                                {
-                                    case CompressionMode.None:
-                                        return true;
-                                    case CompressionMode.Lz4:
-                                        byte[] buffer = ByteArrayPool.Rent(l);
-                                        fixed (byte* bPtr = buffer)
-                                        {
-                                            deserializePacketInfo.Length = LZ4Codec.Decode(
-                                                dst, deserializePacketInfo.Length, bPtr, l);
-                                            if (deserializePacketInfo.Length != l)
-                                            {
-                                                throw new Exception("LZ4.Decode FAILED!");
-                                            }
-                                        }
-                                        return true;
-                                    default:
-                                        throw new ArgumentOutOfRangeException(
-                                            nameof(CompressionMode), compressionMode, "Not supported!");
-                                }
-                            }
                             return false;
                         }
+                        payload = buffer;
+                        length  = cl;
                     }
                 }
-                bool skipped = circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
-                if (size < bytesTransferred)
+
+                switch (compressionMode)
                 {
-                    size += circularBuffer.Write(bufferWrite, size, bytesTransferred - size);
+                    case CompressionMode.None:
+                        return true;
+                    case CompressionMode.Lz4:
+                        byte[] buffer = ByteArrayPool.Rent(l);
+                        fixed (byte* bPtr = buffer)
+                        fixed (byte* dst = payload)
+                        {
+                            length =
+                                LZ4Codec.Decode(dst, length, bPtr, l);
+                        }
+                        if (length != l)
+                        {
+                            throw new Exception("LZ4.Decode FAILED!");
+                        }
+                        ByteArrayPool.Return(payload);
+                        payload = buffer;
+                        return true;
+                    default:
+                        throw new ArgumentOutOfRangeException(
+                            nameof(CompressionMode), compressionMode, "Not supported!");
                 }
-                if (!skipped && !circularBuffer.SkipUntil(0, Constants.ZERO_BYTE)) { break; }
             }
-            deserializePacketInfo.Data       = null;
-            deserializePacketInfo.ResponseID = 0;
-            return false;
         }
     }
 }

@@ -11,6 +11,7 @@
 using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Encoding;
+using Exomia.Network.Native;
 
 namespace Exomia.Network.TCP
 {
@@ -92,6 +93,78 @@ namespace Exomia.Network.TCP
             {
                 /* IGNORE */
             }
+        }
+
+        /// <summary>
+        ///     Receives.
+        /// </summary>
+        /// <param name="socket">           The socket. </param>
+        /// <param name="buffer">           The buffer. </param>
+        /// <param name="bytesTransferred"> The bytes transferred. </param>
+        /// <param name="state">            The state. </param>
+        private protected unsafe void Receive(Socket                  socket,
+                                              byte[]                  buffer,
+                                              int                     bytesTransferred,
+                                              ServerClientStateObject state)
+        {
+            DeserializePacketInfo deserializePacketInfo;
+            int                   size = state.CircularBuffer.Write(buffer, 0, bytesTransferred);
+            while (state.CircularBuffer.PeekHeader(
+                       0, out byte packetHeader, out deserializePacketInfo.CommandID,
+                       out deserializePacketInfo.Length, out ushort checksum)
+                && deserializePacketInfo.Length <= state.CircularBuffer.Count - Constants.TCP_HEADER_SIZE)
+            {
+                if (state.CircularBuffer.PeekByte(
+                        (Constants.TCP_HEADER_SIZE + deserializePacketInfo.Length) - 1, out byte b) &&
+                    b == Constants.ZERO_BYTE)
+                {
+                    fixed (byte* ptr = state.BufferRead)
+                    {
+                        state.CircularBuffer.Read(ptr, deserializePacketInfo.Length, Constants.TCP_HEADER_SIZE);
+                        if (size < bytesTransferred)
+                        {
+                            state.CircularBuffer.Write(buffer, size, bytesTransferred - size);
+                        }
+                    }
+
+                    if (Serialization.Serialization.DeserializeTcp(
+                        packetHeader, checksum, state.BufferRead, state.BigDataHandler,
+                        out deserializePacketInfo.Data, ref deserializePacketInfo.Length,
+                        out deserializePacketInfo.ResponseID))
+                    {
+                        DeserializeData(socket, in deserializePacketInfo);
+                    }
+
+                    continue;
+                }
+                bool skipped = state.CircularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
+                if (size < bytesTransferred)
+                {
+                    size += state.CircularBuffer.Write(buffer, size, bytesTransferred - size);
+                }
+                if (!skipped && !state.CircularBuffer.SkipUntil(0, Constants.ZERO_BYTE)) { break; }
+            }
+        }
+
+        /// <summary>
+        ///     A server client state object. This class cannot be inherited.
+        /// </summary>
+        private protected class ServerClientStateObject
+        {
+            /// <summary>
+            ///     The buffer read.
+            /// </summary>
+            public byte[] BufferRead;
+
+            /// <summary>
+            ///     Buffer for circular data.
+            /// </summary>
+            public CircularBuffer CircularBuffer;
+
+            /// <summary>
+            ///     The big data handler.
+            /// </summary>
+            public BigDataHandler BigDataHandler;
         }
     }
 }

@@ -10,6 +10,7 @@
 
 using System.Net.Sockets;
 using Exomia.Network.Encoding;
+using Exomia.Network.Native;
 
 namespace Exomia.Network.TCP
 {
@@ -18,6 +19,16 @@ namespace Exomia.Network.TCP
     /// </summary>
     public abstract class TcpClientBase : ClientBase
     {
+        /// <summary>
+        ///     Buffer for circular data.
+        /// </summary>
+        private protected readonly CircularBuffer _circularBuffer;
+
+        /// <summary>
+        ///     The buffer read.
+        /// </summary>
+        private protected readonly byte[] _bufferRead;
+
         /// <summary>
         ///     Size of the payload.
         /// </summary>
@@ -44,6 +55,10 @@ namespace Exomia.Network.TCP
                 ? expectedMaxPayloadSize
                 : Constants.TCP_PAYLOAD_SIZE_MAX;
             _payloadSize = (ushort)(PayloadEncoding.EncodedPayloadLength(_maxPayloadSize) + 1);
+
+            _bufferRead =
+                new byte[PayloadEncoding.EncodedPayloadLength(_payloadSize + Constants.TCP_HEADER_OFFSET)];
+            _circularBuffer = new CircularBuffer(_bufferRead.Length * 2);
         }
 
         /// <summary>
@@ -77,6 +92,53 @@ namespace Exomia.Network.TCP
             {
                 socket = null;
                 return false;
+            }
+        }
+
+        /// <summary>
+        ///     Receives.
+        /// </summary>
+        /// <param name="buffer">           The buffer. </param>
+        /// <param name="bytesTransferred"> The bytes transferred. </param>
+        private protected unsafe void Receive(byte[] buffer,
+                                              int    bytesTransferred)
+        {
+            DeserializePacketInfo deserializePacketInfo;
+            int                   size = _circularBuffer.Write(buffer, 0, bytesTransferred);
+            while (_circularBuffer.PeekHeader(
+                       0, out byte packetHeader, out deserializePacketInfo.CommandID,
+                       out deserializePacketInfo.Length, out ushort checksum)
+                && deserializePacketInfo.Length <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
+            {
+                if (_circularBuffer.PeekByte(
+                        (Constants.TCP_HEADER_SIZE + deserializePacketInfo.Length) - 1, out byte b) &&
+                    b == Constants.ZERO_BYTE)
+                {
+                    fixed (byte* ptr = _bufferRead)
+                    {
+                        _circularBuffer.Read(ptr, deserializePacketInfo.Length, Constants.TCP_HEADER_SIZE);
+                        if (size < bytesTransferred)
+                        {
+                            _circularBuffer.Write(buffer, size, bytesTransferred - size);
+                        }
+                    }
+
+                    if (Serialization.Serialization.DeserializeTcp(
+                        packetHeader, checksum, _bufferRead, _bigDataHandler,
+                        out deserializePacketInfo.Data, ref deserializePacketInfo.Length,
+                        out deserializePacketInfo.ResponseID))
+                    {
+                        DeserializeData(in deserializePacketInfo);
+                    }
+
+                    continue;
+                }
+                bool skipped = _circularBuffer.SkipUntil(Constants.TCP_HEADER_SIZE, Constants.ZERO_BYTE);
+                if (size < bytesTransferred)
+                {
+                    size += _circularBuffer.Write(buffer, size, bytesTransferred - size);
+                }
+                if (!skipped && !_circularBuffer.SkipUntil(0, Constants.ZERO_BYTE)) { break; }
             }
         }
     }
