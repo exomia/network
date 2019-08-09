@@ -324,7 +324,7 @@ namespace Exomia.Network
             {
                 if (reason != DisconnectReason.Aborted && reason != DisconnectReason.Error)
                 {
-                    Send(CommandID.DISCONNECT, new byte[1] { 255 }, 0, 1);
+                    Send(CommandID.DISCONNECT, new byte[] { 255 }, 0, 1);
                 }
                 _state = 0;
                 try
@@ -444,7 +444,7 @@ namespace Exomia.Network
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
-            if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
+            if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
 
             bool lockTaken = false;
@@ -483,6 +483,7 @@ namespace Exomia.Network
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         public bool RemoveCommands(params uint[] commandIDs)
         {
+            if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             bool removed   = false;
             bool lockTaken = false;
             try

@@ -403,17 +403,11 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="deserialize"> The deserialize handler. </param>
         /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
-        /// <exception cref="ArgumentNullException">
-        ///     Thrown when one or more required arguments
-        ///     are null.
-        /// </exception>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
-            if (commandIDs == null) { throw new ArgumentNullException(nameof(commandIDs)); }
+            if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
 
             bool lockTaken = false;
@@ -449,12 +443,10 @@ namespace Exomia.Network
         /// <returns>
         ///     True if at least one command is removed, false otherwise.
         /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         public bool RemoveCommands(params uint[] commandIDs)
         {
+            if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             bool removed   = false;
             bool lockTaken = false;
             try
