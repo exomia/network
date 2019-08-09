@@ -40,7 +40,7 @@ namespace Exomia.Network
         /// <summary>
         ///     <c>true</c> if no SendError occured; <c>false</c> otherwise.
         /// </summary>
-        /// <param name="r"> The in Response&lt;TResult&gt; to process. </param>
+        /// <param name="r"> The in <see cref="Response{TResult}" /> to process. </param>
         /// <returns>
         ///     The result of the operation.
         /// </returns>
@@ -52,7 +52,7 @@ namespace Exomia.Network
         /// <summary>
         ///     Implicit cast that converts the given in Response&lt;TResult&gt; to a TResult.
         /// </summary>
-        /// <param name="r"> The in Response&lt;TResult&gt; to process. </param>
+        /// <param name="r"> The in <see cref="Response{TResult}" /> to process. </param>
         /// <returns>
         ///     The result of the operation.
         /// </returns>
