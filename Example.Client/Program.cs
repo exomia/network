@@ -86,7 +86,7 @@ namespace Example.Client
 
                 sw.Stop();
                 Console.WriteLine(
-                    (res2 ? res2.Result : "error receiving response") + " - " + (sw.ElapsedMilliseconds / 2) + "ms");
+                    i + ": " + (res2 ? res2.Result : "error receiving response") + " - " + (sw.ElapsedMilliseconds / 2) + "ms");
             }
 
             Console.WriteLine("press any key to exit...");
