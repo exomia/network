@@ -131,6 +131,9 @@ namespace Exomia.Network.Serialization
                         {
                             switch (compressionMode)
                             {
+                                case CompressionMode.None:
+                                    deserializePacketInfo.Data = bdb;
+                                    return true;
                                 case CompressionMode.Lz4:
                                     fixed (byte* srcB = bdb)
                                     fixed (byte* dst = deserializePacketInfo.Data = ByteArrayPool.Rent(l))
@@ -142,9 +145,6 @@ namespace Exomia.Network.Serialization
                                             throw new Exception("LZ4.Decode FAILED!");
                                         }
                                     }
-                                    return true;
-                                case CompressionMode.None:
-                                    deserializePacketInfo.Data = bdb;
                                     return true;
                                 default:
                                     throw new ArgumentOutOfRangeException(

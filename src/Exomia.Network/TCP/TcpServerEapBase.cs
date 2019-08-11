@@ -102,17 +102,20 @@ namespace Exomia.Network.TCP
         /// <param name="acceptArgs"> Socket asynchronous event information. </param>
         private void ListenAsync(SocketAsyncEventArgs acceptArgs)
         {
-            acceptArgs.AcceptSocket = null;
-            try
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
-                if (!_listener.AcceptAsync(acceptArgs))
+                acceptArgs.AcceptSocket = null;
+                try
                 {
-                    AcceptAsyncCompleted(_listener, acceptArgs);
+                    if (!_listener.AcceptAsync(acceptArgs))
+                    {
+                        AcceptAsyncCompleted(_listener, acceptArgs);
+                    }
                 }
-            }
-            catch
-            {
-                /* IGNORE */
+                catch
+                {
+                    /* IGNORE */
+                }
             }
         }
 
@@ -137,23 +140,22 @@ namespace Exomia.Network.TCP
                 ListenAsync(e);
                 return;
             }
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+
+            SocketAsyncEventArgs receiveArgs = new SocketAsyncEventArgs { AcceptSocket = e.AcceptSocket };
+            receiveArgs.Completed += ReceiveAsyncCompleted;
+            receiveArgs.SetBuffer(
+                new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
+                _payloadSize + Constants.TCP_HEADER_OFFSET);
+            receiveArgs.UserToken = new ServerClientStateObject
             {
-                SocketAsyncEventArgs receiveArgs = new SocketAsyncEventArgs { AcceptSocket = e.AcceptSocket };
-                receiveArgs.Completed += ReceiveAsyncCompleted;
-                receiveArgs.SetBuffer(
-                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
-                    _payloadSize + Constants.TCP_HEADER_OFFSET);
-                receiveArgs.UserToken = new ServerClientStateObject
-                {
-                    BufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
-                    CircularBuffer = new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2)
-                };
+                BufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
+                CircularBuffer = new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
+                BigDataHandler = new BigDataHandler()
+            };
 
-                ListenAsync(e);
+            ListenAsync(e);
 
-                ReceiveAsync(receiveArgs);
-            }
+            ReceiveAsync(receiveArgs);
         }
 
         /// <summary>
@@ -190,24 +192,13 @@ namespace Exomia.Network.TCP
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
                 return;
             }
-            int bytesTransferred = e.BytesTransferred;
-            if (bytesTransferred <= 0)
+            if (e.BytesTransferred <= 0)
             {
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Graceful);
                 return;
             }
 
-            ServerClientStateObject state = (ServerClientStateObject)e.UserToken;
-
-            if (Serialization.Serialization.DeserializeTcp(
-                state.CircularBuffer, e.Buffer, state.BufferRead, bytesTransferred, _bigDataHandler,
-                out DeserializePacketInfo deserializePacketInfo))
-            {
-                ReceiveAsync(e);
-                DeserializeData(e.AcceptSocket, in deserializePacketInfo);
-                return;
-            }
-
+            Receive(e.AcceptSocket, e.Buffer, e.BytesTransferred, (ServerClientStateObject)e.UserToken);
             ReceiveAsync(e);
         }
 
@@ -223,22 +214,6 @@ namespace Exomia.Network.TCP
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
             }
             _sendEventArgsPool.Return(e);
-        }
-
-        /// <summary>
-        ///     A server client state object. This class cannot be inherited.
-        /// </summary>
-        private sealed class ServerClientStateObject
-        {
-            /// <summary>
-            ///     The buffer read.
-            /// </summary>
-            public byte[] BufferRead;
-
-            /// <summary>
-            ///     Buffer for circular data.
-            /// </summary>
-            public CircularBuffer CircularBuffer;
         }
     }
 }

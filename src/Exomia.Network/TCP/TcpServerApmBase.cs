@@ -71,13 +71,16 @@ namespace Exomia.Network.TCP
         /// </summary>
         private protected override void ListenAsync()
         {
-            try
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
-                _listener.BeginAccept(AcceptCallback, null);
-            }
-            catch
-            {
-                /* IGNORE */
+                try
+                {
+                    _listener.BeginAccept(AcceptCallback, null);
+                }
+                catch
+                {
+                    /* IGNORE */
+                }
             }
         }
 
@@ -114,13 +117,14 @@ namespace Exomia.Network.TCP
             try
             {
                 Socket socket = _listener.EndAccept(ar);
-                ServerClientStateObject state = new ServerClientStateObject
+                ServerClientStateObjectApm state = new ServerClientStateObjectApm
                 {
                     //0.2mb
                     Socket         = socket,
                     BufferWrite    = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
                     BufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
-                    CircularBuffer = new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2)
+                    CircularBuffer = new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
+                    BigDataHandler = new BigDataHandler()
                 };
 
                 ReceiveAsync(state);
@@ -142,7 +146,7 @@ namespace Exomia.Network.TCP
         ///     Receive asynchronous.
         /// </summary>
         /// <param name="state"> The state. </param>
-        private void ReceiveAsync(ServerClientStateObject state)
+        private void ReceiveAsync(ServerClientStateObjectApm state)
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
@@ -165,8 +169,8 @@ namespace Exomia.Network.TCP
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveDataCallback(IAsyncResult iar)
         {
-            ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
-            int                     bytesTransferred;
+            ServerClientStateObjectApm state = (ServerClientStateObjectApm)iar.AsyncState;
+            int                        bytesTransferred;
             try
             {
                 if ((bytesTransferred = state.Socket.EndReceive(iar)) <= 0)
@@ -191,15 +195,7 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            if (Serialization.Serialization.DeserializeTcp(
-                state.CircularBuffer, state.BufferWrite, state.BufferRead, bytesTransferred,
-                _bigDataHandler, out DeserializePacketInfo packetInfo))
-            {
-                ReceiveAsync(state);
-                DeserializeData(state.Socket, in packetInfo);
-                return;
-            }
-
+            Receive(state.Socket, state.BufferWrite, bytesTransferred, state);
             ReceiveAsync(state);
         }
 
@@ -222,27 +218,17 @@ namespace Exomia.Network.TCP
         /// <summary>
         ///     A server client state object. This class cannot be inherited.
         /// </summary>
-        private sealed class ServerClientStateObject
+        private sealed class ServerClientStateObjectApm : ServerClientStateObject
         {
-            /// <summary>
-            ///     The buffer write.
-            /// </summary>
-            public byte[] BufferWrite;
-
-            /// <summary>
-            ///     The buffer read.
-            /// </summary>
-            public byte[] BufferRead;
-
-            /// <summary>
-            ///     Buffer for circular data.
-            /// </summary>
-            public CircularBuffer CircularBuffer;
-
             /// <summary>
             ///     The socket.
             /// </summary>
             public Socket Socket;
+
+            /// <summary>
+            ///     The buffer write.
+            /// </summary>
+            public byte[] BufferWrite;
         }
     }
 }

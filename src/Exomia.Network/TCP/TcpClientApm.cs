@@ -11,8 +11,6 @@
 using System;
 using System.Net.Sockets;
 using Exomia.Network.Buffers;
-using Exomia.Network.Encoding;
-using Exomia.Network.Native;
 
 namespace Exomia.Network.TCP
 {
@@ -22,19 +20,9 @@ namespace Exomia.Network.TCP
     public sealed class TcpClientApm : TcpClientBase
     {
         /// <summary>
-        ///     Buffer for circular data.
-        /// </summary>
-        private readonly CircularBuffer _circularBuffer;
-
-        /// <summary>
         ///     The buffer write.
         /// </summary>
         private readonly byte[] _bufferWrite;
-
-        /// <summary>
-        ///     The buffer read.
-        /// </summary>
-        private readonly byte[] _bufferRead;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="TcpClientApm" /> class.
@@ -44,9 +32,7 @@ namespace Exomia.Network.TCP
             : base(expectedMaxPayloadSize)
         {
             _bufferWrite =
-                new byte[PayloadEncoding.EncodedPayloadLength(_payloadSize + Constants.TCP_HEADER_OFFSET)];
-            _bufferRead     = new byte[_bufferWrite.Length];
-            _circularBuffer = new CircularBuffer(_bufferWrite.Length * 2);
+                new byte[_bufferRead.Length];
         }
 
         /// <summary>
@@ -139,15 +125,7 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            if (Serialization.Serialization.DeserializeTcp(
-                _circularBuffer, _bufferWrite, _bufferRead, bytesTransferred, _bigDataHandler,
-                out DeserializePacketInfo deserializePacketInfo))
-            {
-                ReceiveAsync();
-                DeserializeData(in deserializePacketInfo);
-                return;
-            }
-
+            Receive(_bufferWrite, bytesTransferred);
             ReceiveAsync();
         }
 

@@ -10,7 +10,6 @@
 
 using System;
 using System.Net.Sockets;
-using Exomia.Network.Native;
 
 namespace Exomia.Network.TCP
 {
@@ -19,16 +18,6 @@ namespace Exomia.Network.TCP
     /// </summary>
     public sealed class TcpClientEap : TcpClientBase
     {
-        /// <summary>
-        ///     Buffer for circular data.
-        /// </summary>
-        private readonly CircularBuffer _circularBuffer;
-
-        /// <summary>
-        ///     The buffer read.
-        /// </summary>
-        private readonly byte[] _bufferRead;
-
         /// <summary>
         ///     Socket asynchronous event information.
         /// </summary>
@@ -46,9 +35,6 @@ namespace Exomia.Network.TCP
         public TcpClientEap(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _bufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET + 1];
-            _circularBuffer = new CircularBuffer(_bufferRead.Length * 2);
-
             _receiveEventArgs           =  new SocketAsyncEventArgs();
             _receiveEventArgs.Completed += ReceiveAsyncCompleted;
             _receiveEventArgs.SetBuffer(new byte[_bufferRead.Length], 0, _bufferRead.Length);
@@ -138,21 +124,13 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            int bytesTransferred = e.BytesTransferred;
-            if (bytesTransferred <= 0)
+            if (e.BytesTransferred <= 0)
             {
                 Disconnect(DisconnectReason.Graceful);
                 return;
             }
 
-            if (Serialization.Serialization.DeserializeTcp(
-                _circularBuffer, e.Buffer, _bufferRead, bytesTransferred, _bigDataHandler,
-                out DeserializePacketInfo deserializePacketInfo))
-            {
-                ReceiveAsync();
-                DeserializeData(in deserializePacketInfo);
-                return;
-            }
+            Receive(e.Buffer, e.BytesTransferred);
             ReceiveAsync();
         }
 

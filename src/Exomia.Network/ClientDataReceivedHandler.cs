@@ -19,6 +19,9 @@ namespace Exomia.Network
     /// <param name="commandID">  Identifier for the command. </param>
     /// <param name="data">       The data. </param>
     /// <param name="responseID"> Identifier for the response. </param>
+    /// <returns>
+    ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
+    /// </returns>
     public delegate bool ClientCommandDataReceivedHandler<TServerClient>(IServer<TServerClient> server,
                                                                          TServerClient          client,
                                                                          uint                   commandID,

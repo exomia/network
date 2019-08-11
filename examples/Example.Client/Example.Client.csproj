@@ -52,7 +52,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Exomia.Network\Exomia.Network.csproj">
+    <ProjectReference Include="..\..\src\Exomia.Network\Exomia.Network.csproj">
       <Project>{4a17dccb-d3de-48df-97a7-f46936096ca6}</Project>
       <Name>Exomia.Network</Name>
     </ProjectReference>

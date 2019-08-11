@@ -76,11 +76,11 @@ static void Main(string[] args)
 {
 	using(UdpServer server = new UdpServer(32))
 	{
-		server.ClientConnected += (client) =>
+		server.ClientConnected += (server1, client) =>
 		{
 		    Console.WriteLine("Client connected: " + (client.IPAddress));
 		};
-		server.ClientDisconnected += (client, reason) =>
+		server.ClientDisconnected += (server1, client, reason) =>
 		{
 		    Console.WriteLine(reason + " Client disconnected: " + (client.IPAddress));
 		};
@@ -169,11 +169,11 @@ static void Main(string[] args)
 {
 	using(TcpServer server = new TcpServer())
 	{
-		server.ClientConnected += (client) =>
+		server.ClientConnected += (server1, client) =>
 		{
 		    Console.WriteLine("Client connected: " + (client.IPAddress));
 		};
-		server.ClientDisconnected += (client, reason) =>
+		server.ClientDisconnected += (server1, client, reason) =>
 		{
 		    Console.WriteLine(reason + " Client disconnected: " + (client.IPAddress));
 		};

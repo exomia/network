@@ -17,7 +17,7 @@ namespace Exomia.Network
     /// <param name="commandID"> Identifier for the command. </param>
     /// <param name="data">      The data. </param>
     /// <returns>
-    ///     A bool.
+    ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
     /// </returns>
     public delegate bool CommandDataReceivedHandler(IClient client, uint commandID, object data);
 
@@ -27,7 +27,7 @@ namespace Exomia.Network
     /// <param name="client"> The client. </param>
     /// <param name="data">   The data. </param>
     /// <returns>
-    ///     A bool.
+    ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
     /// </returns>
     public delegate bool DataReceivedHandler(IClient client, object data);
 }
