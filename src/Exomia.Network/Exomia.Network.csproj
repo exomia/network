@@ -1,0 +1,55 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net471;net472;netstandard2.0;netcoreapp2.2</TargetFrameworks>
+    <Authors>exomia</Authors>
+    <Description>tcp / udp client and server</Description>
+	<Copyright>Copyright © $([System.DateTime]::Now.Year) exomia</Copyright>
+    <Version>1.6.4.0</Version>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/exomia/network/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/exomia/network</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageTags>exomia network tcp udp server client</PackageTags>
+    <RepositoryUrl>https://github.com/exomia/network</RepositoryUrl>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RepositoryType>git</RepositoryType>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <PackageOutputPath>.</PackageOutputPath> 
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DocumentationFile></DocumentationFile>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>NU1605</WarningsAsErrors>
+    <DefineConstants Condition="'$(Platform)'=='AnyCPU'">DEBUG;TRACE;x86</DefineConstants>
+    <DefineConstants Condition="'$(Platform)'!='AnyCPU'">DEBUG;TRACE;$(Platform)</DefineConstants>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>NU1605</WarningsAsErrors>
+    <DefineConstants Condition="'$(Platform)'=='AnyCPU'">TRACE;x86</DefineConstants>
+    <DefineConstants Condition="'$(Platform)'!='AnyCPU'">TRACE;$(Platform)</DefineConstants>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Platform)'=='AnyCPU'">
+    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+    <PackageId>$(MSBuildProjectName)</PackageId>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Platform)'!='AnyCPU'">
+    <AssemblyName>$(MSBuildProjectName).$(Platform)</AssemblyName>
+    <PackageId>$(MSBuildProjectName).$(Platform)</PackageId>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="K4os.Compression.LZ4" Version="1.1.11" />
+  </ItemGroup>
+</Project>
