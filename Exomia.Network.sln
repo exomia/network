@@ -3,15 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2015
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Exomia.Network", "Exomia.Network\Exomia.Network.csproj", "{4A17DCCB-D3DE-48DF-97A7-F46936096CA6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Exomia.Network", "src\Exomia.Network\Exomia.Network.csproj", "{4A17DCCB-D3DE-48DF-97A7-F46936096CA6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Exomia.Network.UnitTest", "Exomia.Network.UnitTest\Exomia.Network.UnitTest.csproj", "{C70AE613-9A81-4063-8F4A-6F09F145EE85}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Exomia.Network.UnitTest", "tests\Exomia.Network.UnitTest\Exomia.Network.UnitTest.csproj", "{C70AE613-9A81-4063-8F4A-6F09F145EE85}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Example", "Example", "{4E24C133-E6A0-4BE2-9F75-8DC1827A7361}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{4E24C133-E6A0-4BE2-9F75-8DC1827A7361}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example.Client", "Example.Client\Example.Client.csproj", "{90A9560E-16E9-4008-B061-B5827AF69880}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example.Client", "examples\Example.Client\Example.Client.csproj", "{90A9560E-16E9-4008-B061-B5827AF69880}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example.Server", "Example.Server\Example.Server.csproj", "{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example.Server", "examples\Example.Server\Example.Server.csproj", "{7E2A2465-B98E-42B8-B8AB-DE890F2406BF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{298EB9DD-C790-48B0-AF90-757B99B5FD34}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -76,6 +78,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{C70AE613-9A81-4063-8F4A-6F09F145EE85} = {298EB9DD-C790-48B0-AF90-757B99B5FD34}
 		{90A9560E-16E9-4008-B061-B5827AF69880} = {4E24C133-E6A0-4BE2-9F75-8DC1827A7361}
 		{7E2A2465-B98E-42B8-B8AB-DE890F2406BF} = {4E24C133-E6A0-4BE2-9F75-8DC1827A7361}
 	EndGlobalSection
