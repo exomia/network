@@ -164,9 +164,9 @@ namespace Exomia.Network
         ///     Identifier for the packet.
         /// </summary>
         private int _packetID;
-
+        
         /// <summary>
-        ///     Port.
+        ///     Gets the port.
         /// </summary>
         /// <value>
         ///     The port.
@@ -175,9 +175,9 @@ namespace Exomia.Network
         {
             get { return _port; }
         }
-
+        
         /// <summary>
-        ///     ServerAddress.
+        ///     Gets the server address.
         /// </summary>
         /// <value>
         ///     The server address.
