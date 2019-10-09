@@ -46,10 +46,12 @@ namespace Exomia.Network.UDP
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
-                SocketAsyncEventArgs receiveEventArgs = _receiveEventArgsPool.Rent();
+                SocketAsyncEventArgs? receiveEventArgs = _receiveEventArgsPool.Rent();
                 if (receiveEventArgs == null)
                 {
-                    receiveEventArgs           =  new SocketAsyncEventArgs();
+#pragma warning disable IDE0068 // Use recommended dispose pattern
+                    receiveEventArgs =  new SocketAsyncEventArgs();
+#pragma warning restore IDE0068 // Use recommended dispose pattern
                     receiveEventArgs.Completed += ReceiveAsyncCompleted;
                     receiveEventArgs.SetBuffer(
                         new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
@@ -57,7 +59,7 @@ namespace Exomia.Network.UDP
                 }
                 try
                 {
-                    if (!_clientSocket.ReceiveAsync(receiveEventArgs))
+                    if (!_clientSocket!.ReceiveAsync(receiveEventArgs))
                     {
                         ReceiveAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
                     }
@@ -83,7 +85,7 @@ namespace Exomia.Network.UDP
         /// <inheritdoc />
         private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
         {
-            SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
+            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
             {
                 sendEventArgs           =  new SocketAsyncEventArgs();
@@ -102,7 +104,7 @@ namespace Exomia.Network.UDP
 
             try
             {
-                if (!_clientSocket.SendAsync(sendEventArgs))
+                if (!_clientSocket!.SendAsync(sendEventArgs))
                 {
                     SendAsyncCompleted(sendEventArgs.RemoteEndPoint, sendEventArgs);
                 }

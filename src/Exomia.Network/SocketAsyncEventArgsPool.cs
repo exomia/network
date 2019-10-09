@@ -23,7 +23,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The buffer.
         /// </summary>
-        private readonly SocketAsyncEventArgs[] _buffer;
+        private readonly SocketAsyncEventArgs?[] _buffer;
 
         /// <summary>
         ///     The index.
@@ -57,9 +57,9 @@ namespace Exomia.Network
         /// <returns>
         ///     The SocketAsyncEventArgs.
         /// </returns>
-        public SocketAsyncEventArgs Rent()
+        public SocketAsyncEventArgs? Rent()
         {
-            SocketAsyncEventArgs buffer = null;
+            SocketAsyncEventArgs? buffer = null;
 
             bool lockTaken = false;
             try

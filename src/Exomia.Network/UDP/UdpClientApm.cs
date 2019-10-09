@@ -42,7 +42,7 @@ namespace Exomia.Network.UDP
                                           new ClientStateObject(new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET]);
                 try
                 {
-                    _clientSocket.BeginReceive(
+                    _clientSocket!.BeginReceive(
                         state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, state);
                 }
                 catch (ObjectDisposedException)
@@ -75,7 +75,7 @@ namespace Exomia.Network.UDP
 
             try
             {
-                _clientSocket.BeginSend(
+                _clientSocket!.BeginSend(
                     buffer, 0, size, SocketFlags.None, SendDataCallback, buffer);
                 return SendError.None;
             }
@@ -109,7 +109,7 @@ namespace Exomia.Network.UDP
             int bytesTransferred;
             try
             {
-                if ((bytesTransferred = _clientSocket.EndReceive(iar)) <= 0)
+                if ((bytesTransferred = _clientSocket!.EndReceive(iar)) <= 0)
                 {
                     Disconnect(DisconnectReason.Graceful);
                     return;
@@ -151,7 +151,7 @@ namespace Exomia.Network.UDP
         {
             try
             {
-                if (_clientSocket.EndSend(iar) <= 0)
+                if (_clientSocket!.EndSend(iar) <= 0)
                 {
                     Disconnect(DisconnectReason.Error);
                 }

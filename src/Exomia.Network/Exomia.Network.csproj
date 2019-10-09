@@ -3,8 +3,8 @@
     <TargetFrameworks>net471;net472;netstandard2.0;netcoreapp2.2</TargetFrameworks>
     <Authors>exomia</Authors>
     <Description>tcp / udp client and server</Description>
-	<Copyright>Copyright © $([System.DateTime]::Now.Year) exomia</Copyright>
-    <Version>1.6.4.0</Version>
+    <Copyright>Copyright © $([System.DateTime]::Now.Year) exomia</Copyright>
+    <Version>1.6.5.0</Version>
     <PackageLicenseUrl>https://raw.githubusercontent.com/exomia/network/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/exomia/network</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
@@ -19,6 +19,8 @@
     <PackageOutputPath>.</PackageOutputPath> 
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DocumentationFile></DocumentationFile>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">

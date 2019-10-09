@@ -22,7 +22,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The buffers.
         /// </summary>
-        private readonly T[] _buffers;
+        private readonly T?[] _buffers;
 
         /// <summary>
         ///     The index.
@@ -50,9 +50,9 @@ namespace Exomia.Network
         /// <returns>
         ///     A ServerClientStateObject.
         /// </returns>
-        internal T Rent()
+        internal T? Rent()
         {
-            T    buffer    = null;
+            T?    buffer    = null;
             bool lockTaken = false;
             try
             {

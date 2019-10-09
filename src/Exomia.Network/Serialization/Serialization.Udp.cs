@@ -121,7 +121,7 @@ namespace Exomia.Network.Serialization
                     if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
                     {
                         int cl = *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 8);
-                        byte[] bdb = bigDataHandler.Receive(
+                        byte[]? bdb = bigDataHandler.Receive(
                             *(int*)(src + Constants.UDP_HEADER_SIZE + offset),
                             src + Constants.UDP_HEADER_SIZE + offset + 12, deserializePacketInfo.Length - offset - 12,
                             *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 4),
@@ -183,7 +183,7 @@ namespace Exomia.Network.Serialization
                     }
                 }
             }
-            deserializePacketInfo.Data = null;
+            deserializePacketInfo.Data = null!; //can be null, but it doesn't matter we don't' use it anyway.
             return false;
         }
     }

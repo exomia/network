@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network.Buffers;
 using Exomia.Network.DefaultPackets;
+using Exomia.Network.Exceptions;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Native;
@@ -64,7 +65,7 @@ namespace Exomia.Network
         /// <summary>
         ///     called than the client is Disconnected.
         /// </summary>
-        public event DisconnectedHandler Disconnected;
+        public event DisconnectedHandler? Disconnected;
 
         /// <summary>
         ///     Occurs when data from a client is received.
@@ -78,7 +79,7 @@ namespace Exomia.Network
         /// <summary>
         ///     called than a ping is received.
         /// </summary>
-        public event Action<PingPacket> Ping;
+        public event Action<PingPacket>? Ping;
 
         /// <summary>
         ///     The big data handler.
@@ -88,7 +89,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The client socket.
         /// </summary>
-        private protected Socket _clientSocket;
+        private protected Socket? _clientSocket;
 
         /// <summary>
         ///     The state.
@@ -164,7 +165,7 @@ namespace Exomia.Network
         ///     Identifier for the packet.
         /// </summary>
         private int _packetID;
-        
+
         /// <summary>
         ///     Gets the port.
         /// </summary>
@@ -175,7 +176,7 @@ namespace Exomia.Network
         {
             get { return _port; }
         }
-        
+
         /// <summary>
         ///     Gets the server address.
         /// </summary>
@@ -184,7 +185,11 @@ namespace Exomia.Network
         /// </value>
         public string ServerAddress
         {
-            get { return _serverAddress; }
+            get
+            {
+                if (_state != 0) { return _serverAddress; }
+                throw new NotConnectedException("You have to connect to a server first!");
+            }
         }
 
         /// <summary>
@@ -202,7 +207,6 @@ namespace Exomia.Network
         private protected ClientBase(byte listenerCount = 1)
         {
             _listenerCount         = listenerCount;
-            _clientSocket          = null;
             _dataReceivedCallbacks = new Dictionary<uint, ClientEventEntry>(INITIAL_QUEUE_SIZE);
             _taskCompletionSources =
                 new Dictionary<uint, TaskCompletionSource<Packet>>(INITIAL_TASK_COMPLETION_QUEUE_SIZE);
@@ -220,6 +224,7 @@ namespace Exomia.Network
             rnd.NextBytes(_connectChecksum);
 
             _manuelResetEvent = new ManualResetEvent(false);
+            _serverAddress    = default!;
         }
 
         /// <summary>
@@ -241,7 +246,7 @@ namespace Exomia.Network
             {
                 try
                 {
-                    IAsyncResult iar    = _clientSocket.BeginConnect(ipAddresses, port, null, null);
+                    IAsyncResult iar    = _clientSocket!.BeginConnect(ipAddresses, port, null, null);
                     bool         result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
                     _clientSocket.EndConnect(iar);
 
@@ -264,7 +269,8 @@ namespace Exomia.Network
                 catch
                 {
                     _state = 0;
-                    _clientSocket.Close();
+                    _clientSocket?.Close();
+                    _clientSocket?.Dispose();
                     _clientSocket = null;
                 }
             }
@@ -312,7 +318,7 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-        private protected abstract bool TryCreateSocket(out Socket socket);
+        private protected abstract bool TryCreateSocket(out Socket? socket);
 
         /// <summary>
         ///     Disconnects the given reason.
@@ -331,6 +337,7 @@ namespace Exomia.Network
                 {
                     _clientSocket.Shutdown(SocketShutdown.Both);
                     _clientSocket.Close(CLOSE_TIMEOUT);
+                    _clientSocket.Dispose();
                 }
                 catch
                 {
@@ -741,64 +748,60 @@ namespace Exomia.Network
                                                             DeserializePacketHandler<TResult> deserialize,
                                                             TimeSpan                          timeout)
         {
-            if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
-
             TaskCompletionSource<Packet> tcs =
                 new TaskCompletionSource<Packet>(TaskCreationOptions.None);
-            using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
+            using CancellationTokenSource cts = new CancellationTokenSource(timeout);
+            uint                          responseID;
+            bool                          lockTaken = false;
+            try
             {
-                uint responseID;
-                bool lockTaken = false;
-                try
-                {
-                    _lockTaskCompletionSources.Enter(ref lockTaken);
-                    responseID = _responseID++;
-                    if (responseID == 0) { responseID++; }
-                    _taskCompletionSources.Add(responseID, tcs);
-                }
-                finally
-                {
-                    if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
-                }
-                cts.Token.Register(
-                    delegate
-                    {
-                        bool lockTaken1 = false;
-                        try
-                        {
-                            _lockTaskCompletionSources.Enter(ref lockTaken1);
-                            _taskCompletionSources.Remove(_responseID);
-                        }
-                        finally
-                        {
-                            if (lockTaken1) { _lockTaskCompletionSources.Exit(false); }
-                        }
-                        tcs.TrySetResult(default);
-                    }, false);
-                SendError sendError = BeginSendData(commandID, data, offset, length, responseID);
-                if (sendError == SendError.None)
-                {
-                    Packet packet = await tcs.Task;
-                    if (packet.Buffer != null)
-                    {
-                        TResult result = deserialize(in packet);
-                        ByteArrayPool.Return(packet.Buffer);
-                        return new Response<TResult>(result, SendError.None);
-                    }
-                    sendError = SendError.Unknown; //TimeOut Error
-                }
-                lockTaken = false;
-                try
-                {
-                    _lockTaskCompletionSources.Enter(ref lockTaken);
-                    _taskCompletionSources.Remove(_responseID);
-                }
-                finally
-                {
-                    if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
-                }
-                return new Response<TResult>(default, sendError);
+                _lockTaskCompletionSources.Enter(ref lockTaken);
+                responseID = _responseID++;
+                if (responseID == 0) { responseID++; }
+                _taskCompletionSources.Add(responseID, tcs);
             }
+            finally
+            {
+                if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
+            }
+            cts.Token.Register(
+                delegate
+                {
+                    bool lockTaken1 = false;
+                    try
+                    {
+                        _lockTaskCompletionSources.Enter(ref lockTaken1);
+                        _taskCompletionSources.Remove(_responseID);
+                    }
+                    finally
+                    {
+                        if (lockTaken1) { _lockTaskCompletionSources.Exit(false); }
+                    }
+                    tcs.TrySetResult(default);
+                }, false);
+            SendError sendError = BeginSendData(commandID, data, offset, length, responseID);
+            if (sendError == SendError.None)
+            {
+                Packet packet = await tcs.Task;
+                if (packet.Buffer != null)
+                {
+                    TResult result = deserialize(in packet);
+                    ByteArrayPool.Return(packet.Buffer);
+                    return new Response<TResult>(result, SendError.None);
+                }
+                sendError = SendError.Unknown; //TimeOut Error
+            }
+            lockTaken = false;
+            try
+            {
+                _lockTaskCompletionSources.Enter(ref lockTaken);
+                _taskCompletionSources.Remove(_responseID);
+            }
+            finally
+            {
+                if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
+            }
+            return new Response<TResult>(default!, sendError); //can be null, but it doesn't matter if an error has occurred, it is unsafe to use it anyway.
         }
 
         /// <inheritdoc />

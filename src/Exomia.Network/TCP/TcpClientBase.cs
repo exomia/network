@@ -68,7 +68,7 @@ namespace Exomia.Network.TCP
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-        private protected override bool TryCreateSocket(out Socket socket)
+        private protected override bool TryCreateSocket(out Socket? socket)
         {
             try
             {

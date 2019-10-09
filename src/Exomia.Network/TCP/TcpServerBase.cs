@@ -8,6 +8,7 @@
 
 #endregion
 
+using System;
 using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Encoding;
@@ -51,7 +52,7 @@ namespace Exomia.Network.TCP
         }
 
         /// <inheritdoc />
-        private protected override bool OnRun(int port, out Socket listener)
+        private protected override bool OnRun(int port, out Socket? listener)
         {
             try
             {
@@ -76,7 +77,7 @@ namespace Exomia.Network.TCP
             }
             catch
             {
-                listener = null;
+                listener = null!;
                 return false;
             }
         }
@@ -149,22 +150,77 @@ namespace Exomia.Network.TCP
         /// <summary>
         ///     A server client state object. This class cannot be inherited.
         /// </summary>
-        private protected class ServerClientStateObject
+        private protected class ServerClientStateObject : IDisposable
         {
             /// <summary>
             ///     The buffer read.
             /// </summary>
-            public byte[] BufferRead;
+            public byte[] BufferRead { get; }
 
             /// <summary>
             ///     Buffer for circular data.
             /// </summary>
-            public CircularBuffer CircularBuffer;
+            public CircularBuffer CircularBuffer { get; }
 
             /// <summary>
             ///     The big data handler.
             /// </summary>
-            public BigDataHandler BigDataHandler;
+            public BigDataHandler BigDataHandler { get; }
+
+            /// <summary>
+            ///		Initializes a new instance of the <see cref="ServerClientStateObject" /> class.
+            /// </summary>
+            public ServerClientStateObject(byte[]         bufferRead,
+                                           CircularBuffer circularBuffer,
+                                           BigDataHandler bigDataHandler)
+            {
+                BufferRead     = bufferRead;
+                CircularBuffer = circularBuffer;
+                BigDataHandler = bigDataHandler;
+            }
+
+            #region IDisposable Support
+
+            /// <summary>
+            ///		true if the instance is already disposed; false otherwise
+            /// </summary>
+            protected bool _disposed = false;
+
+            /// <summary>
+            ///		Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged/managed resources. 
+            /// </summary>
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+
+            private void Dispose(bool disposing)
+            {
+                if (!_disposed)
+                {
+                    OnDispose(disposing);
+                    if (disposing)
+                    {
+                        CircularBuffer.Dispose();
+                    }
+                    _disposed = true;
+                }
+            }
+
+            /// <inheritdoc />
+            ~ServerClientStateObject()
+            {
+                Dispose(false);
+            }
+
+            /// <summary>
+            ///		called then the instance is disposing
+            /// </summary>
+            /// <param name="disposing">true if user code; false called by finalizer</param>
+            protected virtual void OnDispose(bool disposing) { }
+
+            #endregion
         }
     }
 }

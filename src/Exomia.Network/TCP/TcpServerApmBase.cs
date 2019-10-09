@@ -10,6 +10,7 @@
 
 using System;
 using System.Net.Sockets;
+using System.Runtime.Serialization;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
 
@@ -75,7 +76,7 @@ namespace Exomia.Network.TCP
             {
                 try
                 {
-                    _listener.BeginAccept(AcceptCallback, null);
+                    _listener!.BeginAccept(AcceptCallback, null);
                 }
                 catch
                 {
@@ -116,22 +117,19 @@ namespace Exomia.Network.TCP
         {
             try
             {
-                Socket socket = _listener.EndAccept(ar);
-                ServerClientStateObjectApm state = new ServerClientStateObjectApm
-                {
-                    //0.2mb
-                    Socket         = socket,
-                    BufferWrite    = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
-                    BufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
-                    CircularBuffer = new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
-                    BigDataHandler = new BigDataHandler()
-                };
-
+                Socket socket = _listener!.EndAccept(ar);
+#pragma warning disable IDE0068 // Use recommended dispose pattern
+                ServerClientStateObjectApm state = new ServerClientStateObjectApm(
+                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
+                    new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
+                    new BigDataHandler(),
+                    socket,
+                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET]);
+#pragma warning restore IDE0068 // Use recommended dispose pattern
                 ReceiveAsync(state);
             }
             catch (ObjectDisposedException)
             {
-                /* SOCKET CLOSED */
                 return;
             }
             catch
@@ -156,9 +154,21 @@ namespace Exomia.Network.TCP
                         state.BufferWrite, 0, state.BufferWrite.Length, SocketFlags.None, ReceiveDataCallback,
                         state);
                 }
-                catch (ObjectDisposedException) { InvokeClientDisconnect(state.Socket, DisconnectReason.Aborted); }
-                catch (SocketException) { InvokeClientDisconnect(state.Socket, DisconnectReason.Error); }
-                catch { InvokeClientDisconnect(state.Socket, DisconnectReason.Unspecified); }
+                catch (ObjectDisposedException)
+                {
+                    InvokeClientDisconnect(state.Socket, DisconnectReason.Aborted);
+                    state.Dispose();
+                }
+                catch (SocketException)
+                {
+                    InvokeClientDisconnect(state.Socket, DisconnectReason.Error);
+                    state.Dispose();
+                }
+                catch
+                {
+                    InvokeClientDisconnect(state.Socket, DisconnectReason.Unspecified);
+                    state.Dispose();
+                }
             }
         }
 
@@ -176,22 +186,26 @@ namespace Exomia.Network.TCP
                 if ((bytesTransferred = state.Socket.EndReceive(iar)) <= 0)
                 {
                     InvokeClientDisconnect(state.Socket, DisconnectReason.Graceful);
+                    state.Dispose();
                     return;
                 }
             }
             catch (ObjectDisposedException)
             {
                 InvokeClientDisconnect(state.Socket, DisconnectReason.Aborted);
+                state.Dispose();
                 return;
             }
             catch (SocketException)
             {
                 InvokeClientDisconnect(state.Socket, DisconnectReason.Error);
+                state.Dispose();
                 return;
             }
             catch
             {
                 InvokeClientDisconnect(state.Socket, DisconnectReason.Unspecified);
+                state.Dispose();
                 return;
             }
 
@@ -223,12 +237,39 @@ namespace Exomia.Network.TCP
             /// <summary>
             ///     The socket.
             /// </summary>
-            public Socket Socket;
+            public Socket Socket { get; }
 
             /// <summary>
             ///     The buffer write.
             /// </summary>
-            public byte[] BufferWrite;
+            public byte[] BufferWrite { get; }
+
+            /// <summary>
+            ///		Initializes a new instance of the <see cref="ServerClientStateObjectApm" /> class.
+            /// </summary>
+            public ServerClientStateObjectApm(byte[]         bufferRead,
+                                              CircularBuffer circularBuffer,
+                                              BigDataHandler bigDataHandler,
+                                              Socket         socket,
+                                              byte[]         bufferWrite)
+                : base(bufferRead, circularBuffer, bigDataHandler)
+            {
+                Socket      = socket;
+                BufferWrite = bufferWrite;
+            }
+
+            /// <inheritdoc />
+            protected override void OnDispose(bool disposing)
+            {
+                try
+                {
+                    Socket.Dispose();
+                }
+                catch
+                {
+                    /*IGNORE*/
+                }
+            }
         }
     }
 }

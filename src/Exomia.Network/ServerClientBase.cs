@@ -23,8 +23,8 @@ namespace Exomia.Network
         /// <summary>
         ///     Socket|Endpoint.
         /// </summary>
-        private protected T _arg0;
-
+        private protected T _arg0 = default!;
+        
         /// <summary>
         ///     The last received packet time stamp Date/Time.
         /// </summary>

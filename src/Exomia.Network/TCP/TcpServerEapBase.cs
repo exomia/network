@@ -41,7 +41,7 @@ namespace Exomia.Network.TCP
         private protected override unsafe SendError SendTo(Socket        arg0,
                                                            in PacketInfo packetInfo)
         {
-            SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
+            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
 
             if (sendEventArgs == null)
             {
@@ -91,7 +91,9 @@ namespace Exomia.Network.TCP
         /// <inheritdoc />
         private protected override void ListenAsync()
         {
+#pragma warning disable IDE0068 // Use recommended dispose pattern
             SocketAsyncEventArgs acceptArgs = new SocketAsyncEventArgs();
+#pragma warning restore IDE0068 // Use recommended dispose pattern
             acceptArgs.Completed += AcceptAsyncCompleted;
             ListenAsync(acceptArgs);
         }
@@ -107,7 +109,7 @@ namespace Exomia.Network.TCP
                 acceptArgs.AcceptSocket = null;
                 try
                 {
-                    if (!_listener.AcceptAsync(acceptArgs))
+                    if (!_listener!.AcceptAsync(acceptArgs))
                     {
                         AcceptAsyncCompleted(_listener, acceptArgs);
                     }
@@ -132,6 +134,7 @@ namespace Exomia.Network.TCP
                 {
                     e.AcceptSocket?.Shutdown(SocketShutdown.Both);
                     e.AcceptSocket?.Close(CLOSE_TIMEOUT);
+                    e.AcceptSocket?.Dispose();
                 }
                 catch
                 {
@@ -141,17 +144,17 @@ namespace Exomia.Network.TCP
                 return;
             }
 
+#pragma warning disable IDE0068 // Use recommended dispose pattern
             SocketAsyncEventArgs receiveArgs = new SocketAsyncEventArgs { AcceptSocket = e.AcceptSocket };
+#pragma warning restore IDE0068 // Use recommended dispose pattern
             receiveArgs.Completed += ReceiveAsyncCompleted;
             receiveArgs.SetBuffer(
                 new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
                 _payloadSize + Constants.TCP_HEADER_OFFSET);
-            receiveArgs.UserToken = new ServerClientStateObject
-            {
-                BufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
-                CircularBuffer = new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
-                BigDataHandler = new BigDataHandler()
-            };
+            receiveArgs.UserToken = new ServerClientStateObject(
+                new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
+                new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
+                new BigDataHandler());
 
             ListenAsync(e);
 
@@ -173,9 +176,24 @@ namespace Exomia.Network.TCP
                         ReceiveAsyncCompleted(args.AcceptSocket, args);
                     }
                 }
-                catch (ObjectDisposedException) { InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Aborted); }
-                catch (SocketException) { InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Error); }
-                catch { InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Unspecified); }
+                catch (ObjectDisposedException)
+                {
+                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Aborted);
+                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    args.Dispose();
+                }
+                catch (SocketException)
+                {
+                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Error); 
+                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    args.Dispose();
+                }
+                catch
+                {
+                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Unspecified); 
+                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    args.Dispose();
+                }
             }
         }
 
@@ -190,11 +208,15 @@ namespace Exomia.Network.TCP
             if (e.SocketError != SocketError.Success)
             {
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
+                ((ServerClientStateObject)e.UserToken).Dispose();
+                e.Dispose();
                 return;
             }
             if (e.BytesTransferred <= 0)
             {
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Graceful);
+                ((ServerClientStateObject)e.UserToken).Dispose();
+                e.Dispose();
                 return;
             }
 

@@ -58,12 +58,12 @@ namespace Exomia.Network
         /// <summary>
         ///     Called than a client is connected.
         /// </summary>
-        public event ClientActionHandler<TServerClient> ClientConnected;
+        public event ClientActionHandler<TServerClient>? ClientConnected;
 
         /// <summary>
         ///     Called than a client is disconnected.
         /// </summary>
-        public event ClientDisconnectHandler<TServerClient> ClientDisconnected;
+        public event ClientDisconnectHandler<TServerClient>? ClientDisconnected;
 
         /// <summary>
         ///     Occurs when data from a client is received.
@@ -87,7 +87,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The listener.
         /// </summary>
-        private protected Socket _listener;
+        private protected Socket? _listener;
 
         /// <summary>
         ///     The port.
@@ -219,7 +219,7 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-        private protected abstract bool OnRun(int port, out Socket listener);
+        private protected abstract bool OnRun(int port, out Socket? listener);
 
         /// <summary>
         ///     Listen asynchronous.
@@ -748,6 +748,7 @@ namespace Exomia.Network
                     {
                         _listener?.Shutdown(SocketShutdown.Both);
                         _listener?.Close(CLOSE_TIMEOUT);
+                        _listener?.Dispose();
                     }
                     catch
                     {

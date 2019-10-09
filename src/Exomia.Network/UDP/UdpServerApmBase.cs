@@ -51,7 +51,7 @@ namespace Exomia.Network.UDP
 
             try
             {
-                _listener.BeginSendTo(buffer, 0, size, SocketFlags.None, arg0, SendDataToCallback, buffer);
+                _listener!.BeginSendTo(buffer, 0, size, SocketFlags.None, arg0, SendDataToCallback, buffer);
                 return SendError.None;
             }
             catch (ObjectDisposedException)
@@ -87,7 +87,7 @@ namespace Exomia.Network.UDP
                 state.EndPoint = new IPEndPoint(IPAddress.Any, 0);
                 try
                 {
-                    _listener.BeginReceiveFrom(
+                    _listener!.BeginReceiveFrom(
                         state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
                         ReceiveDataCallback, state);
                 }
@@ -106,7 +106,7 @@ namespace Exomia.Network.UDP
         {
             try
             {
-                _listener.EndSendTo(iar);
+                _listener!.EndSendTo(iar);
             }
             finally
             {
@@ -123,11 +123,10 @@ namespace Exomia.Network.UDP
         private void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
-
             int bytesTransferred;
             try
             {
-                if ((bytesTransferred = _listener.EndReceiveFrom(iar, ref state.EndPoint)) <= 0)
+                if ((bytesTransferred = _listener!.EndReceiveFrom(iar, ref state.EndPoint)) <= 0)
                 {
                     InvokeClientDisconnect(state.EndPoint, DisconnectReason.Graceful);
                     _serverClientStateObjectPool.Return(state);
@@ -178,7 +177,7 @@ namespace Exomia.Network.UDP
             /// <summary>
             ///     The end point.
             /// </summary>
-            public EndPoint EndPoint;
+            public EndPoint EndPoint = default!;
 
             /// <summary>
             ///     Initializes a new instance of the <see cref="ServerClientStateObject" /> class.

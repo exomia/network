@@ -52,7 +52,7 @@ namespace Exomia.Network.UDP
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-        private protected override bool OnRun(int port, out Socket listener)
+        private protected override bool OnRun(int port, out Socket? listener)
         {
             try
             {

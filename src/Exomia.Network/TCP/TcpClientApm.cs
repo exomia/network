@@ -44,7 +44,7 @@ namespace Exomia.Network.TCP
             {
                 try
                 {
-                    _clientSocket.BeginReceive(
+                    _clientSocket!.BeginReceive(
                         _bufferWrite, 0, _bufferWrite.Length, SocketFlags.None, ReceiveAsyncCallback, null);
                 }
                 catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
@@ -64,7 +64,7 @@ namespace Exomia.Network.TCP
 
             try
             {
-                _clientSocket.BeginSend(
+                _clientSocket!.BeginSend(
                     buffer, 0, size, SocketFlags.None, SendDataCallback, buffer);
                 return SendError.None;
             }
@@ -103,7 +103,7 @@ namespace Exomia.Network.TCP
             int bytesTransferred;
             try
             {
-                if ((bytesTransferred = _clientSocket.EndReceive(iar)) <= 0)
+                if ((bytesTransferred = _clientSocket!.EndReceive(iar)) <= 0)
                 {
                     Disconnect(DisconnectReason.Graceful);
                     return;
@@ -137,7 +137,7 @@ namespace Exomia.Network.TCP
         {
             try
             {
-                if (_clientSocket.EndSend(iar) <= 0)
+                if (_clientSocket!.EndSend(iar) <= 0)
                 {
                     Disconnect(DisconnectReason.Error);
                 }

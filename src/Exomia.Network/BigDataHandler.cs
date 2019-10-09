@@ -52,7 +52,7 @@ namespace Exomia.Network
         /// <returns>
         ///     A byte[] or null.
         /// </returns>
-        internal unsafe byte[] Receive(int   key,
+        internal unsafe byte[]? Receive(int   key,
                                        byte* src,
                                        int   chunkLength,
                                        int   chunkOffset,
