@@ -52,7 +52,7 @@ namespace Exomia.Network
         /// </returns>
         internal T? Rent()
         {
-            T?    buffer    = null;
+            T?   buffer    = null;
             bool lockTaken = false;
             try
             {

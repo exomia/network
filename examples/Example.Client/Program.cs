@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
+
 #else
 using Exomia.Network.UDP;
 #endif
@@ -41,7 +42,7 @@ namespace Example.Client
                     Console.WriteLine(
                         "{0} >= {1}  ==  {2}", packet.Buffer.Length, packet.Length,
                         packet.Buffer.Length >= packet.Length);
-                    return null;
+                    return true;
                 }, 1);
 
             client.AddCommand(
@@ -86,7 +87,8 @@ namespace Example.Client
 
                 sw.Stop();
                 Console.WriteLine(
-                    i + ": " + (res2 ? res2.Result : "error receiving response") + " - " + (sw.ElapsedMilliseconds / 2) + "ms");
+                    i + ": " + (res2 ? res2.Result : "error receiving response") + " - " +
+                    (sw.ElapsedMilliseconds / 2) + "ms");
             }
 
             Console.WriteLine("press any key to exit...");

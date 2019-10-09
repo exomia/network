@@ -126,7 +126,7 @@ namespace Exomia.Network.TCP
         /// </summary>
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
-        private void AcceptAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void AcceptAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
@@ -184,13 +184,13 @@ namespace Exomia.Network.TCP
                 }
                 catch (SocketException)
                 {
-                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Error); 
+                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Error);
                     ((ServerClientStateObject)args.UserToken).Dispose();
                     args.Dispose();
                 }
                 catch
                 {
-                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Unspecified); 
+                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Unspecified);
                     ((ServerClientStateObject)args.UserToken).Dispose();
                     args.Dispose();
                 }
@@ -203,7 +203,7 @@ namespace Exomia.Network.TCP
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
@@ -229,7 +229,7 @@ namespace Exomia.Network.TCP
         /// </summary>
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {

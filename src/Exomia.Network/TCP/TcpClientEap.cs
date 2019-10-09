@@ -116,7 +116,7 @@ namespace Exomia.Network.TCP
         /// </summary>
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
-        private void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
@@ -139,7 +139,7 @@ namespace Exomia.Network.TCP
         /// </summary>
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {

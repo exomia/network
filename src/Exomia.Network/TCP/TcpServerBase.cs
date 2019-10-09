@@ -168,7 +168,7 @@ namespace Exomia.Network.TCP
             public BigDataHandler BigDataHandler { get; }
 
             /// <summary>
-            ///		Initializes a new instance of the <see cref="ServerClientStateObject" /> class.
+            ///     Initializes a new instance of the <see cref="ServerClientStateObject" /> class.
             /// </summary>
             public ServerClientStateObject(byte[]         bufferRead,
                                            CircularBuffer circularBuffer,
@@ -182,12 +182,12 @@ namespace Exomia.Network.TCP
             #region IDisposable Support
 
             /// <summary>
-            ///		true if the instance is already disposed; false otherwise
+            ///     true if the instance is already disposed; false otherwise
             /// </summary>
-            protected bool _disposed = false;
+            protected bool _disposed;
 
             /// <summary>
-            ///		Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged/managed resources. 
+            ///     Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged/managed resources.
             /// </summary>
             public void Dispose()
             {
@@ -215,7 +215,7 @@ namespace Exomia.Network.TCP
             }
 
             /// <summary>
-            ///		called then the instance is disposing
+            ///     called then the instance is disposing
             /// </summary>
             /// <param name="disposing">true if user code; false called by finalizer</param>
             protected virtual void OnDispose(bool disposing) { }

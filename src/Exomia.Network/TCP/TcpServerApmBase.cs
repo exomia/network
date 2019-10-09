@@ -10,7 +10,6 @@
 
 using System;
 using System.Net.Sockets;
-using System.Runtime.Serialization;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
 
@@ -91,7 +90,7 @@ namespace Exomia.Network.TCP
         /// <param name="iar"> The iar. </param>
         private void BeginSendCallback(IAsyncResult iar)
         {
-            SendStateObject state = (SendStateObject)iar.AsyncState;
+            SendStateObject state = (SendStateObject)iar.AsyncState!;
             try
             {
                 if (state.Socket.EndSend(iar) <= 0)
@@ -179,7 +178,7 @@ namespace Exomia.Network.TCP
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveDataCallback(IAsyncResult iar)
         {
-            ServerClientStateObjectApm state = (ServerClientStateObjectApm)iar.AsyncState;
+            ServerClientStateObjectApm state = (ServerClientStateObjectApm)iar.AsyncState!;
             int                        bytesTransferred;
             try
             {
@@ -245,7 +244,7 @@ namespace Exomia.Network.TCP
             public byte[] BufferWrite { get; }
 
             /// <summary>
-            ///		Initializes a new instance of the <see cref="ServerClientStateObjectApm" /> class.
+            ///     Initializes a new instance of the <see cref="ServerClientStateObjectApm" /> class.
             /// </summary>
             public ServerClientStateObjectApm(byte[]         bufferRead,
                                               CircularBuffer circularBuffer,

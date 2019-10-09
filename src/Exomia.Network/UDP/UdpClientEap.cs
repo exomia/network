@@ -50,7 +50,7 @@ namespace Exomia.Network.UDP
                 if (receiveEventArgs == null)
                 {
 #pragma warning disable IDE0068 // Use recommended dispose pattern
-                    receiveEventArgs =  new SocketAsyncEventArgs();
+                    receiveEventArgs = new SocketAsyncEventArgs();
 #pragma warning restore IDE0068 // Use recommended dispose pattern
                     receiveEventArgs.Completed += ReceiveAsyncCompleted;
                     receiveEventArgs.SetBuffer(
@@ -136,7 +136,7 @@ namespace Exomia.Network.UDP
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
@@ -164,7 +164,7 @@ namespace Exomia.Network.UDP
         /// </summary>
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {

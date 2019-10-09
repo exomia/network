@@ -77,7 +77,7 @@ namespace Exomia.Network.Buffers
             }
 
             byte[]? buffer    = null;
-            bool   lockTaken = false;
+            bool    lockTaken = false;
             try
             {
                 s_lock.Enter(ref lockTaken);

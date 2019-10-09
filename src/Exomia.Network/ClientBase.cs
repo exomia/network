@@ -242,7 +242,9 @@ namespace Exomia.Network
 
             _manuelResetEvent.Reset();
 
+#pragma warning disable IDE0067 // Dispose objects before losing scope
             if (TryCreateSocket(out _clientSocket))
+#pragma warning restore IDE0067 // Dispose objects before losing scope
             {
                 try
                 {
@@ -250,7 +252,7 @@ namespace Exomia.Network
                     bool         result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
                     _clientSocket.EndConnect(iar);
 
-                    _serverAddress = _clientSocket.RemoteEndPoint.ToString();
+                    _serverAddress = _clientSocket.RemoteEndPoint.ToString() ?? "<invalid>";
 
                     if (result)
                     {
@@ -363,8 +365,8 @@ namespace Exomia.Network
             uint responseID = deserializePacketInfo.ResponseID;
             if (responseID != 0)
             {
-                TaskCompletionSource<Packet> cs;
-                bool                         lockTaken = false;
+                TaskCompletionSource<Packet>? cs;
+                bool                          lockTaken = false;
                 try
                 {
                     _lockTaskCompletionSources.Enter(ref lockTaken);
@@ -411,7 +413,7 @@ namespace Exomia.Network
                 default:
                     {
                         if (commandID <= Constants.USER_COMMAND_LIMIT &&
-                            _dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry cee))
+                            _dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry? cee))
                         {
                             Packet packet = new Packet(deserializePacketInfo.Data, 0, deserializePacketInfo.Length);
                             ThreadPool.QueueUserWorkItem(
@@ -452,7 +454,6 @@ namespace Exomia.Network
         public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
         {
             if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
-            if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
 
             bool lockTaken = false;
             try
@@ -467,7 +468,7 @@ namespace Exomia.Network
                             $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
                     }
                     if (!_dataReceivedCallbacks.TryGetValue(
-                        commandID, out ClientEventEntry buffer))
+                        commandID, out ClientEventEntry? buffer))
                     {
                         buffer = new ClientEventEntry(deserialize);
                         _dataReceivedCallbacks.Add(commandID, buffer);
@@ -535,7 +536,7 @@ namespace Exomia.Network
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry buffer))
+                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry? buffer))
                 {
                     throw new Exception(
                         $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(DeserializeData, params uint[])' first.");
@@ -566,7 +567,7 @@ namespace Exomia.Network
 
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
-            if (_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry buffer))
+            if (_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry? buffer))
             {
                 buffer.Remove(callback);
             }
@@ -614,17 +615,13 @@ namespace Exomia.Network
                 packetInfo.CompressionMode  = CompressionMode.None;
                 if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
                 {
-                    int    s;
                     byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
-                    switch (_compressionMode)
+                    int s = _compressionMode switch
                     {
-                        case CompressionMode.Lz4:
-                            s = LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(_compressionMode), _compressionMode, "Not supported!");
-                    }
+                        CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
+                        _ => throw new ArgumentOutOfRangeException(
+                            nameof(_compressionMode), _compressionMode, "Not supported!"),
+                    };
                     if (s > 0 && s < length)
                     {
                         packetInfo.CompressedLength = s;
@@ -801,7 +798,10 @@ namespace Exomia.Network
             {
                 if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
             }
-            return new Response<TResult>(default!, sendError); //can be null, but it doesn't matter if an error has occurred, it is unsafe to use it anyway.
+            return
+                new Response<TResult>(
+                    default!,
+                    sendError); //can be null, but it doesn't matter if an error has occurred, it is unsafe to use it anyway.
         }
 
         /// <inheritdoc />
@@ -964,6 +964,7 @@ namespace Exomia.Network
                 if (disposing)
                 {
                     Disconnect(DisconnectReason.Graceful);
+                    _manuelResetEvent?.Dispose();
                 }
                 _disposed = true;
             }

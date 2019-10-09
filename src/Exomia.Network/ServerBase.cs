@@ -198,7 +198,9 @@ namespace Exomia.Network
         public bool Run(int port)
         {
             if (_isRunning) { return true; }
+#pragma warning disable IDE0067 // Dispose objects before losing scope
             if (OnRun(port, out _listener))
+#pragma warning restore IDE0067 // Dispose objects before losing scope
             {
                 _port  = port;
                 _state = RECEIVE_FLAG | SEND_FLAG;
@@ -257,7 +259,11 @@ namespace Exomia.Network
                     }
                 case CommandID.DISCONNECT:
                     {
+#if NETCOREAPP3_0
+                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
+#else
                         if (_clients.TryGetValue(arg0, out TServerClient sClient))
+#endif
                         {
                             InvokeClientDisconnect(sClient, DisconnectReason.Graceful);
                         }
@@ -265,11 +271,15 @@ namespace Exomia.Network
                     }
                 default:
                     {
+#if NETCOREAPP3_0
+                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
+#else
                         if (_clients.TryGetValue(arg0, out TServerClient sClient))
+#endif
                         {
                             if (commandID <= Constants.USER_COMMAND_LIMIT &&
                                 _dataReceivedCallbacks.TryGetValue(
-                                    commandID, out ServerClientEventEntry<TServerClient> scee))
+                                    commandID, out ServerClientEventEntry<TServerClient>? scee))
                             {
                                 sClient.SetLastReceivedPacketTimeStamp();
 
@@ -322,9 +332,13 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="arg0">   Socket|Endpoint. </param>
         /// <param name="reason"> DisconnectReason. </param>
-        private protected void InvokeClientDisconnect(T arg0, DisconnectReason reason)
+        private protected void InvokeClientDisconnect(T? arg0, DisconnectReason reason)
         {
+#if NETCOREAPP3_0
+            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient? client))
+#else
             if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient client))
+#endif
             {
                 InvokeClientDisconnect(client, reason);
             }
@@ -423,7 +437,7 @@ namespace Exomia.Network
                             $"{nameof(commandID)} is restricted to 0 - {Constants.USER_COMMAND_LIMIT}");
                     }
                     if (!_dataReceivedCallbacks.TryGetValue(
-                        commandID, out ServerClientEventEntry<TServerClient> buffer))
+                        commandID, out ServerClientEventEntry<TServerClient>? buffer))
                     {
                         buffer = new ServerClientEventEntry<TServerClient>(deserialize);
                         _dataReceivedCallbacks.Add(commandID, buffer);
@@ -491,7 +505,7 @@ namespace Exomia.Network
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient> buffer))
+                if (!_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient>? buffer))
                 {
                     throw new Exception(
                         $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(DeserializeData, params uint[])' first.");
@@ -522,7 +536,7 @@ namespace Exomia.Network
 
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
-            if (_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient> buffer))
+            if (_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient>? buffer))
             {
                 buffer.Remove(callback);
             }
@@ -573,17 +587,13 @@ namespace Exomia.Network
                 packetInfo.CompressionMode  = CompressionMode.None;
                 if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
                 {
-                    int    s;
                     byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
-                    switch (_compressionMode)
+                    int s = _compressionMode switch
                     {
-                        case CompressionMode.Lz4:
-                            s = LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(_compressionMode), _compressionMode, "Not supported!");
-                    }
+                        CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
+                        _ => throw new ArgumentOutOfRangeException(
+                            nameof(_compressionMode), _compressionMode, "Not supported!"),
+                    };
                     if (s > 0 && s < length)
                     {
                         packetInfo.CompressedLength = s;

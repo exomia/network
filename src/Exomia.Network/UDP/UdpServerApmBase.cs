@@ -110,7 +110,7 @@ namespace Exomia.Network.UDP
             }
             finally
             {
-                byte[] send = (byte[])iar.AsyncState;
+                byte[] send = (byte[])iar.AsyncState!;
                 ByteArrayPool.Return(send);
             }
         }
@@ -122,8 +122,8 @@ namespace Exomia.Network.UDP
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveDataCallback(IAsyncResult iar)
         {
-            ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState;
-            int bytesTransferred;
+            ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState!;
+            int                     bytesTransferred;
             try
             {
                 if ((bytesTransferred = _listener!.EndReceiveFrom(iar, ref state.EndPoint)) <= 0)

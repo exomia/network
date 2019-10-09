@@ -9,6 +9,7 @@
 #endregion
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Exomia.Network.Buffers;
 using Exomia.Network.Native;
 using K4os.Compression.LZ4;
@@ -90,7 +91,11 @@ namespace Exomia.Network.Serialization
         internal static bool DeserializeUdp(byte[]                    buffer,
                                             int                       bytesTransferred,
                                             BigDataHandler            bigDataHandler,
+#if NETCOREAPP3_0
+                                            [NotNullWhen(true)]out DeserializePacketInfo deserializePacketInfo)
+#else
                                             out DeserializePacketInfo deserializePacketInfo)
+#endif
         {
             fixed (byte* src = buffer)
             {

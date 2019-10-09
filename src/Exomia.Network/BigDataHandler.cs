@@ -8,6 +8,7 @@
 
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -53,12 +54,12 @@ namespace Exomia.Network
         ///     A byte[] or null.
         /// </returns>
         internal unsafe byte[]? Receive(int   key,
-                                       byte* src,
-                                       int   chunkLength,
-                                       int   chunkOffset,
-                                       int   length)
+                                        byte* src,
+                                        int   chunkLength,
+                                        int   chunkOffset,
+                                        int   length)
         {
-            if (!_bigDataBuffers.TryGetValue(key, out Buffer bdb))
+            if (!_bigDataBuffers!.TryGetValue(key, out Buffer? bdb))
             {
                 bool lockTaken = false;
                 try
@@ -71,6 +72,7 @@ namespace Exomia.Network
                             bdb = new Buffer(ByteArrayPool.Rent(length), length));
                     }
                 }
+                catch { throw new NullReferenceException(nameof(bdb)); }
                 finally
                 {
                     if (lockTaken) { _bigDataBufferLock.Exit(false); }

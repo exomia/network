@@ -146,7 +146,7 @@ namespace Exomia.Network.TCP
             catch (SocketException) { Disconnect(DisconnectReason.Error); }
             catch { Disconnect(DisconnectReason.Unspecified); }
 
-            byte[] send = (byte[])iar.AsyncState;
+            byte[] send = (byte[])iar.AsyncState!;
             ByteArrayPool.Return(send);
         }
     }

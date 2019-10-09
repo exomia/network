@@ -133,7 +133,7 @@ namespace Exomia.Network.UDP
 
             ReceiveAsync();
 
-            ClientStateObject state = (ClientStateObject)iar.AsyncState;
+            ClientStateObject state = (ClientStateObject)iar.AsyncState!;
             if (Serialization.Serialization.DeserializeUdp(
                 state.Buffer, bytesTransferred, _bigDataHandler,
                 out DeserializePacketInfo deserializePacketInfo))
@@ -160,7 +160,7 @@ namespace Exomia.Network.UDP
             catch (SocketException) { Disconnect(DisconnectReason.Error); }
             catch { Disconnect(DisconnectReason.Unspecified); }
 
-            byte[] send = (byte[])iar.AsyncState;
+            byte[] send = (byte[])iar.AsyncState!;
             ByteArrayPool.Return(send);
         }
 
