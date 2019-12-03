@@ -24,6 +24,10 @@ using Exomia.Network.Lib;
 using Exomia.Network.Native;
 using Exomia.Network.Serialization;
 using K4os.Compression.LZ4;
+#if NETCOREAPP3_0
+using System.Diagnostics.CodeAnalysis;
+
+#endif
 
 namespace Exomia.Network
 {
@@ -193,6 +197,114 @@ namespace Exomia.Network
         }
 
         /// <summary>
+        ///     Gets or sets the size of the receive buffer in bytes.
+        /// </summary>
+        /// <value>
+        ///     The size of the receive buffer in bytes.
+        /// </value>
+        public int ReceiveBufferSize
+        {
+            get { return _clientSocket?.ReceiveBufferSize ?? 0; }
+            set
+            {
+                if (_clientSocket != null)
+                {
+                    _clientSocket.ReceiveBufferSize = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Gets or sets the size of the send buffer in bytes.
+        /// </summary>
+        /// <value>
+        ///     The size of the send buffer in bytes.
+        /// </value>
+        public int SendBufferSize
+        {
+            get { return _clientSocket?.SendBufferSize ?? 0; }
+            set
+            {
+                if (_clientSocket != null)
+                {
+                    _clientSocket.ReceiveBufferSize = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Gets or sets the receive time out value of the connection in seconds.
+        /// </summary>
+        /// <value>
+        ///     The receive time out value of the connection in seconds.
+        /// </value>
+        public int ReceiveTimeout
+        {
+            get { return _clientSocket?.ReceiveTimeout ?? 0; }
+            set
+            {
+                if (_clientSocket != null)
+                {
+                    _clientSocket.ReceiveTimeout = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Gets or sets the send time out value of the connection in seconds.
+        /// </summary>
+        /// <value>
+        ///     The send time out value of the connection in seconds.
+        /// </value>
+        public int SendTimeout
+        {
+            get { return _clientSocket?.SendTimeout ?? 0; }
+            set
+            {
+                if (_clientSocket != null)
+                {
+                    _clientSocket.SendTimeout = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Gets or sets the value of the connection's linger option.
+        /// </summary>
+        /// <value>
+        ///     The linger option.
+        /// </value>
+        public LingerOption LingerState
+        {
+            get { return _clientSocket?.LingerState ?? throw new NullReferenceException(nameof(LingerState)); }
+            set
+            {
+                if (_clientSocket != null)
+                {
+                    _clientSocket.LingerState = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///      Enables or disables delay when send or receive buffers are full.
+        /// </summary>
+        /// <value>
+        ///     The no delay state.
+        /// </value>
+        public bool NoDelay
+        {
+            get { return _clientSocket?.NoDelay ?? throw new NullReferenceException(nameof(LingerState)); }
+            set
+            {
+                if (_clientSocket != null)
+                {
+                    _clientSocket.NoDelay = value;
+                }
+            }
+        }
+
+        /// <summary>
         ///     Gets the maximum size of the payload.
         /// </summary>
         /// <value>
@@ -236,7 +348,10 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public bool Connect(IPAddress[] ipAddresses, int port, int timeout = 10)
+        public bool Connect(IPAddress[]         ipAddresses,
+                            int                 port,
+                            Action<ClientBase>? overwriteConfigure = null,
+                            int                 timeout            = 10)
         {
             Disconnect(DisconnectReason.Graceful);
 
@@ -246,13 +361,16 @@ namespace Exomia.Network
             if (TryCreateSocket(out _clientSocket))
 #pragma warning restore IDE0067 // Dispose objects before losing scope
             {
+                Configure();
+                overwriteConfigure?.Invoke(this);
+                
                 try
                 {
                     IAsyncResult iar    = _clientSocket!.BeginConnect(ipAddresses, port, null, null);
                     bool         result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
                     _clientSocket.EndConnect(iar);
 
-                    _serverAddress = _clientSocket.RemoteEndPoint.ToString() ?? "<invalid>";
+                    _serverAddress = _clientSocket?.RemoteEndPoint.ToString() ?? "<invalid>";
 
                     if (result)
                     {
@@ -280,10 +398,15 @@ namespace Exomia.Network
             return false;
         }
 
+        /// <summary>
+        ///     Called after the <see cref="Connect(System.Net.IPAddress[],int,System.Action{Exomia.Network.ClientBase},int)"/> method directly after the socket is successfully created.
+        /// </summary>
+        private protected abstract void Configure();
+
         /// <inheritdoc />
-        public bool Connect(string serverAddress, int port, int timeout = 10)
+        public bool Connect(string serverAddress, int port, Action<ClientBase>? overwriteConfigure = null, int timeout = 10)
         {
-            return Connect(Dns.GetHostAddresses(serverAddress), port, timeout);
+            return Connect(Dns.GetHostAddresses(serverAddress), port, overwriteConfigure, timeout);
         }
 
         /// <inheritdoc />
@@ -320,8 +443,11 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
+#if NETCOREAPP3_0
+        private protected abstract bool TryCreateSocket([NotNullWhen(true)] out Socket? socket);
+#else
         private protected abstract bool TryCreateSocket(out Socket? socket);
-
+#endif
         /// <summary>
         ///     Disconnects the given reason.
         /// </summary>

@@ -52,6 +52,13 @@ namespace Exomia.Network.TCP
         }
 
         /// <inheritdoc />
+        private protected override void Configure()
+        {
+            ReceiveBufferSize = 8 * 1024; //8kb
+            SendBufferSize    = 8 * 1024; //8kb
+        }
+
+        /// <inheritdoc />
         private protected override bool OnRun(int port, out Socket? listener)
         {
             try

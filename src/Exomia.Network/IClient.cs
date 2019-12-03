@@ -24,24 +24,29 @@ namespace Exomia.Network
         /// <summary>
         ///     try's to connect the client to a server.
         /// </summary>
-        /// <param name="serverAddress"> . </param>
-        /// <param name="port">          . </param>
-        /// <param name="timeout">       (Optional) </param>
+        /// <param name="serverAddress">      The server address. </param>
+        /// <param name="port">               The port. </param>
+        /// <param name="overwriteConfigure"> (Optional) Overwrite the default configuration. </param>
+        /// <param name="timeout">            (Optional) The timeout in seconds </param>
         /// <returns>
         ///     <b>true</b> if connect was successful; <b>false</b> otherwise.
         /// </returns>
-        bool Connect(string serverAddress, int port, int timeout = 10);
+        bool Connect(string serverAddress, int port, Action<ClientBase>? overwriteConfigure = null, int timeout = 10);
 
         /// <summary>
         ///     try's to connect the client to a server.
         /// </summary>
-        /// <param name="ipAddresses"> . </param>
-        /// <param name="port">        . </param>
-        /// <param name="timeout">     (Optional) </param>
+        /// <param name="ipAddresses">        The ip addresses. </param>
+        /// <param name="port">               The port. </param>
+        /// <param name="overwriteConfigure"> (Optional) Overwrite the default configuration. </param>
+        /// <param name="timeout">            (Optional) The timeout in seconds </param>
         /// <returns>
         ///     <b>true</b> if connect was successful; <b>false</b> otherwise.
         /// </returns>
-        bool Connect(IPAddress[] ipAddresses, int port, int timeout = 10);
+        bool Connect(IPAddress[]         ipAddresses,
+                     int                 port,
+                     Action<ClientBase>? overwriteConfigure = null,
+                     int                 timeout            = 10);
 
         /// <summary>
         ///     call to disconnect from a server.
@@ -52,9 +57,9 @@ namespace Exomia.Network
         ///     send data to the server.
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      data. </param>
-        /// <param name="offset">    offset. </param>
-        /// <param name="length">    length of data. </param>
+        /// <param name="data">      The data. </param>
+        /// <param name="offset">    The offset. </param>
+        /// <param name="length">    The length of data. </param>
         /// <returns>
         ///     SendError.
         /// </returns>
@@ -64,7 +69,7 @@ namespace Exomia.Network
         ///     send data to the server.
         /// </summary>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      data. </param>
+        /// <param name="data">      The data. </param>
         /// <returns>
         ///     SendError.
         /// </returns>
@@ -85,7 +90,7 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      struct data. </param>
+        /// <param name="data">      The struct data. </param>
         /// <returns>
         ///     SendError.
         /// </returns>
@@ -96,9 +101,9 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      data. </param>
-        /// <param name="offset">    offset. </param>
-        /// <param name="length">    length of data. </param>
+        /// <param name="data">      The data. </param>
+        /// <param name="offset">    The offset. </param>
+        /// <param name="length">    The length of data. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -110,7 +115,7 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      data. </param>
+        /// <param name="data">      The data. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -122,9 +127,9 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        data. </param>
-        /// <param name="offset">      offset. </param>
-        /// <param name="length">      length of data. </param>
+        /// <param name="data">        The data. </param>
+        /// <param name="offset">      The offset. </param>
+        /// <param name="length">      The length of data. </param>
         /// <param name="deserialize"> The deserialize. </param>
         /// <returns>
         ///     task of Response{TResult}
@@ -140,7 +145,7 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        data. </param>
+        /// <param name="data">        The data. </param>
         /// <param name="deserialize"> The deserialize. </param>
         /// <returns>
         ///     task of Response{TResult}
@@ -154,10 +159,10 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      data. </param>
-        /// <param name="offset">    offset. </param>
-        /// <param name="length">    length of data. </param>
-        /// <param name="timeout">   timeout. </param>
+        /// <param name="data">      The data. </param>
+        /// <param name="offset">    The offset. </param>
+        /// <param name="length">    The length of data. </param>
+        /// <param name="timeout">   The timeout. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -169,8 +174,8 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      data. </param>
-        /// <param name="timeout">   timeout. </param>
+        /// <param name="data">      The data. </param>
+        /// <param name="timeout">   The timeout. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -182,11 +187,11 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        data. </param>
-        /// <param name="offset">      offset. </param>
-        /// <param name="length">      length of data. </param>
+        /// <param name="data">        The data. </param>
+        /// <param name="offset">      The offset. </param>
+        /// <param name="length">      The length of data. </param>
         /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="timeout">     timeout. </param>
+        /// <param name="timeout">     The timeout. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -202,9 +207,9 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        data. </param>
+        /// <param name="data">        The data. </param>
         /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="timeout">     timeout. </param>
+        /// <param name="timeout">     The timeout. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -245,7 +250,7 @@ namespace Exomia.Network
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID">    Identifier for the command. </param>
         /// <param name="serializable"> ISerializable. </param>
-        /// <param name="timeout">      timeout. </param>
+        /// <param name="timeout">      The timeout. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -259,7 +264,7 @@ namespace Exomia.Network
         /// <param name="commandID">    Identifier for the command. </param>
         /// <param name="serializable"> ISerializable. </param>
         /// <param name="deserialize">  The deserialize. </param>
-        /// <param name="timeout">      timeout. </param>
+        /// <param name="timeout">      The timeout. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -274,7 +279,7 @@ namespace Exomia.Network
         /// <typeparam name="T">       struct type. </typeparam>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      struct data. </param>
+        /// <param name="data">      The struct data. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -288,7 +293,7 @@ namespace Exomia.Network
         /// <typeparam name="T">       struct type. </typeparam>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        struct data. </param>
+        /// <param name="data">        The struct data. </param>
         /// <param name="deserialize"> The deserialize. </param>
         /// <returns>
         ///     task of Response{TResult}
@@ -304,8 +309,8 @@ namespace Exomia.Network
         /// <typeparam name="T">       struct type. </typeparam>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
-        /// <param name="data">      struct data. </param>
-        /// <param name="timeout">   timeout. </param>
+        /// <param name="data">      The struct data. </param>
+        /// <param name="timeout">   The timeout. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
@@ -319,9 +324,9 @@ namespace Exomia.Network
         /// <typeparam name="T">       struct type. </typeparam>
         /// <typeparam name="TResult"> struct type. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        struct data. </param>
+        /// <param name="data">        The struct data. </param>
         /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="timeout">     timeout. </param>
+        /// <param name="timeout">     The timeout. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>

@@ -61,6 +61,13 @@ namespace Exomia.Network.TCP
             _circularBuffer = new CircularBuffer(_bufferRead.Length * 2);
         }
 
+        /// <inheritdoc />
+        private protected override void Configure()
+        {
+            ReceiveBufferSize = 8 * 1024; //8kb
+            SendBufferSize    = 8 * 1024; //8kb
+        }
+
         /// <summary>
         ///     Attempts to create socket.
         /// </summary>

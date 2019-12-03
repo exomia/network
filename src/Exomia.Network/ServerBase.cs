@@ -18,6 +18,10 @@ using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
 using K4os.Compression.LZ4;
+#if NETCOREAPP3_0
+using System.Diagnostics.CodeAnalysis;
+
+#endif
 
 namespace Exomia.Network
 {
@@ -161,6 +165,114 @@ namespace Exomia.Network
         private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
+        ///     Gets or sets the size of the receive buffer in bytes.
+        /// </summary>
+        /// <value>
+        ///     The size of the receive buffer in bytes.
+        /// </value>
+        public int ReceiveBufferSize
+        {
+            get { return _listener?.ReceiveBufferSize ?? 0; }
+            set
+            {
+                if (_listener != null)
+                {
+                    _listener.ReceiveBufferSize = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Gets or sets the size of the send buffer in bytes.
+        /// </summary>
+        /// <value>
+        ///     The size of the send buffer in bytes.
+        /// </value>
+        public int SendBufferSize
+        {
+            get { return _listener?.SendBufferSize ?? 0; }
+            set
+            {
+                if (_listener != null)
+                {
+                    _listener.ReceiveBufferSize = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Gets or sets the receive time out value of the connection in seconds.
+        /// </summary>
+        /// <value>
+        ///     The receive time out value of the connection in seconds.
+        /// </value>
+        public int ReceiveTimeout
+        {
+            get { return _listener?.ReceiveTimeout ?? 0; }
+            set
+            {
+                if (_listener != null)
+                {
+                    _listener.ReceiveTimeout = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Gets or sets the send time out value of the connection in seconds.
+        /// </summary>
+        /// <value>
+        ///     The send time out value of the connection in seconds.
+        /// </value>
+        public int SendTimeout
+        {
+            get { return _listener?.SendTimeout ?? 0; }
+            set
+            {
+                if (_listener != null)
+                {
+                    _listener.SendTimeout = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Gets or sets the value of the connection's linger option.
+        /// </summary>
+        /// <value>
+        ///     The linger option.
+        /// </value>
+        public LingerOption LingerState
+        {
+            get { return _listener?.LingerState ?? throw new NullReferenceException(nameof(LingerState)); }
+            set
+            {
+                if (_listener != null)
+                {
+                    _listener.LingerState = value;
+                }
+            }
+        }
+
+        /// <summary>
+        ///      Enables or disables delay when send or receive buffers are full.
+        /// </summary>
+        /// <value>
+        ///     The no delay state.
+        /// </value>
+        public bool NoDelay
+        {
+            get { return _listener?.NoDelay ?? throw new NullReferenceException(nameof(LingerState)); }
+            set
+            {
+                if (_listener != null)
+                {
+                    _listener.NoDelay = value;
+                }
+            }
+        }
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="ServerBase{T, TServerClient}" /> class.
         /// </summary>
         /// <param name="listenerCount"> (Optional) The listener count. </param>
@@ -191,17 +303,21 @@ namespace Exomia.Network
         /// <summary>
         ///     Runs.
         /// </summary>
-        /// <param name="port"> Port. </param>
+        /// <param name="port">               The port. </param>
+        /// <param name="overwriteConfigure"> (Optional) Overwrite the default configuration. </param>
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-        public bool Run(int port)
+        public bool Run(int port, Action<ServerBase<T, TServerClient>>? overwriteConfigure = null)
         {
             if (_isRunning) { return true; }
 #pragma warning disable IDE0067 // Dispose objects before losing scope
             if (OnRun(port, out _listener))
 #pragma warning restore IDE0067 // Dispose objects before losing scope
             {
+                Configure();
+                overwriteConfigure?.Invoke(this);
+                
                 _port  = port;
                 _state = RECEIVE_FLAG | SEND_FLAG;
                 for (int i = 0; i < _listenerCount; i++)
@@ -214,6 +330,11 @@ namespace Exomia.Network
         }
 
         /// <summary>
+        ///     Called after the <see cref="Run"/> method directly after the socket is successfully created.
+        /// </summary>
+        private protected abstract void Configure();
+
+        /// <summary>
         ///     Executes the run action.
         /// </summary>
         /// <param name="port">     Port. </param>
@@ -221,8 +342,11 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
+#if NETCOREAPP3_0
+        private protected abstract bool OnRun(int port, [NotNullWhen(true)] out Socket? listener);
+#else
         private protected abstract bool OnRun(int port, out Socket? listener);
-
+#endif
         /// <summary>
         ///     Listen asynchronous.
         /// </summary>
@@ -259,11 +383,7 @@ namespace Exomia.Network
                     }
                 case CommandID.DISCONNECT:
                     {
-#if NETCOREAPP3_0
                         if (_clients.TryGetValue(arg0, out TServerClient? sClient))
-#else
-                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
-#endif
                         {
                             InvokeClientDisconnect(sClient, DisconnectReason.Graceful);
                         }
@@ -271,11 +391,7 @@ namespace Exomia.Network
                     }
                 default:
                     {
-#if NETCOREAPP3_0
                         if (_clients.TryGetValue(arg0, out TServerClient? sClient))
-#else
-                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
-#endif
                         {
                             if (commandID <= Constants.USER_COMMAND_LIMIT &&
                                 _dataReceivedCallbacks.TryGetValue(
@@ -334,11 +450,7 @@ namespace Exomia.Network
         /// <param name="reason"> DisconnectReason. </param>
         private protected void InvokeClientDisconnect(T? arg0, DisconnectReason reason)
         {
-#if NETCOREAPP3_0
             if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient? client))
-#else
-            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient client))
-#endif
             {
                 InvokeClientDisconnect(client, reason);
             }
