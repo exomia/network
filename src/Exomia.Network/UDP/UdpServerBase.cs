@@ -44,6 +44,13 @@ namespace Exomia.Network.UDP
                     : Constants.TCP_PAYLOAD_SIZE_MAX;
         }
 
+        /// <inheritdoc />
+        private protected override void Configure()
+        {
+            ReceiveBufferSize = 0; //0kb
+            SendBufferSize    = 0; //0kb
+        }
+
         /// <summary>
         ///     Executes the run action.
         /// </summary>
@@ -52,7 +59,7 @@ namespace Exomia.Network.UDP
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-        private protected override bool OnRun(int port, out Socket listener)
+        private protected override bool OnRun(int port, out Socket? listener)
         {
             try
             {

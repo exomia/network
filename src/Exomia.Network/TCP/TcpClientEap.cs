@@ -51,7 +51,7 @@ namespace Exomia.Network.TCP
             {
                 try
                 {
-                    if (!_clientSocket.ReceiveAsync(_receiveEventArgs))
+                    if (!_clientSocket!.ReceiveAsync(_receiveEventArgs))
                     {
                         ReceiveAsyncCompleted(_receiveEventArgs.AcceptSocket, _receiveEventArgs);
                     }
@@ -64,7 +64,7 @@ namespace Exomia.Network.TCP
 
         private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
         {
-            SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
+            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
             {
                 sendEventArgs           =  new SocketAsyncEventArgs();
@@ -82,7 +82,7 @@ namespace Exomia.Network.TCP
 
             try
             {
-                if (!_clientSocket.SendAsync(sendEventArgs))
+                if (!_clientSocket!.SendAsync(sendEventArgs))
                 {
                     SendAsyncCompleted(_clientSocket, sendEventArgs);
                 }
@@ -116,7 +116,7 @@ namespace Exomia.Network.TCP
         /// </summary>
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
-        private void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {
@@ -139,7 +139,7 @@ namespace Exomia.Network.TCP
         /// </summary>
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {

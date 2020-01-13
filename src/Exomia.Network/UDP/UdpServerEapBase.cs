@@ -51,10 +51,12 @@ namespace Exomia.Network.UDP
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
             {
-                SocketAsyncEventArgs receiveEventArgs = _receiveEventArgsPool.Rent();
+                SocketAsyncEventArgs? receiveEventArgs = _receiveEventArgsPool.Rent();
                 if (receiveEventArgs == null)
                 {
-                    receiveEventArgs           =  new SocketAsyncEventArgs();
+#pragma warning disable IDE0068 // Use recommended dispose pattern
+                    receiveEventArgs = new SocketAsyncEventArgs();
+#pragma warning restore IDE0068 // Use recommended dispose pattern
                     receiveEventArgs.Completed += ReceiveFromAsyncCompleted;
                     receiveEventArgs.SetBuffer(
                         new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
@@ -65,7 +67,7 @@ namespace Exomia.Network.UDP
 
                 try
                 {
-                    if (!_listener.ReceiveFromAsync(receiveEventArgs))
+                    if (!_listener!.ReceiveFromAsync(receiveEventArgs))
                     {
                         ReceiveFromAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
                     }
@@ -91,7 +93,7 @@ namespace Exomia.Network.UDP
         private protected override unsafe SendError SendTo(EndPoint      arg0,
                                                            in PacketInfo packetInfo)
         {
-            SocketAsyncEventArgs sendEventArgs = _sendEventArgsPool.Rent();
+            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
             {
                 sendEventArgs           =  new SocketAsyncEventArgs();
@@ -111,7 +113,7 @@ namespace Exomia.Network.UDP
 
             try
             {
-                if (!_listener.SendToAsync(sendEventArgs))
+                if (!_listener!.SendToAsync(sendEventArgs))
                 {
                     SendToAsyncCompleted(sendEventArgs.RemoteEndPoint, sendEventArgs);
                 }
@@ -143,7 +145,7 @@ namespace Exomia.Network.UDP
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
         /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private void ReceiveFromAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void ReceiveFromAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             ListenAsync();
 
@@ -173,7 +175,7 @@ namespace Exomia.Network.UDP
         /// </summary>
         /// <param name="sender"> Source of the event. </param>
         /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendToAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        private void SendToAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
             {

@@ -21,7 +21,7 @@ namespace Exomia.Network.TCP
         /// <inheritdoc />
         public override IPAddress IPAddress
         {
-            get { return (_arg0.RemoteEndPoint as IPEndPoint)?.Address; }
+            get { return ((IPEndPoint)_arg0.RemoteEndPoint).Address; }
         }
     }
 }

@@ -42,7 +42,14 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-        private protected override bool TryCreateSocket(out Socket socket)
+        private protected override void Configure()
+        {
+            ReceiveBufferSize = 0; //0kb
+            SendBufferSize    = 0; //0kb
+        }
+
+        /// <inheritdoc />
+        private protected override bool TryCreateSocket(out Socket? socket)
         {
             try
             {

@@ -8,13 +8,14 @@
 
 #endregion
 
-#define TCP
+#define UDP
 
 using System;
 using System.Text;
 using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
+
 #else
 using Exomia.Network.UDP;
 #endif
@@ -23,54 +24,53 @@ namespace Example.Server
 {
     class Program
     {
-        private static void Main(string[] args)
+        private static void Main()
         {
-            using (Server server = new Server())
+            using Server server = new Server();
+            
+            server.ClientConnected += (server1, client) =>
             {
-                server.ClientConnected += (server1, client) =>
+                Console.WriteLine("Client connected: " + client.IPAddress);
+            };
+            server.ClientDisconnected += (server1, client, reason) =>
+            {
+                Console.WriteLine(reason + " Client disconnected: " + client.IPAddress);
+            };
+            server.AddCommand(
+                (in Packet packet) =>
                 {
-                    Console.WriteLine("Client connected: " + client.IPAddress);
-                };
-                server.ClientDisconnected += (server1, client, reason) =>
+                    Console.WriteLine(
+                        "{0} >= {1}  ==  {2}", packet.Buffer.Length, packet.Length,
+                        packet.Buffer.Length >= packet.Length);
+                    return packet.Length;
+                }, 1);
+            server.AddDataReceivedCallback(
+                1, (server1, client, data, responseid) =>
                 {
-                    Console.WriteLine(reason + " Client disconnected: " + client.IPAddress);
-                };
-                server.AddCommand(
-                    (in Packet packet) =>
-                    {
-                        Console.WriteLine(
-                            "{0} >= {1}  ==  {2}", packet.Buffer.Length, packet.Length,
-                            packet.Buffer.Length >= packet.Length);
-                        return packet.Length;
-                    }, 1);
-                server.AddDataReceivedCallback(
-                    1, (server1, client, data, responseid) =>
-                    {
-                        int l = (int)data;
-                        server1.SendTo(client, 1, new byte[l], 0, l, responseid);
-                        return true;
-                    });
-                server.AddCommand(
-                    (in Packet packet) =>
-                    {
-                        return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
-                    }, 45);
+                    int l = (int)data;
+                    server1.SendTo(client, 1, new byte[l], 0, l, responseid);
+                    return true;
+                });
+            server.AddCommand(
+                (in Packet packet) =>
+                {
+                    return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
+                }, 45);
 
-                server.AddDataReceivedCallback(
-                    45, (server1, client, data, responseid) =>
-                    {
-                        string request = (string)data;
-                        Console.WriteLine($"Request: {request}");
-                        byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
-                        server1.SendTo(client, 45, buffer, 0, buffer.Length, responseid);
-                        return true;
-                    });
+            server.AddDataReceivedCallback(
+                45, (server1, client, data, responseid) =>
+                {
+                    string request = (string)data;
+                    Console.WriteLine($"Request: {request}");
+                    byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
+                    server1.SendTo(client, 45, buffer, 0, buffer.Length, responseid);
+                    return true;
+                });
 
-                Console.WriteLine(server.Run(3000));
+            Console.WriteLine(server.Run(3000, b => b.ReceiveBufferSize = 64 * 1024));
 
-                Console.WriteLine("press any key to exit...");
-                Console.ReadKey();
-            }
+            Console.WriteLine("press any key to exit...");
+            Console.ReadKey();
         }
     }
 

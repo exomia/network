@@ -28,7 +28,7 @@ namespace Exomia.Network.Buffers
         /// <summary>
         ///     The buffers.
         /// </summary>
-        private static readonly byte[][][] s_buffers;
+        private static readonly byte[]?[][] s_buffers;
 
         /// <summary>
         ///     The index.
@@ -76,8 +76,8 @@ namespace Exomia.Network.Buffers
                 return new byte[size];
             }
 
-            byte[] buffer    = null;
-            bool   lockTaken = false;
+            byte[]? buffer    = null;
+            bool    lockTaken = false;
             try
             {
                 s_lock.Enter(ref lockTaken);
@@ -106,8 +106,7 @@ namespace Exomia.Network.Buffers
         /// </summary>
         /// <param name="array"> The array to return. </param>
         /// <exception cref="ArgumentException">
-        ///     Thrown when one or more arguments have unsupported or
-        ///     illegal values.
+        ///     Thrown when one or more arguments have unsupported or illegal values.
         /// </exception>
         internal static void Return(byte[] array)
         {

@@ -163,7 +163,7 @@ namespace Exomia.Network.Extensions.Struct
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {
-                obj = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
+                obj = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T))!;
             }
             finally
             {
@@ -184,7 +184,7 @@ namespace Exomia.Network.Extensions.Struct
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {
-                obj = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject() + offset, typeof(T));
+                obj = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject() + offset, typeof(T))!;
             }
             finally
             {
@@ -206,7 +206,7 @@ namespace Exomia.Network.Extensions.Struct
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {
-                return (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
+                return (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T))!;
             }
             finally
             {
@@ -229,7 +229,7 @@ namespace Exomia.Network.Extensions.Struct
             GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
             try
             {
-                return (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject() + offset, typeof(T));
+                return (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject() + offset, typeof(T))!;
             }
             finally
             {

@@ -20,7 +20,7 @@ namespace Exomia.Network.UDP
         /// <inheritdoc />
         public override IPAddress IPAddress
         {
-            get { return (_arg0 as IPEndPoint)?.Address; }
+            get { return ((IPEndPoint)_arg0).Address; }
         }
     }
 }

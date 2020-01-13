@@ -8,7 +8,7 @@
 
 #endregion
 
-#define TCP
+#define UDP
 
 using System;
 using System.Diagnostics;
@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
+
 #else
 using Exomia.Network.UDP;
 #endif
@@ -30,9 +31,9 @@ namespace Example.Client
         private static async Task Main(string[] args)
         {
 #if TCP
-            TcpClientEap client = new TcpClientEap(512);
+            using TcpClientEap client = new TcpClientEap(512);
 #else
-            UdpClientEap client = new UdpClientEap(512);
+            using UdpClientEap client = new UdpClientEap(512);
 #endif
             client.Disconnected += (c, r) => { Console.WriteLine(r + " | Disconnected"); };
             client.AddCommand(
@@ -41,7 +42,7 @@ namespace Example.Client
                     Console.WriteLine(
                         "{0} >= {1}  ==  {2}", packet.Buffer.Length, packet.Length,
                         packet.Buffer.Length >= packet.Length);
-                    return null;
+                    return true;
                 }, 1);
 
             client.AddCommand(
@@ -57,7 +58,7 @@ namespace Example.Client
                     return true;
                 });
             Thread.Sleep(100);
-            Console.WriteLine(client.Connect("127.0.0.1", 3000) ? "CONNECTED" : "CONNECT FAILED");
+            Console.WriteLine(client.Connect("127.0.0.1", 3000, b => b.ReceiveBufferSize = 64 * 1024) ? "CONNECTED" : "CONNECT FAILED");
 
             for (int n = 1; n <= 8; n++)
             {
@@ -86,13 +87,12 @@ namespace Example.Client
 
                 sw.Stop();
                 Console.WriteLine(
-                    i + ": " + (res2 ? res2.Result : "error receiving response") + " - " + (sw.ElapsedMilliseconds / 2) + "ms");
+                    i + ": " + (res2 ? res2.Result : "error receiving response") + " - " +
+                    (sw.ElapsedMilliseconds / 2) + "ms");
             }
 
             Console.WriteLine("press any key to exit...");
             Console.ReadKey();
-
-            client.Dispose();
         }
     }
 }

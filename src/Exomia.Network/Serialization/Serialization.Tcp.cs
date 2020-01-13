@@ -160,7 +160,7 @@ namespace Exomia.Network.Serialization
 
                     if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
                     {
-                        byte[] buffer = bigDataHandler.Receive(
+                        byte[]? buffer = bigDataHandler.Receive(
                             packetId, dst, length, chunkOffset, cl);
                         if (buffer == null)
                         {
