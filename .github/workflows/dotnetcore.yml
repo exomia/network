@@ -14,6 +14,6 @@ jobs:
       with:
         dotnet-version: 3.0.101
     - name: dotnet build release netstandard2.0
-      run: dotnet build --configuration Release --framework netstandard2.0  
+      run: dotnet build --configuration Release --framework netstandard2.0 --force --nologo
     - name: dotnet build release netstandard2.1
-      run: dotnet build --configuration Release --framework netstandard2.1
+      run: dotnet build --configuration Release --framework netstandard2.1 --force --nologo
