@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -20,6 +20,8 @@ namespace Exomia.Network.UDP
     public abstract class UdpServerBase<TServerClient> : ServerBase<EndPoint, TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
+        private protected readonly BigDataHandler<(EndPoint, int)> _bigDataHandler;
+
         /// <summary>
         ///     Size of the maximum payload.
         /// </summary>
@@ -42,6 +44,8 @@ namespace Exomia.Network.UDP
                 expectedMaxPayloadSize > 0 && expectedMaxPayloadSize < Constants.UDP_PAYLOAD_SIZE_MAX
                     ? expectedMaxPayloadSize
                     : Constants.TCP_PAYLOAD_SIZE_MAX;
+
+            _bigDataHandler = new BigDataHandler<(EndPoint, int)>.Timed();
         }
 
         /// <inheritdoc />

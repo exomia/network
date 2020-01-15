@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -24,7 +24,7 @@ using Exomia.Network.Lib;
 using Exomia.Network.Native;
 using Exomia.Network.Serialization;
 using K4os.Compression.LZ4;
-#if NETCOREAPP3_0
+#if NETSTANDARD2_1
 using System.Diagnostics.CodeAnalysis;
 
 #endif
@@ -84,11 +84,6 @@ namespace Exomia.Network
         ///     called than a ping is received.
         /// </summary>
         public event Action<PingPacket>? Ping;
-
-        /// <summary>
-        ///     The big data handler.
-        /// </summary>
-        private protected readonly BigDataHandler _bigDataHandler;
 
         /// <summary>
         ///     The client socket.
@@ -287,7 +282,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///      Enables or disables delay when send or receive buffers are full.
+        ///     Enables or disables delay when send or receive buffers are full.
         /// </summary>
         /// <value>
         ///     The no delay state.
@@ -330,8 +325,6 @@ namespace Exomia.Network
 
             _responseID = 1;
 
-            _bigDataHandler = new BigDataHandler();
-
             Random rnd = new Random((int)DateTime.UtcNow.Ticks);
             rnd.NextBytes(_connectChecksum);
 
@@ -363,7 +356,7 @@ namespace Exomia.Network
             {
                 Configure();
                 overwriteConfigure?.Invoke(this);
-                
+
                 try
                 {
                     IAsyncResult iar    = _clientSocket!.BeginConnect(ipAddresses, port, null, null);
@@ -399,12 +392,16 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Called after the <see cref="Connect(System.Net.IPAddress[],int,System.Action{Exomia.Network.ClientBase},int)"/> method directly after the socket is successfully created.
+        ///     Called after the <see cref="Connect(System.Net.IPAddress[],int,System.Action{Exomia.Network.ClientBase},int)" />
+        ///     method directly after the socket is successfully created.
         /// </summary>
         private protected abstract void Configure();
 
         /// <inheritdoc />
-        public bool Connect(string serverAddress, int port, Action<ClientBase>? overwriteConfigure = null, int timeout = 10)
+        public bool Connect(string              serverAddress,
+                            int                 port,
+                            Action<ClientBase>? overwriteConfigure = null,
+                            int                 timeout            = 10)
         {
             return Connect(Dns.GetHostAddresses(serverAddress), port, overwriteConfigure, timeout);
         }
@@ -443,7 +440,7 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-#if NETCOREAPP3_0
+#if NETSTANDARD2_1
         private protected abstract bool TryCreateSocket([NotNullWhen(true)] out Socket? socket);
 #else
         private protected abstract bool TryCreateSocket(out Socket? socket);
@@ -746,7 +743,7 @@ namespace Exomia.Network
                     {
                         CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
                         _ => throw new ArgumentOutOfRangeException(
-                            nameof(_compressionMode), _compressionMode, "Not supported!"),
+                            nameof(_compressionMode), _compressionMode, "Not supported!")
                     };
                     if (s > 0 && s < length)
                     {

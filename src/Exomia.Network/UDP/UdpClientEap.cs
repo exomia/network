@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -152,7 +152,7 @@ namespace Exomia.Network.UDP
             ReceiveAsync();
 
             if (Serialization.Serialization.DeserializeUdp(
-                e.Buffer, e.BytesTransferred, _bigDataHandler,
+                e.Buffer, e.BytesTransferred, _bigDataHandler, i => i,
                 out DeserializePacketInfo deserializePacketInfo))
             {
                 DeserializeData(in deserializePacketInfo);

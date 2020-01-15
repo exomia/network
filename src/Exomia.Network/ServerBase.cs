@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -18,7 +18,7 @@ using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
 using K4os.Compression.LZ4;
-#if NETCOREAPP3_0
+#if NETSTANDARD2_1
 using System.Diagnostics.CodeAnalysis;
 
 #endif
@@ -82,11 +82,6 @@ namespace Exomia.Network
         ///     The clients.
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
-
-        /// <summary>
-        ///     The big data handler.
-        /// </summary>
-        private protected readonly BigDataHandler _bigDataHandler;
 
         /// <summary>
         ///     The listener.
@@ -255,7 +250,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///      Enables or disables delay when send or receive buffers are full.
+        ///     Enables or disables delay when send or receive buffers are full.
         /// </summary>
         /// <value>
         ///     The no delay state.
@@ -288,8 +283,6 @@ namespace Exomia.Network
             _packetID = 1;
 
             _clientDataReceived = new Event<ClientCommandDataReceivedHandler<TServerClient>>();
-
-            _bigDataHandler = new BigDataHandler();
         }
 
         /// <summary>
@@ -317,7 +310,7 @@ namespace Exomia.Network
             {
                 Configure();
                 overwriteConfigure?.Invoke(this);
-                
+
                 _port  = port;
                 _state = RECEIVE_FLAG | SEND_FLAG;
                 for (int i = 0; i < _listenerCount; i++)
@@ -330,7 +323,7 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Called after the <see cref="Run"/> method directly after the socket is successfully created.
+        ///     Called after the <see cref="Run" /> method directly after the socket is successfully created.
         /// </summary>
         private protected abstract void Configure();
 
@@ -342,7 +335,7 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-#if NETCOREAPP3_0
+#if NETSTANDARD2_1
         private protected abstract bool OnRun(int port, [NotNullWhen(true)] out Socket? listener);
 #else
         private protected abstract bool OnRun(int port, out Socket? listener);
@@ -704,7 +697,7 @@ namespace Exomia.Network
                     {
                         CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
                         _ => throw new ArgumentOutOfRangeException(
-                            nameof(_compressionMode), _compressionMode, "Not supported!"),
+                            nameof(_compressionMode), _compressionMode, "Not supported!")
                     };
                     if (s > 0 && s < length)
                     {

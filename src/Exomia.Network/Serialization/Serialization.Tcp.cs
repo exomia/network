@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -110,13 +110,13 @@ namespace Exomia.Network.Serialization
         /// </returns>
         /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        internal static bool DeserializeTcp(byte           packetHeader,
-                                            ushort         checksum,
-                                            byte[]         source,
-                                            BigDataHandler bigDataHandler,
-                                            out byte[]     payload,
-                                            ref int        length,
-                                            out uint       responseID)
+        internal static bool DeserializeTcp(byte                packetHeader,
+                                            ushort              checksum,
+                                            byte[]              source,
+                                            BigDataHandler<int> bigDataHandler,
+                                            out byte[]          payload,
+                                            ref int             length,
+                                            out uint            responseID)
         {
             fixed (byte* ptr = source)
             {

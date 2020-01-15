@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -35,6 +35,11 @@ namespace Exomia.Network.TCP
         private protected readonly ushort _payloadSize;
 
         /// <summary>
+        ///     The big data handler.
+        /// </summary>
+        private protected readonly BigDataHandler<int> _bigDataHandler;
+
+        /// <summary>
         ///     Size of the maximum payload.
         /// </summary>
         private readonly ushort _maxPayloadSize;
@@ -59,6 +64,17 @@ namespace Exomia.Network.TCP
             _bufferRead =
                 new byte[PayloadEncoding.EncodedPayloadLength(_payloadSize + Constants.TCP_HEADER_OFFSET)];
             _circularBuffer = new CircularBuffer(_bufferRead.Length * 2);
+
+            _bigDataHandler = new BigDataHandler<int>.Default();
+        }
+
+        /// <inheritdoc />
+        protected override void OnDispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _bigDataHandler.Dispose();
+            }
         }
 
         /// <inheritdoc />

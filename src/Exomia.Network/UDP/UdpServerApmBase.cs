@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -155,7 +155,7 @@ namespace Exomia.Network.UDP
             ListenAsync();
 
             if (Serialization.Serialization.DeserializeUdp(
-                state.Buffer, bytesTransferred, _bigDataHandler,
+                state.Buffer, bytesTransferred, _bigDataHandler, i => (state.EndPoint, i),
                 out DeserializePacketInfo deserializePacketInfo))
             {
                 DeserializeData(state.EndPoint, in deserializePacketInfo);
@@ -177,15 +177,16 @@ namespace Exomia.Network.UDP
             /// <summary>
             ///     The end point.
             /// </summary>
-            public EndPoint EndPoint = default!;
+            public EndPoint EndPoint;
 
             /// <summary>
             ///     Initializes a new instance of the <see cref="ServerClientStateObject" /> class.
             /// </summary>
-            /// <param name="buffer"> The buffer. </param>
+            /// <param name="buffer">         The buffer. </param>
             public ServerClientStateObject(byte[] buffer)
             {
                 Buffer = buffer;
+                EndPoint = null!;
             }
         }
     }
