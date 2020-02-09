@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -88,14 +88,16 @@ namespace Exomia.Network.Serialization
             return Constants.UDP_HEADER_SIZE + offset + packetInfo.ChunkLength;
         }
 
-        internal static bool DeserializeUdp(byte[]                    buffer,
-                                            int                       bytesTransferred,
-                                            BigDataHandler            bigDataHandler,
-#if NETCOREAPP3_0
-                                            [NotNullWhen(true)]out DeserializePacketInfo deserializePacketInfo)
+        internal static bool DeserializeUdp<TKey>(byte[]               buffer,
+                                                  int                  bytesTransferred,
+                                                  BigDataHandler<TKey> bigDataHandler,
+                                                  Func<int, TKey>      keyFunc,
+#if NETSTANDARD2_1
+                                                  [NotNullWhen(true)] out DeserializePacketInfo deserializePacketInfo)
 #else
                                             out DeserializePacketInfo deserializePacketInfo)
 #endif
+            where TKey : struct
         {
             fixed (byte* src = buffer)
             {
@@ -127,7 +129,7 @@ namespace Exomia.Network.Serialization
                     {
                         int cl = *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 8);
                         byte[]? bdb = bigDataHandler.Receive(
-                            *(int*)(src + Constants.UDP_HEADER_SIZE + offset),
+                            keyFunc(*(int*)(src + Constants.UDP_HEADER_SIZE + offset)),
                             src + Constants.UDP_HEADER_SIZE + offset + 12, deserializePacketInfo.Length - offset - 12,
                             *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 4),
                             cl);

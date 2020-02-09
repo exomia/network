@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -10,15 +10,14 @@
 
 #define UDP
 
-using System;
-using System.Text;
-using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
-
 #else
 using Exomia.Network.UDP;
 #endif
+using System;
+using System.Text;
+using Exomia.Network;
 
 namespace Example.Server
 {
@@ -27,7 +26,7 @@ namespace Example.Server
         private static void Main()
         {
             using Server server = new Server();
-            
+
             server.ClientConnected += (server1, client) =>
             {
                 Console.WriteLine("Client connected: " + client.IPAddress);

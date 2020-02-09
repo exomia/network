@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -154,7 +154,7 @@ namespace Exomia.Network.TCP
             receiveArgs.UserToken = new ServerClientStateObject(
                 new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
                 new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
-                new BigDataHandler());
+                new BigDataHandler<int>.Default());
 
             ListenAsync(e);
 

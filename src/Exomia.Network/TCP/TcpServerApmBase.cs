@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -121,7 +121,7 @@ namespace Exomia.Network.TCP
                 ServerClientStateObjectApm state = new ServerClientStateObjectApm(
                     new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
                     new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
-                    new BigDataHandler(),
+                    new BigDataHandler<int>.Default(),
                     socket,
                     new byte[_payloadSize + Constants.TCP_HEADER_OFFSET]);
 #pragma warning restore IDE0068 // Use recommended dispose pattern
@@ -246,11 +246,11 @@ namespace Exomia.Network.TCP
             /// <summary>
             ///     Initializes a new instance of the <see cref="ServerClientStateObjectApm" /> class.
             /// </summary>
-            public ServerClientStateObjectApm(byte[]         bufferRead,
-                                              CircularBuffer circularBuffer,
-                                              BigDataHandler bigDataHandler,
-                                              Socket         socket,
-                                              byte[]         bufferWrite)
+            public ServerClientStateObjectApm(byte[]              bufferRead,
+                                              CircularBuffer      circularBuffer,
+                                              BigDataHandler<int> bigDataHandler,
+                                              Socket              socket,
+                                              byte[]              bufferWrite)
                 : base(bufferRead, circularBuffer, bigDataHandler)
             {
                 Socket      = socket;

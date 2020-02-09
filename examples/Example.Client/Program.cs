@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -10,6 +10,11 @@
 
 #define UDP
 
+#if TCP
+using Exomia.Network.TCP;
+#else
+using Exomia.Network.UDP;
+#endif
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -17,12 +22,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network;
-#if TCP
-using Exomia.Network.TCP;
-
-#else
-using Exomia.Network.UDP;
-#endif
 
 namespace Example.Client
 {
@@ -58,7 +57,10 @@ namespace Example.Client
                     return true;
                 });
             Thread.Sleep(100);
-            Console.WriteLine(client.Connect("127.0.0.1", 3000, b => b.ReceiveBufferSize = 64 * 1024) ? "CONNECTED" : "CONNECT FAILED");
+            Console.WriteLine(
+                client.Connect("127.0.0.1", 3000, b => b.ReceiveBufferSize = 64 * 1024)
+                    ? "CONNECTED"
+                    : "CONNECT FAILED");
 
             for (int n = 1; n <= 8; n++)
             {

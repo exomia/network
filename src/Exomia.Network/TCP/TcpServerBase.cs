@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -172,14 +172,14 @@ namespace Exomia.Network.TCP
             /// <summary>
             ///     The big data handler.
             /// </summary>
-            public BigDataHandler BigDataHandler { get; }
+            public BigDataHandler<int> BigDataHandler { get; }
 
             /// <summary>
             ///     Initializes a new instance of the <see cref="ServerClientStateObject" /> class.
             /// </summary>
-            public ServerClientStateObject(byte[]         bufferRead,
-                                           CircularBuffer circularBuffer,
-                                           BigDataHandler bigDataHandler)
+            public ServerClientStateObject(byte[]              bufferRead,
+                                           CircularBuffer      circularBuffer,
+                                           BigDataHandler<int> bigDataHandler)
             {
                 BufferRead     = bufferRead;
                 CircularBuffer = circularBuffer;

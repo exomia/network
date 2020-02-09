@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -23,7 +23,7 @@ namespace Exomia.Network
         /// <summary>
         ///     Socket|Endpoint.
         /// </summary>
-        private protected T _arg0 = default!;
+        private protected T _arg0;
 
         /// <summary>
         ///     The last received packet time stamp Date/Time.

@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2019, exomia
+// Copyright (c) 2018-2020, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -135,7 +135,7 @@ namespace Exomia.Network.UDP
 
             ClientStateObject state = (ClientStateObject)iar.AsyncState!;
             if (Serialization.Serialization.DeserializeUdp(
-                state.Buffer, bytesTransferred, _bigDataHandler,
+                state.Buffer, bytesTransferred, _bigDataHandler, i => i,
                 out DeserializePacketInfo deserializePacketInfo))
             {
                 DeserializeData(in deserializePacketInfo);
