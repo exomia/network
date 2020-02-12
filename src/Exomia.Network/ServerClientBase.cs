@@ -54,7 +54,10 @@ namespace Exomia.Network
         /// <summary>
         ///     Initializes a new instance of the <see cref="ServerClientBase{T}" /> class.
         /// </summary>
-        private protected ServerClientBase() { }
+        private protected ServerClientBase()
+        {
+            _arg0 = null!;
+        }
 
         /// <summary>
         ///     Sets last received packet time stamp.
