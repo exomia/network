@@ -681,65 +681,62 @@ namespace Exomia.Network
                                         int    length,
                                         uint   responseID)
         {
-            if (_listener == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
+            if (_listener == null || (_state & SEND_FLAG) != SEND_FLAG) { return SendError.Invalid; }
+
+            PacketInfo packetInfo;
+            packetInfo.CommandID        = commandID;
+            packetInfo.ResponseID       = responseID;
+            packetInfo.Length           = length;
+            packetInfo.CompressedLength = length;
+            packetInfo.CompressionMode  = CompressionMode.None;
+            if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
             {
-                PacketInfo packetInfo;
-                packetInfo.CommandID        = commandID;
-                packetInfo.ResponseID       = responseID;
-                packetInfo.Length           = length;
-                packetInfo.CompressedLength = length;
-                packetInfo.CompressionMode  = CompressionMode.None;
-                if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
+                byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
+                int s = _compressionMode switch
                 {
-                    byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
-                    int s = _compressionMode switch
-                    {
-                        CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
-                        _ => throw new ArgumentOutOfRangeException(
-                            nameof(_compressionMode), _compressionMode, "Not supported!")
-                    };
-                    if (s > 0 && s < length)
-                    {
-                        packetInfo.CompressedLength = s;
-                        packetInfo.CompressionMode  = _compressionMode;
-                        data                        = buffer;
-                        offset                      = 0;
-                    }
-                }
-
-                fixed (byte* src = data)
+                    CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(_compressionMode), _compressionMode, "Not supported!")
+                };
+                if (s > 0 && s < length)
                 {
-                    packetInfo.Src = src + offset;
-                    if (packetInfo.CompressedLength <= MaxPayloadSize)
-                    {
-                        packetInfo.PacketID    = 0;
-                        packetInfo.ChunkOffset = 0;
-                        packetInfo.ChunkLength = packetInfo.CompressedLength;
-                        packetInfo.IsChunked   = false;
-                        return SendTo(arg0, in packetInfo);
-                    }
-
-                    packetInfo.PacketID    = Interlocked.Increment(ref _packetID);
-                    packetInfo.ChunkOffset = 0;
-                    packetInfo.IsChunked   = true;
-                    int chunkLength = packetInfo.CompressedLength;
-                    while (chunkLength > MaxPayloadSize)
-                    {
-                        packetInfo.ChunkLength = MaxPayloadSize;
-                        SendError se = SendTo(arg0, in packetInfo);
-                        if (se != SendError.None)
-                        {
-                            return se;
-                        }
-                        chunkLength            -= MaxPayloadSize;
-                        packetInfo.ChunkOffset += MaxPayloadSize;
-                    }
-                    packetInfo.ChunkLength = chunkLength;
-                    return SendTo(arg0, in packetInfo);
+                    packetInfo.CompressedLength = s;
+                    packetInfo.CompressionMode  = _compressionMode;
+                    data                        = buffer;
+                    offset                      = 0;
                 }
             }
-            return SendError.Invalid;
+
+            fixed (byte* src = data)
+            {
+                packetInfo.Src = src + offset;
+                if (packetInfo.CompressedLength <= MaxPayloadSize)
+                {
+                    packetInfo.PacketID    = 0;
+                    packetInfo.ChunkOffset = 0;
+                    packetInfo.ChunkLength = packetInfo.CompressedLength;
+                    packetInfo.IsChunked   = false;
+                    return SendTo(arg0, in packetInfo);
+                }
+
+                packetInfo.PacketID    = Interlocked.Increment(ref _packetID);
+                packetInfo.ChunkOffset = 0;
+                packetInfo.IsChunked   = true;
+                int chunkLength = packetInfo.CompressedLength;
+                while (chunkLength > MaxPayloadSize)
+                {
+                    packetInfo.ChunkLength = MaxPayloadSize;
+                    SendError se = SendTo(arg0, in packetInfo);
+                    if (se != SendError.None)
+                    {
+                        return se;
+                    }
+                    chunkLength            -= MaxPayloadSize;
+                    packetInfo.ChunkOffset += MaxPayloadSize;
+                }
+                packetInfo.ChunkLength = chunkLength;
+                return SendTo(arg0, in packetInfo);
+            }
         }
 
         /// <inheritdoc />

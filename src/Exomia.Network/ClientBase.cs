@@ -503,7 +503,7 @@ namespace Exomia.Network
                     if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
                 }
                 if (cs != null && !cs.TrySetResult(
-                        new Packet(deserializePacketInfo.Data, 0, deserializePacketInfo.Length)))
+                    new Packet(deserializePacketInfo.Data, 0, deserializePacketInfo.Length)))
                 {
                     ByteArrayPool.Return(deserializePacketInfo.Data);
                 }
@@ -727,64 +727,61 @@ namespace Exomia.Network
                                                int    length,
                                                uint   responseID)
         {
-            if (_clientSocket == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
-            {
-                PacketInfo packetInfo;
-                packetInfo.CommandID        = commandID;
-                packetInfo.ResponseID       = responseID;
-                packetInfo.Length           = length;
-                packetInfo.CompressedLength = length;
-                packetInfo.CompressionMode  = CompressionMode.None;
-                if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
-                {
-                    byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
-                    int s = _compressionMode switch
-                    {
-                        CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
-                        _ => throw new ArgumentOutOfRangeException(
-                            nameof(_compressionMode), _compressionMode, "Not supported!")
-                    };
-                    if (s > 0 && s < length)
-                    {
-                        packetInfo.CompressedLength = s;
-                        packetInfo.CompressionMode  = _compressionMode;
-                        data                        = buffer;
-                        offset                      = 0;
-                    }
-                }
+            if (_clientSocket == null || (_state & SEND_FLAG) != SEND_FLAG) { return SendError.Invalid; }
 
-                fixed (byte* src = data)
+            PacketInfo packetInfo;
+            packetInfo.CommandID        = commandID;
+            packetInfo.ResponseID       = responseID;
+            packetInfo.Length           = length;
+            packetInfo.CompressedLength = length;
+            packetInfo.CompressionMode  = CompressionMode.None;
+            if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
+            {
+                byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
+                int s = _compressionMode switch
                 {
-                    packetInfo.Src = src + offset;
-                    if (packetInfo.CompressedLength <= MaxPayloadSize)
-                    {
-                        packetInfo.PacketID    = 0;
-                        packetInfo.ChunkOffset = 0;
-                        packetInfo.ChunkLength = packetInfo.CompressedLength;
-                        packetInfo.IsChunked   = false;
-                        return BeginSendData(in packetInfo);
-                    }
-                    packetInfo.PacketID    = Interlocked.Increment(ref _packetID);
-                    packetInfo.ChunkOffset = 0;
-                    packetInfo.IsChunked   = true;
-                    int chunkLength = packetInfo.CompressedLength;
-                    while (chunkLength > MaxPayloadSize)
-                    {
-                        packetInfo.ChunkLength = MaxPayloadSize;
-                        SendError se = BeginSendData(in packetInfo);
-                        if (se != SendError.None)
-                        {
-                            return se;
-                        }
-                        chunkLength            -= MaxPayloadSize;
-                        packetInfo.ChunkOffset += MaxPayloadSize;
-                    }
-                    packetInfo.ChunkLength = chunkLength;
-                    return BeginSendData(in packetInfo);
+                    CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(_compressionMode), _compressionMode, "Not supported!")
+                };
+                if (s > 0 && s < length)
+                {
+                    packetInfo.CompressedLength = s;
+                    packetInfo.CompressionMode  = _compressionMode;
+                    data                        = buffer;
+                    offset                      = 0;
                 }
             }
-            return SendError.Invalid;
+
+            fixed (byte* src = data)
+            {
+                packetInfo.Src = src + offset;
+                if (packetInfo.CompressedLength <= MaxPayloadSize)
+                {
+                    packetInfo.PacketID    = 0;
+                    packetInfo.ChunkOffset = 0;
+                    packetInfo.ChunkLength = packetInfo.CompressedLength;
+                    packetInfo.IsChunked   = false;
+                    return BeginSendData(in packetInfo);
+                }
+                packetInfo.PacketID    = Interlocked.Increment(ref _packetID);
+                packetInfo.ChunkOffset = 0;
+                packetInfo.IsChunked   = true;
+                int chunkLength = packetInfo.CompressedLength;
+                while (chunkLength > MaxPayloadSize)
+                {
+                    packetInfo.ChunkLength = MaxPayloadSize;
+                    SendError se = BeginSendData(in packetInfo);
+                    if (se != SendError.None)
+                    {
+                        return se;
+                    }
+                    chunkLength            -= MaxPayloadSize;
+                    packetInfo.ChunkOffset += MaxPayloadSize;
+                }
+                packetInfo.ChunkLength = chunkLength;
+                return BeginSendData(in packetInfo);
+            }
         }
 
         /// <inheritdoc />
@@ -924,7 +921,7 @@ namespace Exomia.Network
             return
                 new Response<TResult>(
                     default!,
-                    sendError); //can be null, but it doesn't matter if an error has occurred, it is unsafe to use it anyway.
+                    sendError); //default!: can be null, but it doesn't matter if an error has occurred, it is unsafe to use it anyway.
         }
 
         /// <inheritdoc />
