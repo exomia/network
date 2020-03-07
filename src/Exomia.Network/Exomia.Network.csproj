@@ -21,6 +21,8 @@
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageIconUrl>https://avatars0.githubusercontent.com/u/37782223</PackageIconUrl>
+    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -56,9 +58,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <None Include="..\..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
+    <None Include="..\..\LICENSE" Pack="true" Visible="false" PackagePath="" />
+    <None Include="..\..\..\icon.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
 </Project>
