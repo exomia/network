@@ -445,6 +445,7 @@ namespace Exomia.Network
 #else
         private protected abstract bool TryCreateSocket(out Socket? socket);
 #endif
+        
         /// <summary>
         ///     Disconnects the given reason.
         /// </summary>
