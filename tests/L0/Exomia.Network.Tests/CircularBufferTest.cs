@@ -13,10 +13,10 @@ using System.Linq;
 using Exomia.Network.Native;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Exomia.Network.UnitTest
+namespace Exomia.Network.Tests
 {
     [TestClass]
-    public unsafe class CircularBufferUnitTest1
+    public unsafe class CircularBufferTest
     {
         [TestMethod]
         [DataRow(1024)]

@@ -157,6 +157,9 @@ namespace Exomia.Network
         /// <summary>
         ///     Gets the maximum size of the payload.
         /// </summary>
+        /// <value>
+        ///     The size of the maximum payload.
+        /// </value>
         private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
@@ -234,6 +237,7 @@ namespace Exomia.Network
         /// <summary>
         ///     Gets or sets the value of the connection's linger option.
         /// </summary>
+        /// <exception cref="NullReferenceException"> Thrown when a value was unexpectedly null. </exception>
         /// <value>
         ///     The linger option.
         /// </value>
@@ -252,6 +256,7 @@ namespace Exomia.Network
         /// <summary>
         ///     Enables or disables delay when send or receive buffers are full.
         /// </summary>
+        /// <exception cref="NullReferenceException"> Thrown when a value was unexpectedly null. </exception>
         /// <value>
         ///     The no delay state.
         /// </value>
@@ -330,7 +335,7 @@ namespace Exomia.Network
         /// <summary>
         ///     Executes the run action.
         /// </summary>
-        /// <param name="port">     Port. </param>
+        /// <param name="port">     The port. </param>
         /// <param name="listener"> [out] The listener. </param>
         /// <returns>
         ///     True if it succeeds, false if it fails.
@@ -490,10 +495,6 @@ namespace Exomia.Network
         /// <param name="client"> The client. </param>
         private protected virtual void OnAfterClientDisconnect(TServerClient client) { }
 
-        /// <summary>
-        ///     Executes the client connected on a different thread, and waits for the result.
-        /// </summary>
-        /// <param name="arg0"> Socket|Endpoint. </param>
         private void InvokeClientConnected(T arg0)
         {
             if (CreateServerClient(out TServerClient serverClient))
@@ -562,6 +563,7 @@ namespace Exomia.Network
         /// <returns>
         ///     True if at least one command is removed, false otherwise.
         /// </returns>
+        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         public bool RemoveCommands(params uint[] commandIDs)
         {
@@ -662,18 +664,6 @@ namespace Exomia.Network
         private protected abstract SendError SendTo(T             arg0,
                                                     in PacketInfo packetInfo);
 
-        /// <summary>
-        ///     Sends to.
-        /// </summary>
-        /// <param name="arg0">       Socket|Endpoint. </param>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length. </param>
-        /// <param name="responseID"> Identifier for the response. </param>
-        /// <returns>
-        ///     A SendError.
-        /// </returns>
         private unsafe SendError SendTo(T      arg0,
                                         uint   commandID,
                                         byte[] data,
@@ -681,68 +671,65 @@ namespace Exomia.Network
                                         int    length,
                                         uint   responseID)
         {
-            if (_listener == null) { return SendError.Invalid; }
-            if ((_state & SEND_FLAG) == SEND_FLAG)
+            if (_listener == null || (_state & SEND_FLAG) != SEND_FLAG) { return SendError.Invalid; }
+
+            PacketInfo packetInfo;
+            packetInfo.CommandID        = commandID;
+            packetInfo.ResponseID       = responseID;
+            packetInfo.Length           = length;
+            packetInfo.CompressedLength = length;
+            packetInfo.CompressionMode  = CompressionMode.None;
+            if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
             {
-                PacketInfo packetInfo;
-                packetInfo.CommandID        = commandID;
-                packetInfo.ResponseID       = responseID;
-                packetInfo.Length           = length;
-                packetInfo.CompressedLength = length;
-                packetInfo.CompressionMode  = CompressionMode.None;
-                if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
+                byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
+                int s = _compressionMode switch
                 {
-                    byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
-                    int s = _compressionMode switch
-                    {
-                        CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
-                        _ => throw new ArgumentOutOfRangeException(
-                            nameof(_compressionMode), _compressionMode, "Not supported!")
-                    };
-                    if (s > 0 && s < length)
-                    {
-                        packetInfo.CompressedLength = s;
-                        packetInfo.CompressionMode  = _compressionMode;
-                        data                        = buffer;
-                        offset                      = 0;
-                    }
-                }
-
-                fixed (byte* src = data)
+                    CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(_compressionMode), _compressionMode, "Not supported!")
+                };
+                if (s > 0 && s < length)
                 {
-                    packetInfo.Src = src + offset;
-                    if (packetInfo.CompressedLength <= MaxPayloadSize)
-                    {
-                        packetInfo.PacketID    = 0;
-                        packetInfo.ChunkOffset = 0;
-                        packetInfo.ChunkLength = packetInfo.CompressedLength;
-                        packetInfo.IsChunked   = false;
-                        return SendTo(arg0, in packetInfo);
-                    }
-
-                    packetInfo.PacketID    = Interlocked.Increment(ref _packetID);
-                    packetInfo.ChunkOffset = 0;
-                    packetInfo.IsChunked   = true;
-                    int chunkLength = packetInfo.CompressedLength;
-                    while (chunkLength > MaxPayloadSize)
-                    {
-                        packetInfo.ChunkLength = MaxPayloadSize;
-                        SendError se = SendTo(arg0, in packetInfo);
-                        if (se != SendError.None)
-                        {
-                            return se;
-                        }
-                        chunkLength            -= MaxPayloadSize;
-                        packetInfo.ChunkOffset += MaxPayloadSize;
-                    }
-                    packetInfo.ChunkLength = chunkLength;
-                    return SendTo(arg0, in packetInfo);
+                    packetInfo.CompressedLength = s;
+                    packetInfo.CompressionMode  = _compressionMode;
+                    data                        = buffer;
+                    offset                      = 0;
                 }
             }
-            return SendError.Invalid;
+
+            fixed (byte* src = data)
+            {
+                packetInfo.Src = src + offset;
+                if (packetInfo.CompressedLength <= MaxPayloadSize)
+                {
+                    packetInfo.PacketID    = 0;
+                    packetInfo.ChunkOffset = 0;
+                    packetInfo.ChunkLength = packetInfo.CompressedLength;
+                    packetInfo.IsChunked   = false;
+                    return SendTo(arg0, in packetInfo);
+                }
+
+                packetInfo.PacketID    = Interlocked.Increment(ref _packetID);
+                packetInfo.ChunkOffset = 0;
+                packetInfo.IsChunked   = true;
+                int chunkLength = packetInfo.CompressedLength;
+                while (chunkLength > MaxPayloadSize)
+                {
+                    packetInfo.ChunkLength = MaxPayloadSize;
+                    SendError se = SendTo(arg0, in packetInfo);
+                    if (se != SendError.None)
+                    {
+                        return se;
+                    }
+                    chunkLength            -= MaxPayloadSize;
+                    packetInfo.ChunkOffset += MaxPayloadSize;
+                }
+                packetInfo.ChunkLength = chunkLength;
+                return SendTo(arg0, in packetInfo);
+            }
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public SendError SendTo(TServerClient client,
                                 uint          commandID,
                                 byte[]        data,
@@ -753,7 +740,7 @@ namespace Exomia.Network
             return SendTo(client.Arg0, commandID, data, offset, length, responseID);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public SendError SendTo(TServerClient client,
                                 uint          commandID,
                                 byte[]        data,
@@ -762,7 +749,7 @@ namespace Exomia.Network
             return SendTo(client.Arg0, commandID, data, 0, data.Length, responseID);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public SendError SendTo(TServerClient client,
                                 uint          commandID,
                                 ISerializable serializable,
@@ -772,7 +759,7 @@ namespace Exomia.Network
             return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public SendError SendTo<T1>(TServerClient client,
                                     uint          commandID,
                                     in T1         data,
@@ -783,7 +770,7 @@ namespace Exomia.Network
             return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void SendToAll(uint commandID, byte[] data, int offset, int length)
         {
             Dictionary<T, TServerClient> clients;
@@ -807,13 +794,13 @@ namespace Exomia.Network
             }
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void SendToAll(uint commandID, byte[] data)
         {
             SendToAll(commandID, data, 0, data.Length);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void SendToAll<T1>(uint commandID, in T1 data)
             where T1 : unmanaged
         {
@@ -821,7 +808,7 @@ namespace Exomia.Network
             SendToAll(commandID, buffer, 0, length);
         }
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void SendToAll(uint commandID, ISerializable serializable)
         {
             byte[] buffer = serializable.Serialize(out int length);
@@ -837,18 +824,13 @@ namespace Exomia.Network
         /// </summary>
         private bool _disposed;
 
-        /// <inheritdoc />
+        /// <inheritdoc/>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        ///     Releases the unmanaged resources used by the Exomia.Network.ServerBase&lt;T,
-        ///     TServerClient&gt; and optionally releases the managed resources.
-        /// </summary>
-        /// <param name="disposing"> disposing. </param>
         private void Dispose(bool disposing)
         {
             if (!_disposed)

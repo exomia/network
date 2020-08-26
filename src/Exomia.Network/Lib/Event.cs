@@ -107,7 +107,7 @@ namespace Exomia.Network.Lib
             {
                 _lock.Enter(ref lockTaken);
                 _callbacks[index]  = _callbacks[--_count];
-                _callbacks[_count] = null!; //cleanup, ignore it cause the don't use it anyway!
+                _callbacks[_count] = null!; //cleanup, ignore it cause we don't use it anyway!
             }
             finally
             {
@@ -133,7 +133,7 @@ namespace Exomia.Network.Lib
                     if (item == _callbacks[i])
                     {
                         _callbacks[i]      = _callbacks[--_count];
-                        _callbacks[_count] = null!; //cleanup, ignore it cause the don't use it anyway!
+                        _callbacks[_count] = null!; //cleanup, ignore it cause we don't use it anyway!
                         return true;
                     }
                 }

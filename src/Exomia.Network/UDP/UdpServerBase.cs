@@ -8,6 +8,7 @@
 
 #endregion
 
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 
@@ -55,15 +56,12 @@ namespace Exomia.Network.UDP
             SendBufferSize    = 0; //0kb
         }
 
-        /// <summary>
-        ///     Executes the run action.
-        /// </summary>
-        /// <param name="port">     The port. </param>
-        /// <param name="listener"> [out] The listener. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
+        /// <inheritdoc />
+#if NETSTANDARD2_1
+        private protected override bool OnRun(int port, [NotNullWhen(true)] out Socket? listener)
+#else
         private protected override bool OnRun(int port, out Socket? listener)
+#endif
         {
             try
             {

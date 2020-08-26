@@ -8,6 +8,7 @@
 
 #endregion
 
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using Exomia.Network.Encoding;
 using Exomia.Network.Native;
@@ -84,14 +85,13 @@ namespace Exomia.Network.TCP
             SendBufferSize    = 8 * 1024; //8kb
         }
 
-        /// <summary>
-        ///     Attempts to create socket.
-        /// </summary>
-        /// <param name="socket"> [out] The socket. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
+#if NETSTANDARD2_1
+        /// <inheritdoc/>
+        private protected override bool TryCreateSocket([NotNullWhen(true)] out Socket? socket)
+#else 
+        /// <inheritdoc/>
         private protected override bool TryCreateSocket(out Socket? socket)
+#endif
         {
             try
             {

@@ -9,6 +9,7 @@
 #endregion
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using Exomia.Network.Encoding;
@@ -59,7 +60,11 @@ namespace Exomia.Network.TCP
         }
 
         /// <inheritdoc />
+#if NETSTANDARD2_1
+        private protected override bool OnRun(int port, [NotNullWhen(true)] out Socket? listener)
+#else
         private protected override bool OnRun(int port, out Socket? listener)
+#endif
         {
             try
             {
