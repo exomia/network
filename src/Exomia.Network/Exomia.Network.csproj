@@ -18,7 +18,6 @@
     <PackageOutputPath>.</PackageOutputPath> 
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DocumentationFile></DocumentationFile>
-    <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
