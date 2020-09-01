@@ -20,7 +20,7 @@ namespace Exomia.Network.Lib
         /// <summary>
         ///     The deserialize.
         /// </summary>
-        internal readonly DeserializePacketHandler<object> _deserialize;
+        internal readonly DeserializePacketHandler<object?> _deserialize;
 
         /// <summary>
         ///     The data received.
@@ -31,7 +31,7 @@ namespace Exomia.Network.Lib
         ///     Initializes a new instance of the <see cref="ServerClientEventEntry{TServerClient}" /> class.
         /// </summary>
         /// <param name="deserialize"> The deserialize. </param>
-        public ServerClientEventEntry(DeserializePacketHandler<object> deserialize)
+        public ServerClientEventEntry(DeserializePacketHandler<object?> deserialize)
         {
             _deserialize  = deserialize;
             _dataReceived = new Event<ClientDataReceivedHandler<TServerClient>>();

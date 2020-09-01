@@ -18,9 +18,9 @@ using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 using Exomia.Network.Serialization;
 using K4os.Compression.LZ4;
+
 #if NETSTANDARD2_1
 using System.Diagnostics.CodeAnalysis;
-
 #endif
 
 namespace Exomia.Network
@@ -381,7 +381,7 @@ namespace Exomia.Network
                     }
                 case CommandID.DISCONNECT:
                     {
-                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
+                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
                         {
                             InvokeClientDisconnect(sClient, DisconnectReason.Graceful);
                         }
@@ -389,7 +389,7 @@ namespace Exomia.Network
                     }
                 default:
                     {
-                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
+                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
                         {
                             if (commandID <= Constants.USER_COMMAND_LIMIT &&
                                 _dataReceivedCallbacks.TryGetValue(
@@ -401,7 +401,7 @@ namespace Exomia.Network
                                 ThreadPool.QueueUserWorkItem(
                                     x =>
                                     {
-                                        object res = scee._deserialize(in packet);
+                                        object? res = scee._deserialize(in packet);
                                         ByteArrayPool.Return(packet.Buffer);
 
                                         if (res != null)
@@ -448,7 +448,7 @@ namespace Exomia.Network
         /// <param name="reason"> DisconnectReason. </param>
         private protected void InvokeClientDisconnect(T? arg0, DisconnectReason reason)
         {
-            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient? client))
+            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient client))
             {
                 InvokeClientDisconnect(client, reason);
             }
@@ -525,7 +525,7 @@ namespace Exomia.Network
         /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
         /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        public void AddCommand(DeserializePacketHandler<object> deserialize, params uint[] commandIDs)
+        public void AddCommand(DeserializePacketHandler<object?> deserialize, params uint[] commandIDs)
         {
             if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
