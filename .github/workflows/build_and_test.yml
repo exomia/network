@@ -8,8 +8,8 @@ on:
             - master
             - development
 jobs:
-  build:
-    name: build release and debug
+  build-windows:
+    name: build release and debug for windows
     runs-on: windows-latest
     steps: 
     - uses: actions/checkout@v2
@@ -21,20 +21,20 @@ jobs:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1 
       run: |
-        dotnet build src/Exomia.Network --configuration Debug --force --nologo -p:Platform=AnyCPU
-        dotnet build src/Exomia.Network --configuration Debug --force --nologo -p:Platform=x86
-        dotnet build src/Exomia.Network --configuration Debug --force --nologo -p:Platform=x64
+        dotnet build src/Exomia.Network --configuration Windows-Debug --force --nologo -p:Platform=AnyCPU
+        dotnet build src/Exomia.Network --configuration Windows-Debug --force --nologo -p:Platform=x86
+        dotnet build src/Exomia.Network --configuration Windows-Debug --force --nologo -p:Platform=x64
     - name: build release
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1 
       run: |
-        dotnet build src/Exomia.Network --configuration Release --force --nologo -p:Platform=AnyCPU
-        dotnet build src/Exomia.Network --configuration Release --force --nologo -p:Platform=x86
-        dotnet build src/Exomia.Network --configuration Release --force --nologo -p:Platform=x64
-  test:    
-    name: test release and debug
-    needs: [build]
+        dotnet build src/Exomia.Network --configuration Windows-Release --force --nologo -p:Platform=AnyCPU
+        dotnet build src/Exomia.Network --configuration Windows-Release --force --nologo -p:Platform=x86
+        dotnet build src/Exomia.Network --configuration Windows-Release --force --nologo -p:Platform=x64
+  test-windows:    
+    name: test release and debug for windows
+    needs: [build-windows]
     runs-on: windows-latest
     steps:    
     - uses: actions/checkout@v2
@@ -46,14 +46,63 @@ jobs:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
-        dotnet test tests/L0/Exomia.Network.Tests --configuration Debug --nologo -p:Platform=AnyCPU
-        dotnet test tests/L0/Exomia.Network.Tests --configuration Debug --nologo -p:Platform=x86
-        dotnet test tests/L0/Exomia.Network.Tests --configuration Debug --nologo -p:Platform=x64
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Debug --nologo -p:Platform=AnyCPU
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Debug --nologo -p:Platform=x86
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Debug --nologo -p:Platform=x64
     - name: test release
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
-        dotnet test tests/L0/Exomia.Network.Tests --configuration Release --nologo -p:Platform=AnyCPU
-        dotnet test tests/L0/Exomia.Network.Tests --configuration Release --nologo -p:Platform=x86
-        dotnet test tests/L0/Exomia.Network.Tests --configuration Release --nologo -p:Platform=x64
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Release --nologo -p:Platform=AnyCPU
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Release --nologo -p:Platform=x86
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Release --nologo -p:Platform=x64    
+  build-linux:
+    name: build release and debug for linux
+    runs-on: ubuntu-latest
+    steps: 
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1   
+      with:
+        dotnet-version: 3.1.300
+    - name: build debug
+      env:
+        DOTNET_NOLOGO: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1 
+      run: |
+        dotnet build src/Exomia.Network --configuration Linux-Debug --force --nologo -p:Platform=AnyCPU
+        dotnet build src/Exomia.Network --configuration Linux-Debug --force --nologo -p:Platform=x86
+        dotnet build src/Exomia.Network --configuration Linux-Debug --force --nologo -p:Platform=x64
+    - name: build release
+      env:
+        DOTNET_NOLOGO: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1 
+      run: |
+        dotnet build src/Exomia.Network --configuration Linux-Release --force --nologo -p:Platform=AnyCPU
+        dotnet build src/Exomia.Network --configuration Linux-Release --force --nologo -p:Platform=x86
+        dotnet build src/Exomia.Network --configuration Linux-Release --force --nologo -p:Platform=x64
+  test-linux:    
+    name: test release and debug for linux
+    needs: [build-linux]
+    runs-on: ubuntu-latest
+    steps:    
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1   
+      with:
+        dotnet-version: 3.1.300
+    - name: test debug
+      env:
+        DOTNET_NOLOGO: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      run: |
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Debug --nologo -p:Platform=AnyCPU
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Debug --nologo -p:Platform=x86
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Debug --nologo -p:Platform=x64
+    - name: test release
+      env:
+        DOTNET_NOLOGO: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      run: |
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Release --nologo -p:Platform=AnyCPU
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Release --nologo -p:Platform=x86
+        dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Release --nologo -p:Platform=x64
