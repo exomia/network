@@ -18,6 +18,11 @@ namespace Exomia.Network.Native
     /// </summary>
     static unsafe class Mem
     {
+#if WINDOWS
+        private const string DLL_NAME = "msvcrt.dll";
+#elif LINUX
+        private const string DLL_NAME = "libc";
+#endif
         /// <summary>
         ///     memcpy call.
         ///     Copies the values of num bytes from the location pointed to by source
@@ -28,7 +33,7 @@ namespace Exomia.Network.Native
         /// <param name="count"> count of bytes to copy. </param>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(
-            "msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+            DLL_NAME, EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern void Cpy(void* dest,
                                       void* src,
                                       int   count);
@@ -46,7 +51,7 @@ namespace Exomia.Network.Native
         /// </returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(
-            "msvcrt.dll", EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+            DLL_NAME, EntryPoint = "memset", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern void* Set(void* dest,
                                        int   value,
                                        int   count);
