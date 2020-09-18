@@ -8,6 +8,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <NullableReferenceTypes>true</NullableReferenceTypes>
+    <Configurations>Windows-Debug;Windows-Release;Linux-Debug;Linux-Release</Configurations>
+    <DefineConstants>TRACE;$(Platform)</DefineConstants>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -39,31 +41,39 @@
     <AssemblyOriginatorKeyFile>Exomia.Network.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <DebugType>portable</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-    <DefineConstants Condition="'$(Platform)'=='AnyCPU'">DEBUG;TRACE;x86</DefineConstants>
-    <DefineConstants Condition="'$(Platform)'!='AnyCPU'">DEBUG;TRACE;$(Platform)</DefineConstants>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <DebugType>none</DebugType>
-    <DebugSymbols>false</DebugSymbols>
-    <DefineConstants Condition="'$(Platform)'=='AnyCPU'">TRACE;x86</DefineConstants>
-    <DefineConstants Condition="'$(Platform)'!='AnyCPU'">TRACE;$(Platform)</DefineConstants>
+  <PropertyGroup>
+    <OS Condition="'$(Configuration)'=='Windows-Debug' Or '$(Configuration)'=='Windows-Release'">Windows</OS>
+    <OS Condition="'$(Configuration)'=='Linux-Debug' Or '$(Configuration)'=='Linux-Release'">Linux</OS>
+    <IsDebug Condition="'$(Configuration)'=='Windows-Debug' Or '$(Configuration)'=='Linux-Debug'">true</IsDebug>
+    <DefineConstants>$(DefineConstants);$(OS.toUpper())</DefineConstants>
   </PropertyGroup>
   
-  <PropertyGroup Condition="'$(Platform)'=='AnyCPU'">
-    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
-    <PackageId>$(MSBuildProjectName)</PackageId>
+  <PropertyGroup Condition="'$(IsDebug)'=='true'">
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Platform)'!='AnyCPU'">
-    <AssemblyName>$(MSBuildProjectName).$(Platform)</AssemblyName>
-    <PackageId>$(MSBuildProjectName).$(Platform)</PackageId>
+  
+  <PropertyGroup Condition="'$(IsDebug)'!='true'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
-
+  
+  <PropertyGroup Condition="'$(OS)'=='Windows'">
+    <AssemblyName Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName)</AssemblyName>
+    <PackageId Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName)</PackageId>
+    <AssemblyName Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(Platform)</AssemblyName>
+    <PackageId Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(Platform)</PackageId>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(OS)'!='Windows'">
+    <AssemblyName Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName).$(OS)</AssemblyName>
+    <PackageId Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName).$(OS)</PackageId>
+    <AssemblyName Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(OS).$(Platform)</AssemblyName>
+    <PackageId Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(OS).$(Platform)</PackageId>
+  </PropertyGroup>
+  
   <PropertyGroup>
     <NoWarn>1701;1702;IDE0063</NoWarn>
     <WarningsAsErrors>NU1605</WarningsAsErrors>
@@ -81,7 +91,7 @@
   </ItemGroup>
   
   <!-- Source Link Support -->
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+  <PropertyGroup Condition="'$(IsDebug)'=='true'">
     <IncludeSymbols>true</IncludeSymbols>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -89,7 +99,7 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)'=='true'">True</ContinuousIntegrationBuild>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+  <ItemGroup Condition="'$(IsDebug)'=='true'">
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
 </Project>
