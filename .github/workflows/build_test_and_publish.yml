@@ -89,11 +89,12 @@ jobs:
       with:
         dotnet-version: 3.1.300
         source-url: https://nuget.pkg.github.com/exomia/index.json
+      env:
+        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
-        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
       run: |
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
@@ -186,11 +187,12 @@ jobs:
       with:
         dotnet-version: 3.1.300
         source-url: https://nuget.pkg.github.com/exomia/index.json
+      env:
+        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
-        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
       run: |
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
