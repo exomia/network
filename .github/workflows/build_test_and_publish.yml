@@ -88,16 +88,17 @@ jobs:
     - uses: actions/setup-dotnet@v1   
       with:
         dotnet-version: 3.1.300
+        source-url: https://nuget.pkg.github.com/exomia/index.json
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
+        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
       run: |
-        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json -n github -u exomia -p ${{ secrets.GITHUB_TOKEN  }}
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        dotnet nuget push **/*.nupkg --source "github"
+        dotnet nuget push **/*.nupkg
       shell: bash
   build-linux:
     name: build release and debug for linux
@@ -184,14 +185,15 @@ jobs:
     - uses: actions/setup-dotnet@v1   
       with:
         dotnet-version: 3.1.300
+        source-url: https://nuget.pkg.github.com/exomia/index.json
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
+        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
       run: |
-        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json -n github -u exomia -p ${{ secrets.GITHUB_TOKEN  }} --store-password-in-clear-text 
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        dotnet nuget push **/*.nupkg --source "github"
+        dotnet nuget push **/*.nupkg
       shell: bash
