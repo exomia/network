@@ -53,20 +53,19 @@ jobs:
         dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Release --nologo -p:Platform=x86
         dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Release --nologo -p:Platform=x64    
   publish-nuget-windows:
-    name: publish release or debug for windows on nuget
+    name: publish release for windows on nuget
     needs: [test-windows]
     if: ${{ github.event_name == 'release' }}
     runs-on: windows-latest
     steps:    
     - uses: actions/checkout@v2
     - name: extract tag version
-      run: |
-        echo ::set-env name=TAG_VERSION::${GITHUB_REF#refs/tags/v*}
+      run: echo ::set-env name=TAG_VERSION::${GITHUB_REF#refs/tags/v*}
       shell: bash
     - uses: actions/setup-dotnet@v1   
       with:
         dotnet-version: 3.1.300
-    - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }} | ${{ env.TAG_CONFIGURATION }}]
+    - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -77,28 +76,28 @@ jobs:
         dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.EXOMIA_NUGET_API_KEY_PUSH }}
       shell: bash
   publish-github-windows:
-    name: publish release or debug for windows on github
+    name: publish debug for windows on github
     needs: [test-windows]
     if: ${{ github.event_name == 'release' }}
     runs-on: windows-latest
     steps:    
     - uses: actions/checkout@v2
     - name: extract tag version
-      run: |
-        echo ::set-env name=TAG_VERSION::${GITHUB_REF#refs/tags/v*}
+      run: echo ::set-env name=TAG_VERSION::${GITHUB_REF#refs/tags/v*}
       shell: bash
     - uses: actions/setup-dotnet@v1   
       with:
         dotnet-version: 3.1.300
-    - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }} | ${{ env.TAG_CONFIGURATION }}]
+    - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
+        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json -n github -u exomia -p ${{ secrets.GITHUB_TOKEN  }}
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        dotnet nuget push **/*.nupkg --source https://nuget.pkg.github.com/exomia/index.json --api-key ${{ secrets.GITHUB_TOKEN  }}
+        dotnet nuget push **/*.nupkg --source "github"
       shell: bash
   build-linux:
     name: build release and debug for linux
@@ -150,20 +149,19 @@ jobs:
         dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Release --nologo -p:Platform=x86
         dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Release --nologo -p:Platform=x64
   publish-nuget-linux:
-    name: publish release or debug for linux on nuget
+    name: publish release for linux on nuget
     needs: [test-linux]
     if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
     steps:    
     - uses: actions/checkout@v2
     - name: extract tag version
-      run: |
-        echo ::set-env name=TAG_VERSION::${GITHUB_REF#refs/tags/v*}
+      run: echo ::set-env name=TAG_VERSION::${GITHUB_REF#refs/tags/v*}
       shell: bash
     - uses: actions/setup-dotnet@v1   
       with:
         dotnet-version: 3.1.300
-    - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }} | ${{ env.TAG_CONFIGURATION }}]
+    - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -174,26 +172,26 @@ jobs:
         dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.EXOMIA_NUGET_API_KEY_PUSH }}
       shell: bash
   publish-github-linux:
-    name: publish release or debug for linux on github
+    name: publish debug for linux on github
     needs: [test-linux]
     if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
     steps:    
     - uses: actions/checkout@v2
     - name: extract tag version
-      run: |
-        echo ::set-env name=TAG_VERSION::${GITHUB_REF#refs/tags/v*}
+      run: echo ::set-env name=TAG_VERSION::${GITHUB_REF#refs/tags/v*}
       shell: bash
     - uses: actions/setup-dotnet@v1   
       with:
         dotnet-version: 3.1.300
-    - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }} | ${{ env.TAG_CONFIGURATION }}]
+    - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
+        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json -n github -u exomia -p ${{ secrets.GITHUB_TOKEN  }} --store-password-in-clear-text 
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        dotnet nuget push **/*.nupkg --source https://nuget.pkg.github.com/exomia/index.json --api-key ${{ secrets.GITHUB_TOKEN  }}
+        dotnet nuget push **/*.nupkg --source "github"
       shell: bash
