@@ -10,7 +10,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-dotnet@v1   
       with:
-        dotnet-version: 3.1.300
+        dotnet-version: 3.1.301
     - name: build debug
       env:
         DOTNET_NOLOGO: 1
@@ -35,7 +35,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-dotnet@v1   
       with:
-        dotnet-version: 3.1.300
+        dotnet-version: 3.1.301
     - name: test debug
       env:
         DOTNET_NOLOGO: 1
@@ -64,7 +64,7 @@ jobs:
       shell: bash
     - uses: actions/setup-dotnet@v1   
       with:
-        dotnet-version: 3.1.300
+        dotnet-version: 3.1.301
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
@@ -87,16 +87,17 @@ jobs:
       shell: bash
     - uses: actions/setup-dotnet@v1   
       with:
-        dotnet-version: 3.1.300
+        dotnet-version: 3.1.301
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
+        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json -n github -u exomia -p ${{ github.token }} --store-password-in-clear-text
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        dotnet nuget push **/*.nupkg --source https://nuget.pkg.github.com/exomia/index.json --api-key ${{ github.token }} --skip-duplicate --no-symbols true
+        dotnet nuget push "**/*.nupkg" --source "github" --api-key ${{ github.token }} --skip-duplicate
       shell: bash
   build-linux:
     name: build release and debug for linux
@@ -105,7 +106,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-dotnet@v1   
       with:
-        dotnet-version: 3.1.300
+        dotnet-version: 3.1.301
     - name: build debug
       env:
         DOTNET_NOLOGO: 1
@@ -130,7 +131,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-dotnet@v1   
       with:
-        dotnet-version: 3.1.300
+        dotnet-version: 3.1.301
     - name: test debug
       env:
         DOTNET_NOLOGO: 1
@@ -159,7 +160,7 @@ jobs:
       shell: bash
     - uses: actions/setup-dotnet@v1   
       with:
-        dotnet-version: 3.1.300
+        dotnet-version: 3.1.301
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
@@ -182,14 +183,15 @@ jobs:
       shell: bash
     - uses: actions/setup-dotnet@v1   
       with:
-        dotnet-version: 3.1.300
+        dotnet-version: 3.1.301
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
       env:
         DOTNET_NOLOGO: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
+        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json -n github -u exomia -p ${{ github.token }} --store-password-in-clear-text
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        dotnet nuget push **/*.nupkg --source https://nuget.pkg.github.com/exomia/index.json --api-key ${{ github.token }} --skip-duplicate --no-symbols true
+        dotnet nuget push "**/*.nupkg" --source "github" --api-key ${{ github.token }} --skip-duplicate
       shell: bash
