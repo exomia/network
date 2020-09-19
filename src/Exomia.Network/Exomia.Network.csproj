@@ -66,18 +66,18 @@
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(OS)'=='Windows' And '$(Platform)'!='AnyCPU'">
-    <AssemblyName Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(Platform)</AssemblyName>
-    <PackageId Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(Platform)</PackageId>
+    <AssemblyName>$(MSBuildProjectName).$(Platform)</AssemblyName>
+    <PackageId>$(MSBuildProjectName).$(Platform)</PackageId>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(OS)'!='Windows' And '$(Platform)'=='AnyCPU' ">
-    <AssemblyName Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName).$(OS)</AssemblyName>
-    <PackageId Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName).$(OS)</PackageId>
+    <AssemblyName>$(MSBuildProjectName).$(OS)</AssemblyName>
+    <PackageId>$(MSBuildProjectName).$(OS)</PackageId>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(OS)'!='Windows' And '$(Platform)'!='AnyCPU' ">
-    <AssemblyName Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(OS).$(Platform)</AssemblyName>
-    <PackageId Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(OS).$(Platform)</PackageId>
+    <AssemblyName>$(MSBuildProjectName).$(OS).$(Platform)</AssemblyName>
+    <PackageId>$(MSBuildProjectName).$(OS).$(Platform)</PackageId>
   </PropertyGroup>
   
   <PropertyGroup>
