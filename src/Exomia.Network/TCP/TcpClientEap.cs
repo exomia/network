@@ -42,69 +42,6 @@ namespace Exomia.Network.TCP
             _sendEventArgsPool = new SocketAsyncEventArgsPool();
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
-        private protected override void ReceiveAsync()
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                try
-                {
-                    if (!_clientSocket!.ReceiveAsync(_receiveEventArgs))
-                    {
-                        ReceiveAsyncCompleted(_receiveEventArgs.AcceptSocket, _receiveEventArgs);
-                    }
-                }
-                catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
-                catch (SocketException) { Disconnect(DisconnectReason.Error); }
-                catch { Disconnect(DisconnectReason.Unspecified); }
-            }
-        }
-
-        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
-        {
-            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
-            if (sendEventArgs == null)
-            {
-                sendEventArgs           =  new SocketAsyncEventArgs();
-                sendEventArgs.Completed += SendAsyncCompleted;
-                sendEventArgs.SetBuffer(
-                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
-                    _payloadSize + Constants.TCP_HEADER_OFFSET);
-            }
-
-            fixed (byte* dst = sendEventArgs.Buffer)
-            {
-                sendEventArgs.SetBuffer(
-                    0, Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode));
-            }
-
-            try
-            {
-                if (!_clientSocket!.SendAsync(sendEventArgs))
-                {
-                    SendAsyncCompleted(_clientSocket, sendEventArgs);
-                }
-                return SendError.None;
-            }
-            catch (ObjectDisposedException)
-            {
-                Disconnect(DisconnectReason.Aborted);
-                return SendError.Disposed;
-            }
-            catch (SocketException)
-            {
-                Disconnect(DisconnectReason.Error);
-                return SendError.Socket;
-            }
-            catch
-            {
-                Disconnect(DisconnectReason.Unspecified);
-                return SendError.Unknown;
-            }
-        }
-
         /// <inheritdoc />
         protected override void OnDispose(bool disposing)
         {
@@ -146,6 +83,69 @@ namespace Exomia.Network.TCP
                 Disconnect(DisconnectReason.Error);
             }
             _sendEventArgsPool.Return(e);
+        }
+
+        /// <summary>
+        ///     Receive asynchronous.
+        /// </summary>
+        private protected override void ReceiveAsync()
+        {
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                try
+                {
+                    if (!_clientSocket!.ReceiveAsync(_receiveEventArgs))
+                    {
+                        ReceiveAsyncCompleted(_receiveEventArgs.AcceptSocket, _receiveEventArgs);
+                    }
+                }
+                catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
+                catch (SocketException) { Disconnect(DisconnectReason.Error); }
+                catch { Disconnect(DisconnectReason.Unspecified); }
+            }
+        }
+
+        private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
+        {
+            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
+            if (sendEventArgs == null)
+            {
+                sendEventArgs           =  new SocketAsyncEventArgs();
+                sendEventArgs.Completed += SendAsyncCompleted;
+                sendEventArgs.SetBuffer(
+                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
+                    _payloadSize + Constants.TCP_HEADER_OFFSET);
+            }
+
+            fixed (byte* dst = sendEventArgs.Buffer)
+            {
+                sendEventArgs.SetBuffer(
+                    0, Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode));
+            }
+
+            try
+            {
+                if (!_clientSocket!.SendAsync(sendEventArgs))
+                {
+                    SendAsyncCompleted(_clientSocket, sendEventArgs);
+                }
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                Disconnect(DisconnectReason.Error);
+                return SendError.Socket;
+            }
+            catch
+            {
+                Disconnect(DisconnectReason.Unspecified);
+                return SendError.Unknown;
+            }
         }
     }
 }

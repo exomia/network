@@ -21,14 +21,14 @@ namespace Exomia.Network
         where T : class
     {
         /// <summary>
-        ///     Socket|Endpoint.
-        /// </summary>
-        private protected T _arg0;
-
-        /// <summary>
         ///     The last received packet time stamp Date/Time.
         /// </summary>
         private DateTime _lastReceivedPacketTimeStamp;
+
+        /// <summary>
+        ///     Socket|Endpoint.
+        /// </summary>
+        private protected T _arg0;
 
         /// <inheritdoc />
         public abstract IPAddress IPAddress { get; }

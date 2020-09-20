@@ -35,59 +35,6 @@ namespace Exomia.Network.TCP
                 new byte[_bufferRead.Length];
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
-        private protected override void ReceiveAsync()
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                try
-                {
-                    _clientSocket!.BeginReceive(
-                        _bufferWrite, 0, _bufferWrite.Length, SocketFlags.None, ReceiveAsyncCallback, null);
-                }
-                catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
-                catch (SocketException) { Disconnect(DisconnectReason.Error); }
-                catch { Disconnect(DisconnectReason.Unspecified); }
-            }
-        }
-
-        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
-        {
-            int    size;
-            byte[] buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
-            fixed (byte* dst = buffer)
-            {
-                size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
-            }
-
-            try
-            {
-                _clientSocket!.BeginSend(
-                    buffer, 0, size, SocketFlags.None, SendDataCallback, buffer);
-                return SendError.None;
-            }
-            catch (ObjectDisposedException)
-            {
-                ByteArrayPool.Return(buffer);
-                Disconnect(DisconnectReason.Aborted);
-                return SendError.Disposed;
-            }
-            catch (SocketException)
-            {
-                ByteArrayPool.Return(buffer);
-                Disconnect(DisconnectReason.Error);
-                return SendError.Socket;
-            }
-            catch
-            {
-                ByteArrayPool.Return(buffer);
-                Disconnect(DisconnectReason.Unspecified);
-                return SendError.Unknown;
-            }
-        }
-
         /// <inheritdoc />
         protected override void OnDispose(bool disposing)
         {
@@ -148,6 +95,59 @@ namespace Exomia.Network.TCP
 
             byte[] send = (byte[])iar.AsyncState!;
             ByteArrayPool.Return(send);
+        }
+
+        /// <summary>
+        ///     Receive asynchronous.
+        /// </summary>
+        private protected override void ReceiveAsync()
+        {
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                try
+                {
+                    _clientSocket!.BeginReceive(
+                        _bufferWrite, 0, _bufferWrite.Length, SocketFlags.None, ReceiveAsyncCallback, null);
+                }
+                catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
+                catch (SocketException) { Disconnect(DisconnectReason.Error); }
+                catch { Disconnect(DisconnectReason.Unspecified); }
+            }
+        }
+
+        private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
+        {
+            int    size;
+            byte[] buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
+            fixed (byte* dst = buffer)
+            {
+                size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
+            }
+
+            try
+            {
+                _clientSocket!.BeginSend(
+                    buffer, 0, size, SocketFlags.None, SendDataCallback, buffer);
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                ByteArrayPool.Return(buffer);
+                Disconnect(DisconnectReason.Aborted);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                ByteArrayPool.Return(buffer);
+                Disconnect(DisconnectReason.Error);
+                return SendError.Socket;
+            }
+            catch
+            {
+                ByteArrayPool.Return(buffer);
+                Disconnect(DisconnectReason.Unspecified);
+                return SendError.Unknown;
+            }
         }
     }
 }

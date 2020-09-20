@@ -32,74 +32,6 @@ namespace Exomia.Network.UDP
         }
 
         /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
-        private protected override void ReceiveAsync()
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                ClientStateObject state = _clientStateObjectPool.Rent() ??
-                                          new ClientStateObject(new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET]);
-                try
-                {
-                    _clientSocket!.BeginReceive(
-                        state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, state);
-                }
-                catch (ObjectDisposedException)
-                {
-                    Disconnect(DisconnectReason.Aborted);
-                    _clientStateObjectPool.Return(state);
-                }
-                catch (SocketException)
-                {
-                    Disconnect(DisconnectReason.Error);
-                    _clientStateObjectPool.Return(state);
-                }
-                catch
-                {
-                    Disconnect(DisconnectReason.Unspecified);
-                    _clientStateObjectPool.Return(state);
-                }
-            }
-        }
-
-        /// <inheritdoc />
-        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
-        {
-            int    size;
-            byte[] buffer = ByteArrayPool.Rent(Constants.UDP_HEADER_OFFSET + packetInfo.ChunkLength);
-            fixed (byte* dst = buffer)
-            {
-                size = Serialization.Serialization.SerializeUdp(in packetInfo, dst, _encryptionMode);
-            }
-
-            try
-            {
-                _clientSocket!.BeginSend(
-                    buffer, 0, size, SocketFlags.None, SendDataCallback, buffer);
-                return SendError.None;
-            }
-            catch (ObjectDisposedException)
-            {
-                Disconnect(DisconnectReason.Aborted);
-                ByteArrayPool.Return(buffer);
-                return SendError.Disposed;
-            }
-            catch (SocketException)
-            {
-                Disconnect(DisconnectReason.Error);
-                ByteArrayPool.Return(buffer);
-                return SendError.Socket;
-            }
-            catch
-            {
-                Disconnect(DisconnectReason.Unspecified);
-                ByteArrayPool.Return(buffer);
-                return SendError.Unknown;
-            }
-        }
-
-        /// <summary>
         ///     Async callback, called on completion of receive Asynchronous callback.
         /// </summary>
         /// <param name="iar"> The iar. </param>
@@ -162,6 +94,74 @@ namespace Exomia.Network.UDP
 
             byte[] send = (byte[])iar.AsyncState!;
             ByteArrayPool.Return(send);
+        }
+
+        /// <summary>
+        ///     Receive asynchronous.
+        /// </summary>
+        private protected override void ReceiveAsync()
+        {
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                ClientStateObject state = _clientStateObjectPool.Rent() ??
+                                          new ClientStateObject(new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET]);
+                try
+                {
+                    _clientSocket!.BeginReceive(
+                        state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveAsyncCallback, state);
+                }
+                catch (ObjectDisposedException)
+                {
+                    Disconnect(DisconnectReason.Aborted);
+                    _clientStateObjectPool.Return(state);
+                }
+                catch (SocketException)
+                {
+                    Disconnect(DisconnectReason.Error);
+                    _clientStateObjectPool.Return(state);
+                }
+                catch
+                {
+                    Disconnect(DisconnectReason.Unspecified);
+                    _clientStateObjectPool.Return(state);
+                }
+            }
+        }
+
+        /// <inheritdoc />
+        private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
+        {
+            int    size;
+            byte[] buffer = ByteArrayPool.Rent(Constants.UDP_HEADER_OFFSET + packetInfo.ChunkLength);
+            fixed (byte* dst = buffer)
+            {
+                size = Serialization.Serialization.SerializeUdp(in packetInfo, dst, _encryptionMode);
+            }
+
+            try
+            {
+                _clientSocket!.BeginSend(
+                    buffer, 0, size, SocketFlags.None, SendDataCallback, buffer);
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
+                ByteArrayPool.Return(buffer);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                Disconnect(DisconnectReason.Error);
+                ByteArrayPool.Return(buffer);
+                return SendError.Socket;
+            }
+            catch
+            {
+                Disconnect(DisconnectReason.Unspecified);
+                ByteArrayPool.Return(buffer);
+                return SendError.Unknown;
+            }
         }
 
         /// <summary>

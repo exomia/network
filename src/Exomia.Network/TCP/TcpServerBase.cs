@@ -25,14 +25,14 @@ namespace Exomia.Network.TCP
         where TServerClient : ServerClientBase<Socket>
     {
         /// <summary>
-        ///     Size of the payload.
-        /// </summary>
-        private protected readonly ushort _payloadSize;
-
-        /// <summary>
         ///     Size of the maximum payload.
         /// </summary>
         private readonly ushort _maxPayloadSize;
+
+        /// <summary>
+        ///     Size of the payload.
+        /// </summary>
+        private protected readonly ushort _payloadSize;
 
         /// <inheritdoc />
         private protected override ushort MaxPayloadSize
@@ -143,7 +143,7 @@ namespace Exomia.Network.TCP
                     if (Serialization.Serialization.DeserializeTcp(
                         packetHeader, checksum, state.BufferRead, state.BigDataHandler,
                         out deserializePacketInfo.Data, ref deserializePacketInfo.Length,
-                        out deserializePacketInfo.ResponseID))
+                        out deserializePacketInfo.RequestID, out deserializePacketInfo.ResponseID))
                     {
                         DeserializeData(socket, in deserializePacketInfo);
                     }

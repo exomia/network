@@ -44,37 +44,6 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Creates a new TBuffer.
-        /// </summary>
-        /// <param name="key">    The key. </param>
-        /// <param name="length"> The length. </param>
-        /// <returns>
-        ///     A TBuffer.
-        /// </returns>
-        private protected abstract Buffer Create(TKey key, int length);
-
-        /// <summary>
-        ///     Removes the given key.
-        /// </summary>
-        /// <param name="key"> The key. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
-        private protected bool Remove(TKey key)
-        {
-            bool lockTaken = false;
-            try
-            {
-                _bigDataBufferLock.Enter(ref lockTaken);
-                return _bigDataBuffers.Remove(key);
-            }
-            finally
-            {
-                if (lockTaken) { _bigDataBufferLock.Exit(false); }
-            }
-        }
-
-        /// <summary>
         ///     Receives.
         /// </summary>
         /// <param name="key">         The key. </param>
@@ -120,6 +89,69 @@ namespace Exomia.Network
             }
 
             return null;
+        }
+
+        /// <summary>
+        ///     Creates a new TBuffer.
+        /// </summary>
+        /// <param name="key">    The key. </param>
+        /// <param name="length"> The length. </param>
+        /// <returns>
+        ///     A TBuffer.
+        /// </returns>
+        private protected abstract Buffer Create(TKey key, int length);
+
+        /// <summary>
+        ///     Removes the given key.
+        /// </summary>
+        /// <param name="key"> The key. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
+        private protected bool Remove(TKey key)
+        {
+            bool lockTaken = false;
+            try
+            {
+                _bigDataBufferLock.Enter(ref lockTaken);
+                return _bigDataBuffers.Remove(key);
+            }
+            finally
+            {
+                if (lockTaken) { _bigDataBufferLock.Exit(false); }
+            }
+        }
+
+        /// <summary>
+        ///     The default big data handler.
+        /// </summary>
+        internal class Default : BigDataHandler<TKey>
+        {
+            /// <inheritdoc />
+            private protected override Buffer Create(TKey key, int length)
+            {
+                return new Buffer(ByteArrayPool.Rent(length), length);
+            }
+        }
+
+        /// <summary>
+        ///     A timed big data handler.
+        /// </summary>
+        internal class Timed : BigDataHandler<TKey>
+        {
+            /// <inheritdoc />
+            private protected override Buffer Create(TKey key, int length)
+            {
+                return new Buffer.Time(
+                    ByteArrayPool.Rent(length), length, state =>
+                    {
+                        if (Remove(key))
+                        {
+                            ByteArrayPool.Return(((Buffer.Time)state)._data);
+                        }
+                        ((Buffer.Time)state).Dispose();
+                    });
+            }
         }
 
         /// <summary>
@@ -262,38 +294,6 @@ namespace Exomia.Network
             protected virtual void OnDispose(bool disposing) { }
 
             #endregion
-        }
-
-        /// <summary>
-        ///     The default big data handler.
-        /// </summary>
-        internal class Default : BigDataHandler<TKey>
-        {
-            /// <inheritdoc />
-            private protected override Buffer Create(TKey key, int length)
-            {
-                return new Buffer(ByteArrayPool.Rent(length), length);
-            }
-        }
-
-        /// <summary>
-        ///     A timed big data handler.
-        /// </summary>
-        internal class Timed : BigDataHandler<TKey>
-        {
-            /// <inheritdoc />
-            private protected override Buffer Create(TKey key, int length)
-            {
-                return new Buffer.Time(
-                    ByteArrayPool.Rent(length), length, state =>
-                    {
-                        if (Remove(key))
-                        {
-                            ByteArrayPool.Return(((Buffer.Time)state)._data);
-                        }
-                        ((Buffer.Time)state).Dispose();
-                    });
-            }
         }
 
         #region IDisposable Support

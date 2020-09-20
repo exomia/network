@@ -51,7 +51,7 @@ namespace Example.Client
                 }, 45);
 
             client.AddDataReceivedCallback(
-                45, (client1, data) =>
+                45, (client1, data, responseID) =>
                 {
                     Console.WriteLine(data + " -- OK");
                     return true;

@@ -89,6 +89,20 @@
     <None Include="..\..\LICENSE" Pack="true" Visible="false" PackagePath="" />
     <None Include="..\..\icon.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="ServerBase.cs" />
+    <Compile Update="ServerBase.*.cs">
+      <DependentUpon>ServerBase.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="ClientBase.cs" />
+    <Compile Update="ClientBase.*.cs">
+      <DependentUpon>ClientBase.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
   
   <!-- Source Link Support -->
   <PropertyGroup Condition="'$(IsDebug)'=='true'">

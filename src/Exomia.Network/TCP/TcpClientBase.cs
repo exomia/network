@@ -21,6 +21,11 @@ namespace Exomia.Network.TCP
     public abstract class TcpClientBase : ClientBase
     {
         /// <summary>
+        ///     Size of the maximum payload.
+        /// </summary>
+        private readonly ushort _maxPayloadSize;
+
+        /// <summary>
         ///     Buffer for circular data.
         /// </summary>
         private protected readonly CircularBuffer _circularBuffer;
@@ -39,11 +44,6 @@ namespace Exomia.Network.TCP
         ///     The big data handler.
         /// </summary>
         private protected readonly BigDataHandler<int> _bigDataHandler;
-
-        /// <summary>
-        ///     Size of the maximum payload.
-        /// </summary>
-        private readonly ushort _maxPayloadSize;
 
         /// <inheritdoc />
         private protected override ushort MaxPayloadSize
@@ -86,9 +86,9 @@ namespace Exomia.Network.TCP
         }
 
 #if NETSTANDARD2_1
-        /// <inheritdoc/>
+        /// <inheritdoc />
         private protected override bool TryCreateSocket([NotNullWhen(true)] out Socket? socket)
-#else 
+#else
         /// <inheritdoc/>
         private protected override bool TryCreateSocket(out Socket? socket)
 #endif
@@ -149,7 +149,7 @@ namespace Exomia.Network.TCP
                     if (Serialization.Serialization.DeserializeTcp(
                         packetHeader, checksum, _bufferRead, _bigDataHandler,
                         out deserializePacketInfo.Data, ref deserializePacketInfo.Length,
-                        out deserializePacketInfo.ResponseID))
+                        out deserializePacketInfo.RequestID, out deserializePacketInfo.ResponseID))
                     {
                         DeserializeData(in deserializePacketInfo);
                     }

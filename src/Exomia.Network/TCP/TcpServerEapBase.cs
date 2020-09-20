@@ -38,66 +38,6 @@ namespace Exomia.Network.TCP
             _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClients);
         }
 
-        private protected override unsafe SendError SendTo(Socket        arg0,
-                                                           in PacketInfo packetInfo)
-        {
-            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
-
-            if (sendEventArgs == null)
-            {
-                sendEventArgs           =  new SocketAsyncEventArgs();
-                sendEventArgs.Completed += SendAsyncCompleted;
-                sendEventArgs.SetBuffer(
-                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
-                    _payloadSize + Constants.TCP_HEADER_OFFSET);
-            }
-            sendEventArgs.AcceptSocket = arg0;
-
-            fixed (byte* dst = sendEventArgs.Buffer)
-            {
-                sendEventArgs.SetBuffer(
-                    0,
-                    Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode));
-            }
-
-            try
-            {
-                if (!arg0.SendAsync(sendEventArgs))
-                {
-                    SendAsyncCompleted(arg0, sendEventArgs);
-                }
-                return SendError.None;
-            }
-            catch (ObjectDisposedException)
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
-                _sendEventArgsPool.Return(sendEventArgs);
-                return SendError.Disposed;
-            }
-            catch (SocketException)
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Error);
-                _sendEventArgsPool.Return(sendEventArgs);
-                return SendError.Socket;
-            }
-            catch
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
-                _sendEventArgsPool.Return(sendEventArgs);
-                return SendError.Unknown;
-            }
-        }
-
-        /// <inheritdoc />
-        private protected override void ListenAsync()
-        {
-#pragma warning disable IDE0068 // Use recommended dispose pattern
-            SocketAsyncEventArgs acceptArgs = new SocketAsyncEventArgs();
-#pragma warning restore IDE0068 // Use recommended dispose pattern
-            acceptArgs.Completed += AcceptAsyncCompleted;
-            ListenAsync(acceptArgs);
-        }
-
         /// <summary>
         ///     Listen asynchronous.
         /// </summary>
@@ -236,6 +176,66 @@ namespace Exomia.Network.TCP
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
             }
             _sendEventArgsPool.Return(e);
+        }
+
+        private protected override unsafe SendError BeginSendTo(Socket        arg0,
+                                                                in PacketInfo packetInfo)
+        {
+            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
+
+            if (sendEventArgs == null)
+            {
+                sendEventArgs           =  new SocketAsyncEventArgs();
+                sendEventArgs.Completed += SendAsyncCompleted;
+                sendEventArgs.SetBuffer(
+                    new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
+                    _payloadSize + Constants.TCP_HEADER_OFFSET);
+            }
+            sendEventArgs.AcceptSocket = arg0;
+
+            fixed (byte* dst = sendEventArgs.Buffer)
+            {
+                sendEventArgs.SetBuffer(
+                    0,
+                    Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode));
+            }
+
+            try
+            {
+                if (!arg0.SendAsync(sendEventArgs))
+                {
+                    SendAsyncCompleted(arg0, sendEventArgs);
+                }
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Error);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Socket;
+            }
+            catch
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Unknown;
+            }
+        }
+
+        /// <inheritdoc />
+        private protected override void ListenAsync()
+        {
+#pragma warning disable IDE0068 // Use recommended dispose pattern
+            SocketAsyncEventArgs acceptArgs = new SocketAsyncEventArgs();
+#pragma warning restore IDE0068 // Use recommended dispose pattern
+            acceptArgs.Completed += AcceptAsyncCompleted;
+            ListenAsync(acceptArgs);
         }
     }
 }

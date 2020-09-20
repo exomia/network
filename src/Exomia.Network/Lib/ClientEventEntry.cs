@@ -18,7 +18,7 @@ namespace Exomia.Network.Lib
         /// <summary>
         ///     The deserialize.
         /// </summary>
-        internal readonly DeserializePacketHandler<object> _deserialize;
+        internal readonly DeserializePacketHandler<object?> _deserialize;
 
         /// <summary>
         ///     The data received.
@@ -29,7 +29,7 @@ namespace Exomia.Network.Lib
         ///     Initializes a new instance of the <see cref="ClientEventEntry" /> class.
         /// </summary>
         /// <param name="deserialize"> The deserialize. </param>
-        public ClientEventEntry(DeserializePacketHandler<object> deserialize)
+        public ClientEventEntry(DeserializePacketHandler<object?> deserialize)
         {
             _dataReceived = new Event<DataReceivedHandler>();
             _deserialize  = deserialize;
@@ -56,13 +56,14 @@ namespace Exomia.Network.Lib
         /// <summary>
         ///     Raises.
         /// </summary>
-        /// <param name="client"> The client. </param>
-        /// <param name="result"> The result. </param>
-        public void Raise(IClient client, object result)
+        /// <param name="client">     The client. </param>
+        /// <param name="data">       The data. </param>
+        /// <param name="responseID"> Identifier for the response. </param>
+        public void Raise(IClient client, object data, uint responseID)
         {
             for (int i = _dataReceived.Count - 1; i >= 0; --i)
             {
-                if (!_dataReceived[i].Invoke(client, result))
+                if (!_dataReceived[i].Invoke(client, data, responseID))
                 {
                     _dataReceived.Remove(i);
                 }

@@ -29,61 +29,6 @@ namespace Exomia.Network.TCP
         protected TcpServerApmBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize) { }
 
-        private protected override unsafe SendError SendTo(Socket        arg0,
-                                                           in PacketInfo packetInfo)
-        {
-            SendStateObject state;
-            state.Buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
-            state.Socket = arg0;
-            int size;
-            fixed (byte* dst = state.Buffer)
-            {
-                size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
-            }
-
-            try
-            {
-                arg0.BeginSend(state.Buffer, 0, size, SocketFlags.None, BeginSendCallback, state);
-                return SendError.None;
-            }
-            catch (ObjectDisposedException)
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
-                ByteArrayPool.Return(state.Buffer);
-                return SendError.Disposed;
-            }
-            catch (SocketException)
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Error);
-                ByteArrayPool.Return(state.Buffer);
-                return SendError.Socket;
-            }
-            catch
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
-                ByteArrayPool.Return(state.Buffer);
-                return SendError.Unknown;
-            }
-        }
-
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
-        private protected override void ListenAsync()
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                try
-                {
-                    _listener!.BeginAccept(AcceptCallback, null);
-                }
-                catch
-                {
-                    /* IGNORE */
-                }
-            }
-        }
-
         /// <summary>
         ///     Async callback, called on completion of begin send callback.
         /// </summary>
@@ -210,6 +155,61 @@ namespace Exomia.Network.TCP
 
             Receive(state.Socket, state.BufferWrite, bytesTransferred, state);
             ReceiveAsync(state);
+        }
+
+        private protected override unsafe SendError BeginSendTo(Socket        arg0,
+                                                                in PacketInfo packetInfo)
+        {
+            SendStateObject state;
+            state.Buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
+            state.Socket = arg0;
+            int size;
+            fixed (byte* dst = state.Buffer)
+            {
+                size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
+            }
+
+            try
+            {
+                arg0.BeginSend(state.Buffer, 0, size, SocketFlags.None, BeginSendCallback, state);
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Error);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Socket;
+            }
+            catch
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Unknown;
+            }
+        }
+
+        /// <summary>
+        ///     Listen asynchronous.
+        /// </summary>
+        private protected override void ListenAsync()
+        {
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                try
+                {
+                    _listener!.BeginAccept(AcceptCallback, null);
+                }
+                catch
+                {
+                    /* IGNORE */
+                }
+            }
         }
 
         /// <summary>

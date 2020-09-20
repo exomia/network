@@ -73,7 +73,12 @@ namespace Exomia.Network
         /// <summary>
         ///     The response bit.
         /// </summary>
-        internal const byte RESPONSE_1_BIT = 1 << 6;
+        internal const byte RESPONSE_1_BIT = 1 << 5;
+
+        /// <summary>
+        ///     The response bit.
+        /// </summary>
+        internal const byte REQUEST_1_BIT = 1 << 6;
 
         /// <summary>
         ///     The is chunked bit.
@@ -83,12 +88,17 @@ namespace Exomia.Network
         /// <summary>
         ///     The compressed mode mask.
         /// </summary>
-        internal const byte COMPRESSED_MODE_MASK = 0b0011_1000;
+        internal const byte COMPRESSED_MODE_MASK = 0b0001_1000;
 
         /// <summary>
         ///     The response bit mask.
         /// </summary>
-        internal const uint RESPONSE_BIT_MASK = 0b0100_0000;
+        internal const uint RESPONSE_BIT_MASK = 0b0010_0000;
+
+        /// <summary>
+        ///     The request bit mask.
+        /// </summary>
+        internal const uint REQUEST_BIT_MASK = 0b0100_0000;
 
         /// <summary>
         ///     The is chunked bit mask.

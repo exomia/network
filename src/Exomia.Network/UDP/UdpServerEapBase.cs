@@ -44,41 +44,6 @@ namespace Exomia.Network.UDP
             _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients + 5));
         }
 
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
-        private protected override void ListenAsync()
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                SocketAsyncEventArgs? receiveEventArgs = _receiveEventArgsPool.Rent();
-                if (receiveEventArgs == null)
-                {
-#pragma warning disable IDE0068 // Use recommended dispose pattern
-                    receiveEventArgs = new SocketAsyncEventArgs();
-#pragma warning restore IDE0068 // Use recommended dispose pattern
-                    receiveEventArgs.Completed += ReceiveFromAsyncCompleted;
-                    receiveEventArgs.SetBuffer(
-                        new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
-                        0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
-                }
-
-                receiveEventArgs.RemoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
-
-                try
-                {
-                    if (!_listener!.ReceiveFromAsync(receiveEventArgs))
-                    {
-                        ReceiveFromAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
-                    }
-                }
-                catch
-                {
-                    _receiveEventArgsPool.Return(receiveEventArgs);
-                }
-            }
-        }
-
         /// <inheritdoc />
         protected override void OnDispose(bool disposing)
         {
@@ -86,56 +51,6 @@ namespace Exomia.Network.UDP
             {
                 _receiveEventArgsPool?.Dispose();
                 _sendEventArgsPool?.Dispose();
-            }
-        }
-
-        /// <inheritdoc />
-        private protected override unsafe SendError SendTo(EndPoint      arg0,
-                                                           in PacketInfo packetInfo)
-        {
-            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
-            if (sendEventArgs == null)
-            {
-                sendEventArgs           =  new SocketAsyncEventArgs();
-                sendEventArgs.Completed += SendToAsyncCompleted;
-                sendEventArgs.SetBuffer(
-                    new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
-                    0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
-            }
-            sendEventArgs.RemoteEndPoint = arg0;
-
-            fixed (byte* dst = sendEventArgs.Buffer)
-            {
-                sendEventArgs.SetBuffer(
-                    0,
-                    Serialization.Serialization.SerializeUdp(in packetInfo, dst, _encryptionMode));
-            }
-
-            try
-            {
-                if (!_listener!.SendToAsync(sendEventArgs))
-                {
-                    SendToAsyncCompleted(sendEventArgs.RemoteEndPoint, sendEventArgs);
-                }
-                return SendError.None;
-            }
-            catch (ObjectDisposedException)
-            {
-                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Aborted);
-                _sendEventArgsPool.Return(sendEventArgs);
-                return SendError.Disposed;
-            }
-            catch (SocketException)
-            {
-                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Error);
-                _sendEventArgsPool.Return(sendEventArgs);
-                return SendError.Socket;
-            }
-            catch
-            {
-                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Unspecified);
-                _sendEventArgsPool.Return(sendEventArgs);
-                return SendError.Unknown;
             }
         }
 
@@ -182,6 +97,91 @@ namespace Exomia.Network.UDP
                 InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Error);
             }
             _sendEventArgsPool.Return(e);
+        }
+
+        /// <summary>
+        ///     Listen asynchronous.
+        /// </summary>
+        private protected override void ListenAsync()
+        {
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                SocketAsyncEventArgs? receiveEventArgs = _receiveEventArgsPool.Rent();
+                if (receiveEventArgs == null)
+                {
+#pragma warning disable IDE0068 // Use recommended dispose pattern
+                    receiveEventArgs = new SocketAsyncEventArgs();
+#pragma warning restore IDE0068 // Use recommended dispose pattern
+                    receiveEventArgs.Completed += ReceiveFromAsyncCompleted;
+                    receiveEventArgs.SetBuffer(
+                        new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
+                        0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
+                }
+
+                receiveEventArgs.RemoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
+
+                try
+                {
+                    if (!_listener!.ReceiveFromAsync(receiveEventArgs))
+                    {
+                        ReceiveFromAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
+                    }
+                }
+                catch
+                {
+                    _receiveEventArgsPool.Return(receiveEventArgs);
+                }
+            }
+        }
+
+        /// <inheritdoc />
+        private protected override unsafe SendError BeginSendTo(EndPoint      arg0,
+                                                                in PacketInfo packetInfo)
+        {
+            SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
+            if (sendEventArgs == null)
+            {
+                sendEventArgs           =  new SocketAsyncEventArgs();
+                sendEventArgs.Completed += SendToAsyncCompleted;
+                sendEventArgs.SetBuffer(
+                    new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
+                    0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
+            }
+            sendEventArgs.RemoteEndPoint = arg0;
+
+            fixed (byte* dst = sendEventArgs.Buffer)
+            {
+                sendEventArgs.SetBuffer(
+                    0,
+                    Serialization.Serialization.SerializeUdp(in packetInfo, dst, _encryptionMode));
+            }
+
+            try
+            {
+                if (!_listener!.SendToAsync(sendEventArgs))
+                {
+                    SendToAsyncCompleted(sendEventArgs.RemoteEndPoint, sendEventArgs);
+                }
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Aborted);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Error);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Socket;
+            }
+            catch
+            {
+                InvokeClientDisconnect(sendEventArgs.RemoteEndPoint, DisconnectReason.Unspecified);
+                _sendEventArgsPool.Return(sendEventArgs);
+                return SendError.Unknown;
+            }
         }
     }
 }

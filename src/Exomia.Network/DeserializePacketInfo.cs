@@ -21,6 +21,11 @@ namespace Exomia.Network
         public uint CommandID;
 
         /// <summary>
+        ///     Identifier for the request.
+        /// </summary>
+        public uint RequestID;
+
+        /// <summary>
         ///     Identifier for the response.
         /// </summary>
         public uint ResponseID;

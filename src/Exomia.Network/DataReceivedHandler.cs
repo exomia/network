@@ -13,21 +13,23 @@ namespace Exomia.Network
     /// <summary>
     ///     Called than a client received data from the server.
     /// </summary>
-    /// <param name="client">    The client. </param>
-    /// <param name="commandID"> Identifier for the command. </param>
-    /// <param name="data">      The data. </param>
+    /// <param name="client">     The client. </param>
+    /// <param name="commandID">  Identifier for the command. </param>
+    /// <param name="data">       The data. </param>
+    /// <param name="responseID"> Identifier for the response. </param>
     /// <returns>
     ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
     /// </returns>
-    public delegate bool CommandDataReceivedHandler(IClient client, uint commandID, object data);
+    public delegate bool CommandDataReceivedHandler(IClient client, uint commandID, object data, uint responseID);
 
     /// <summary>
     ///     Called than a client received data from the server.
     /// </summary>
-    /// <param name="client"> The client. </param>
-    /// <param name="data">   The data. </param>
+    /// <param name="client">     The client. </param>
+    /// <param name="data">       The data. </param>
+    /// <param name="responseID"> Identifier for the response. </param>
     /// <returns>
     ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
     /// </returns>
-    public delegate bool DataReceivedHandler(IClient client, object data);
+    public delegate bool DataReceivedHandler(IClient client, object data, uint responseID);
 }
