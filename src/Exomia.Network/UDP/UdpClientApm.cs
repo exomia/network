@@ -31,11 +31,6 @@ namespace Exomia.Network.UDP
             _clientStateObjectPool = new ObjectPool<ClientStateObject>();
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of receive Asynchronous callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveAsyncCallback(IAsyncResult iar)
         {
             int bytesTransferred;
@@ -75,10 +70,6 @@ namespace Exomia.Network.UDP
             _clientStateObjectPool.Return(state);
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of send data callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
         private void SendDataCallback(IAsyncResult iar)
         {
             try
@@ -96,9 +87,7 @@ namespace Exomia.Network.UDP
             ByteArrayPool.Return(send);
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
+        /// <inheritdoc />
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -164,14 +153,8 @@ namespace Exomia.Network.UDP
             }
         }
 
-        /// <summary>
-        ///     A client state object.
-        /// </summary>
         private sealed class ClientStateObject
         {
-            /// <summary>
-            ///     The buffer.
-            /// </summary>
             public readonly byte[] Buffer;
 
             /// <summary>

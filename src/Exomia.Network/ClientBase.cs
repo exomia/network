@@ -32,35 +32,12 @@ namespace Exomia.Network
     /// </summary>
     public abstract partial class ClientBase : IClient
     {
-        /// <summary>
-        ///     The receive flag.
-        /// </summary>
-        private protected const byte RECEIVE_FLAG = 0b0000_0001;
-
-        /// <summary>
-        ///     The send flag.
-        /// </summary>
-        private protected const byte SEND_FLAG = 0b0000_0010;
-
-        /// <summary>
-        ///     Initial size of the queue.
-        /// </summary>
-        private const int INITIAL_QUEUE_SIZE = 16;
-
-        /// <summary>
-        ///     Initial size of the task completion queue.
-        /// </summary>
-        private const int INITIAL_TASK_COMPLETION_QUEUE_SIZE = 128;
-
-        /// <summary>
-        ///     The close timeout.
-        /// </summary>
-        private const int CLOSE_TIMEOUT = 10;
-
-        /// <summary>
-        ///     The default timeout.
-        /// </summary>
-        private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(10);
+        private protected const byte     RECEIVE_FLAG                       = 0b0000_0001;
+        private protected const byte     SEND_FLAG                          = 0b0000_0010;
+        private const           int      INITIAL_QUEUE_SIZE                 = 16;
+        private const           int      INITIAL_TASK_COMPLETION_QUEUE_SIZE = 128;
+        private const           int      CLOSE_TIMEOUT                      = 10;
+        private static readonly TimeSpan s_defaultTimeout                   = TimeSpan.FromSeconds(10);
 
         /// <summary>
         ///     called than the client is Disconnected.
@@ -81,85 +58,28 @@ namespace Exomia.Network
         /// </summary>
         public event Action<PingPacket>? Ping;
 
-        /// <summary>
-        ///     The client socket.
-        /// </summary>
         private protected Socket? _clientSocket;
-
-        /// <summary>
-        ///     The state.
-        /// </summary>
-        private protected byte _state;
+        private protected byte    _state;
 
         /// <summary>
         ///     The compression mode.
         /// </summary>
         protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
-        /// <summary>
-        ///     The encryption mode.
-        /// </summary>
-        private protected EncryptionMode _encryptionMode = EncryptionMode.None;
+        private protected EncryptionMode _encryptionMode  = EncryptionMode.None;
+        private readonly  byte[]         _connectChecksum = new byte[16];
 
-        /// <summary>
-        ///     The connect checksum.
-        /// </summary>
-        private readonly byte[] _connectChecksum = new byte[16];
-
-        /// <summary>
-        ///     The manuel reset event.
-        /// </summary>
         private readonly ManualResetEvent _manuelResetEvent;
-
-        /// <summary>
-        ///     The data received callbacks.
-        /// </summary>
         private readonly Dictionary<uint, ClientEventEntry> _dataReceivedCallbacks;
-
-        /// <summary>
-        ///     The task completion sources.
-        /// </summary>
         private readonly Dictionary<uint, TaskCompletionSource<(uint requestID, Packet packet)>> _taskCompletionSources;
-
-        /// <summary>
-        ///     The listener count.
-        /// </summary>
         private readonly byte _listenerCount;
-
-        /// <summary>
-        ///     The client data received event handler.
-        /// </summary>
         private readonly Event<CommandDataReceivedHandler> _dataReceived;
-
-        /// <summary>
-        ///     The data received callbacks lock.
-        /// </summary>
-        private SpinLock _dataReceivedCallbacksLock;
-
-        /// <summary>
-        ///     The lock task completion sources.
-        /// </summary>
-        private SpinLock _lockTaskCompletionSources;
-
-        /// <summary>
-        ///     The port.
-        /// </summary>
-        private int _port;
-
-        /// <summary>
-        ///     The server address.
-        /// </summary>
-        private string _serverAddress;
-
-        /// <summary>
-        ///     Identifier for the request.
-        /// </summary>
-        private uint _requestID;
-
-        /// <summary>
-        ///     Identifier for the packet.
-        /// </summary>
-        private int _packetID;
+        private          SpinLock _dataReceivedCallbacksLock;
+        private          SpinLock _lockTaskCompletionSources;
+        private          int _port;
+        private          string _serverAddress;
+        private          uint _requestID;
+        private          int _packetID;
 
         /// <summary>
         ///     Gets the port.
@@ -295,12 +215,6 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     Gets the maximum size of the payload.
-        /// </summary>
-        /// <value>
-        ///     The size of the maximum payload.
-        /// </value>
         private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
@@ -409,15 +323,6 @@ namespace Exomia.Network
             Disconnect(DisconnectReason.Graceful);
         }
 
-        /// <summary>
-        ///     Sequence equal.
-        /// </summary>
-        /// <param name="left">   [in,out] If non-null, the left. </param>
-        /// <param name="right">  [in,out] If non-null, the right. </param>
-        /// <param name="length"> The length. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
         private static unsafe bool SequenceEqual(byte* left, byte* right, int length)
         {
             for (int i = 0; i < length; i++)
@@ -430,23 +335,12 @@ namespace Exomia.Network
             return true;
         }
 
-        /// <summary>
-        ///     Attempts to create socket.
-        /// </summary>
-        /// <param name="socket"> [out] The socket. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
 #if NETSTANDARD2_1
         private protected abstract bool TryCreateSocket([NotNullWhen(true)] out Socket? socket);
 #else
         private protected abstract bool TryCreateSocket(out Socket? socket);
 #endif
 
-        /// <summary>
-        ///     Disconnects the given reason.
-        /// </summary>
-        /// <param name="reason"> The reason to disconnect. </param>
         private protected void Disconnect(DisconnectReason reason)
         {
             if (_clientSocket != null && _state != 0)
@@ -471,15 +365,8 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
         private protected abstract void ReceiveAsync();
 
-        /// <summary>
-        ///     Deserialize data.
-        /// </summary>
-        /// <param name="deserializePacketInfo"> Information describing the deserialize packet. </param>
         private protected unsafe void DeserializeData(in DeserializePacketInfo deserializePacketInfo)
         {
             uint commandOrResponseID = deserializePacketInfo.CommandOrResponseID;

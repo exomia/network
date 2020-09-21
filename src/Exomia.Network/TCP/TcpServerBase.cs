@@ -24,14 +24,7 @@ namespace Exomia.Network.TCP
     public abstract class TcpServerBase<TServerClient> : ServerBase<Socket, TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
-        /// <summary>
-        ///     Size of the maximum payload.
-        /// </summary>
-        private readonly ushort _maxPayloadSize;
-
-        /// <summary>
-        ///     Size of the payload.
-        /// </summary>
+        private readonly           ushort _maxPayloadSize;
         private protected readonly ushort _payloadSize;
 
         /// <inheritdoc />
@@ -108,13 +101,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Receives.
-        /// </summary>
-        /// <param name="socket">           The socket. </param>
-        /// <param name="buffer">           The buffer. </param>
-        /// <param name="bytesTransferred"> The bytes transferred. </param>
-        /// <param name="state">            The state. </param>
         private protected unsafe void Receive(Socket                  socket,
                                               byte[]                  buffer,
                                               int                     bytesTransferred,
@@ -159,24 +145,10 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     A server client state object. This class cannot be inherited.
-        /// </summary>
         private protected class ServerClientStateObject : IDisposable
         {
-            /// <summary>
-            ///     The buffer read.
-            /// </summary>
-            public byte[] BufferRead { get; }
-
-            /// <summary>
-            ///     Buffer for circular data.
-            /// </summary>
-            public CircularBuffer CircularBuffer { get; }
-
-            /// <summary>
-            ///     The big data handler.
-            /// </summary>
+            public byte[]              BufferRead     { get; }
+            public CircularBuffer      CircularBuffer { get; }
             public BigDataHandler<int> BigDataHandler { get; }
 
             /// <summary>

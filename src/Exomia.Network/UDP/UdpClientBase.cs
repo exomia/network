@@ -18,14 +18,7 @@ namespace Exomia.Network.UDP
     /// </summary>
     public abstract class UdpClientBase : ClientBase
     {
-        /// <summary>
-        ///     Size of the maximum payload.
-        /// </summary>
-        private readonly ushort _maxPayloadSize;
-
-        /// <summary>
-        ///     The big data handler.
-        /// </summary>
+        private readonly           ushort              _maxPayloadSize;
         private protected readonly BigDataHandler<int> _bigDataHandler;
 
         /// <inheritdoc />

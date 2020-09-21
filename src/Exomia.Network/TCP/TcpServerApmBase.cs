@@ -29,10 +29,6 @@ namespace Exomia.Network.TCP
         protected TcpServerApmBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize) { }
 
-        /// <summary>
-        ///     Async callback, called on completion of begin send callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
         private void BeginSendCallback(IAsyncResult iar)
         {
             SendStateObject state = (SendStateObject)iar.AsyncState!;
@@ -53,10 +49,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of accept callback.
-        /// </summary>
-        /// <param name="ar"> The archive. </param>
         private void AcceptCallback(IAsyncResult ar)
         {
             try
@@ -84,10 +76,6 @@ namespace Exomia.Network.TCP
             ListenAsync();
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
-        /// <param name="state"> The state. </param>
         private void ReceiveAsync(ServerClientStateObjectApm state)
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -116,11 +104,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of receive data callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObjectApm state = (ServerClientStateObjectApm)iar.AsyncState!;
@@ -194,9 +177,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
         private protected override void ListenAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -212,19 +192,9 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     A send state object.
-        /// </summary>
         private struct SendStateObject
         {
-            /// <summary>
-            ///     The buffer.
-            /// </summary>
             public byte[] Buffer;
-
-            /// <summary>
-            ///     The socket.
-            /// </summary>
             public Socket Socket;
         }
 
@@ -233,14 +203,7 @@ namespace Exomia.Network.TCP
         /// </summary>
         private sealed class ServerClientStateObjectApm : ServerClientStateObject
         {
-            /// <summary>
-            ///     The socket.
-            /// </summary>
-            public Socket Socket { get; }
-
-            /// <summary>
-            ///     The buffer write.
-            /// </summary>
+            public Socket Socket      { get; }
             public byte[] BufferWrite { get; }
 
             /// <summary>

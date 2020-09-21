@@ -18,14 +18,7 @@ namespace Exomia.Network.TCP
     /// </summary>
     public sealed class TcpClientEap : TcpClientBase
     {
-        /// <summary>
-        ///     Socket asynchronous event information.
-        /// </summary>
-        private readonly SocketAsyncEventArgs _receiveEventArgs;
-
-        /// <summary>
-        ///     The send event arguments pool.
-        /// </summary>
+        private readonly SocketAsyncEventArgs     _receiveEventArgs;
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <summary>
@@ -48,11 +41,6 @@ namespace Exomia.Network.TCP
             _circularBuffer.Dispose();
         }
 
-        /// <summary>
-        ///     Receive asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
         private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
@@ -71,11 +59,6 @@ namespace Exomia.Network.TCP
             ReceiveAsync();
         }
 
-        /// <summary>
-        ///     Sends an asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
         private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
@@ -85,9 +68,7 @@ namespace Exomia.Network.TCP
             _sendEventArgsPool.Return(e);
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
+        /// <inheritdoc />
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -105,6 +86,7 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <inheritdoc />
         private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();

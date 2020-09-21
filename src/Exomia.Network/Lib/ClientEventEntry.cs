@@ -10,20 +10,10 @@
 
 namespace Exomia.Network.Lib
 {
-    /// <summary>
-    ///     A client event entry. This class cannot be inherited.
-    /// </summary>
     sealed class ClientEventEntry
     {
-        /// <summary>
-        ///     The deserialize.
-        /// </summary>
         internal readonly DeserializePacketHandler<object?> _deserialize;
-
-        /// <summary>
-        ///     The data received.
-        /// </summary>
-        private readonly Event<DataReceivedHandler> _dataReceived;
+        private readonly  Event<DataReceivedHandler>        _dataReceived;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="ClientEventEntry" /> class.

@@ -11,11 +11,13 @@
 #define TCP
 
 using System;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
+
 #else
 using Exomia.Network.UDP;
 #endif
@@ -62,7 +64,8 @@ namespace Example.Client
 
         private static async void SendRequestAndWaitForResponse(IClient client, string data, uint responseID)
         {
-            byte[] response = Encoding.UTF8.GetBytes(data + "World");
+            byte[] response =
+                Encoding.UTF8.GetBytes(data + "World " + string.Join(", ", Enumerable.Range(1, 1_000_000)));
             Response<string> result = await client.SendR(
                 responseID, response, 0, response.Length, DeserializePacketToString, true);
             Console.WriteLine("GOT: {0}", result.Result);

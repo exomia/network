@@ -21,9 +21,6 @@ namespace Exomia.Network.TCP
     public abstract class TcpServerEapBase<TServerClient> : TcpServerBase<TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
-        /// <summary>
-        ///     The send event arguments pool.
-        /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <summary>
@@ -38,10 +35,6 @@ namespace Exomia.Network.TCP
             _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClients);
         }
 
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
-        /// <param name="acceptArgs"> Socket asynchronous event information. </param>
         private void ListenAsync(SocketAsyncEventArgs acceptArgs)
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -61,11 +54,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Accept asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
         private void AcceptAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
@@ -101,10 +89,6 @@ namespace Exomia.Network.TCP
             ReceiveAsync(receiveArgs);
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
-        /// <param name="args"> Socket asynchronous event information. </param>
         private void ReceiveAsync(SocketAsyncEventArgs args)
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -137,12 +121,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Receive asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
@@ -164,11 +142,6 @@ namespace Exomia.Network.TCP
             ReceiveAsync(e);
         }
 
-        /// <summary>
-        ///     Sends an asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
         private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)

@@ -16,50 +16,16 @@ using System.Threading;
 
 namespace Exomia.Network.Native
 {
-    /// <summary>
-    ///     A circular buffer class.
-    /// </summary>
     unsafe class CircularBuffer : IDisposable
     {
-        /// <summary>
-        ///     The pointer.
-        /// </summary>
-        private readonly IntPtr _mPtr;
-
-        /// <summary>
-        ///     The pointer.
-        /// </summary>
-        private readonly byte* _ptr;
-
-        /// <summary>
-        ///     The capacity.
-        /// </summary>
-        private readonly int _capacity;
-
-        /// <summary>
-        ///     The mask.
-        /// </summary>
-        private readonly int _mask;
-
-        /// <summary>
-        ///     The head.
-        /// </summary>
-        private int _head;
-
-        /// <summary>
-        ///     The tail.
-        /// </summary>
-        private int _tail;
-
-        /// <summary>
-        ///     Number of.
-        /// </summary>
-        private int _count;
-
-        /// <summary>
-        ///     The lock.
-        /// </summary>
-        private SpinLock _lock;
+        private readonly IntPtr   _mPtr;
+        private readonly byte*    _ptr;
+        private readonly int      _capacity;
+        private readonly int      _mask;
+        private          int      _head;
+        private          int      _tail;
+        private          int      _count;
+        private          SpinLock _lock;
 
         /// <summary>
         ///     Maximum capacity of the buffer. Elements pushed into the buffer after maximum capacity is

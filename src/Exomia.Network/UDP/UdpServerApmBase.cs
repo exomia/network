@@ -22,9 +22,6 @@ namespace Exomia.Network.UDP
     public abstract class UdpServerApmBase<TServerClient> : UdpServerBase<TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
-        /// <summary>
-        ///     The pool.
-        /// </summary>
         private readonly ObjectPool<ServerClientStateObject> _serverClientStateObjectPool;
 
         /// <summary>
@@ -39,10 +36,6 @@ namespace Exomia.Network.UDP
             _serverClientStateObjectPool = new ObjectPool<ServerClientStateObject>(expectedMaxClients);
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of send data to callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
         private void SendDataToCallback(IAsyncResult iar)
         {
             try
@@ -56,11 +49,6 @@ namespace Exomia.Network.UDP
             }
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of receive data callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState!;
@@ -105,6 +93,7 @@ namespace Exomia.Network.UDP
             _serverClientStateObjectPool.Return(state);
         }
 
+        /// <inheritdoc />
         private protected override unsafe SendError BeginSendTo(EndPoint      arg0,
                                                                 in PacketInfo packetInfo)
         {
@@ -140,9 +129,7 @@ namespace Exomia.Network.UDP
             }
         }
 
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
+        /// <inheritdoc />
         private protected override void ListenAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -164,20 +151,10 @@ namespace Exomia.Network.UDP
             }
         }
 
-        /// <summary>
-        ///     A server client state object. This class cannot be inherited.
-        /// </summary>
         private sealed class ServerClientStateObject
         {
-            /// <summary>
-            ///     The buffer.
-            /// </summary>
-            public readonly byte[] Buffer;
-
-            /// <summary>
-            ///     The end point.
-            /// </summary>
-            public EndPoint EndPoint;
+            public readonly byte[]   Buffer;
+            public          EndPoint EndPoint;
 
             /// <summary>
             ///     Initializes a new instance of the <see cref="ServerClientStateObject" /> class.

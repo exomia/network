@@ -12,14 +12,8 @@ using System.Runtime.CompilerServices;
 
 namespace Exomia.Network.Lib
 {
-    /// <summary>
-    ///     The mathematics 2.
-    /// </summary>
     static class Math2
     {
-        /// <summary>
-        ///     The offset maximum.
-        /// </summary>
         private const long L_OFFSET_MAX = int.MaxValue + 1L;
 
         /// <summary>

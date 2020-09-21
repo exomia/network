@@ -24,15 +24,8 @@ namespace Exomia.Network
     /// <typeparam name="TKey"> Type of the key. </typeparam>
     abstract class BigDataHandler<TKey> : IDisposable where TKey : struct
     {
-        /// <summary>
-        ///     The big data buffers.
-        /// </summary>
         private readonly Dictionary<TKey, Buffer> _bigDataBuffers;
-
-        /// <summary>
-        ///     The big data buffer lock.
-        /// </summary>
-        private SpinLock _bigDataBufferLock;
+        private          SpinLock                 _bigDataBufferLock;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="BigDataHandler{TKey}" /> class.
@@ -43,17 +36,6 @@ namespace Exomia.Network
             _bigDataBuffers    = new Dictionary<TKey, Buffer>(16);
         }
 
-        /// <summary>
-        ///     Receives.
-        /// </summary>
-        /// <param name="key">         The key. </param>
-        /// <param name="src">         [in,out] If non-null, source for the. </param>
-        /// <param name="chunkLength"> Length of the chunk. </param>
-        /// <param name="chunkOffset"> The chunk offset. </param>
-        /// <param name="length">      The length. </param>
-        /// <returns>
-        ///     A byte[] or null.
-        /// </returns>
         internal unsafe byte[]? Receive(TKey  key,
                                         byte* src,
                                         int   chunkLength,
@@ -91,23 +73,8 @@ namespace Exomia.Network
             return null;
         }
 
-        /// <summary>
-        ///     Creates a new TBuffer.
-        /// </summary>
-        /// <param name="key">    The key. </param>
-        /// <param name="length"> The length. </param>
-        /// <returns>
-        ///     A TBuffer.
-        /// </returns>
         private protected abstract Buffer Create(TKey key, int length);
 
-        /// <summary>
-        ///     Removes the given key.
-        /// </summary>
-        /// <param name="key"> The key. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
         private protected bool Remove(TKey key)
         {
             bool lockTaken = false;
@@ -122,9 +89,6 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     The default big data handler.
-        /// </summary>
         internal class Default : BigDataHandler<TKey>
         {
             /// <inheritdoc />
@@ -134,9 +98,6 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     A timed big data handler.
-        /// </summary>
         internal class Timed : BigDataHandler<TKey>
         {
             /// <inheritdoc />
@@ -154,25 +115,11 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     Buffer for big data.
-        /// </summary>
         private protected class Buffer : IDisposable
         {
-            /// <summary>
-            ///     The data.
-            /// </summary>
-            public readonly byte[] _data;
-
-            /// <summary>
-            ///     The bytes left.
-            /// </summary>
-            private int _bytesLeft;
-
-            /// <summary>
-            ///     The big data buffer lock.
-            /// </summary>
-            private SpinLock _thisLock;
+            public readonly byte[]   _data;
+            private         int      _bytesLeft;
+            private         SpinLock _thisLock;
 
             /// <summary>
             ///     Initializes a new instance of the <see cref="Buffer" /> struct.
@@ -186,13 +133,6 @@ namespace Exomia.Network
                 _thisLock  = new SpinLock(Debugger.IsAttached);
             }
 
-            /// <summary>
-            ///     Adds the bytes.
-            /// </summary>
-            /// <param name="count"> Number of. </param>
-            /// <returns>
-            ///     An int.
-            /// </returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal virtual int AddBytes(int count)
             {
@@ -208,19 +148,9 @@ namespace Exomia.Network
                 }
             }
 
-            /// <summary>
-            ///     A timed.
-            /// </summary>
             internal class Time : Buffer
             {
-                /// <summary>
-                ///     The timer interval.
-                /// </summary>
-                private const int TIMER_INTERVAL = 1500;
-
-                /// <summary>
-                ///     The timer.
-                /// </summary>
+                private const    int   TIMER_INTERVAL = 1500;
                 private readonly Timer _timer;
 
                 /// <summary>

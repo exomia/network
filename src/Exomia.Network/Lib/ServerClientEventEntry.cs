@@ -10,22 +10,11 @@
 
 namespace Exomia.Network.Lib
 {
-    /// <summary>
-    ///     A server client event entry. This class cannot be inherited.
-    /// </summary>
-    /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
     sealed class ServerClientEventEntry<TServerClient>
         where TServerClient : IServerClient
     {
-        /// <summary>
-        ///     The deserialize.
-        /// </summary>
-        internal readonly DeserializePacketHandler<object?> _deserialize;
-
-        /// <summary>
-        ///     The data received.
-        /// </summary>
-        private readonly Event<ClientDataReceivedHandler<TServerClient>> _dataReceived;
+        internal readonly DeserializePacketHandler<object?>               _deserialize;
+        private readonly  Event<ClientDataReceivedHandler<TServerClient>> _dataReceived;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="ServerClientEventEntry{TServerClient}" /> class.

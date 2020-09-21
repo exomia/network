@@ -39,16 +39,6 @@ namespace Exomia.Network.Serialization
     /// </content>
     static unsafe partial class Serialization
     {
-        /// <summary>
-        ///     Serialize UDP.
-        /// </summary>
-        /// <param name="packetInfo">      Information describing the packet. </param>
-        /// <param name="dst">             [in,out] If non-null, destination for the. </param>
-        /// <param name="encryptionMode">  The encryption mode. </param>
-        /// <returns>
-        ///     An int.
-        /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         internal static int SerializeUdp(in PacketInfo  packetInfo,
                                          byte*          dst,
                                          EncryptionMode encryptionMode)

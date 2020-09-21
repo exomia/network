@@ -8,42 +8,19 @@
 
 #endregion
 
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Exomia.Network.Buffers
 {
-    /// <summary>
-    ///     A byte array pool.
-    /// </summary>
     static class ByteArrayPool
     {
-        /// <summary>
-        ///     The lock.
-        /// </summary>
-        private static SpinLock s_lock;
-
-        /// <summary>
-        ///     The buffers.
-        /// </summary>
+        private static          SpinLock    s_lock;
         private static readonly byte[]?[][] s_buffers;
-
-        /// <summary>
-        ///     The index.
-        /// </summary>
-        private static readonly uint[] s_index;
-
-        /// <summary>
-        ///     Length of the buffer.
-        /// </summary>
-        private static readonly int[] s_bufferLength;
-
-        /// <summary>
-        ///     Number of buffers.
-        /// </summary>
-        private static readonly int[] s_bufferCount;
+        private static readonly uint[]      s_index;
+        private static readonly int[]       s_bufferLength;
+        private static readonly int[]       s_bufferCount;
 
         /// <summary>
         ///     Initializes static members of the <see cref="ByteArrayPool" /> class.
@@ -61,13 +38,6 @@ namespace Exomia.Network.Buffers
             s_buffers     = new byte[s_bufferLength.Length][][];
         }
 
-        /// <summary>
-        ///     Rents an byte array.
-        /// </summary>
-        /// <param name="size"> The size. </param>
-        /// <returns>
-        ///     A byte[].
-        /// </returns>
         internal static byte[] Rent(int size)
         {
             int bucketIndex = SelectBucketIndex(size);
@@ -101,13 +71,6 @@ namespace Exomia.Network.Buffers
             }
         }
 
-        /// <summary>
-        ///     Returns the given array.
-        /// </summary>
-        /// <param name="array"> The array to return. </param>
-        /// <exception cref="ArgumentException">
-        ///     Thrown when one or more arguments have unsupported or illegal values.
-        /// </exception>
         internal static void Return(byte[] array)
         {
             int bucketIndex = SelectBucketIndex(array.Length);
@@ -132,13 +95,6 @@ namespace Exomia.Network.Buffers
             }
         }
 
-        /// <summary>
-        ///     Select bucket index.
-        /// </summary>
-        /// <param name="size"> The size. </param>
-        /// <returns>
-        ///     An int.
-        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int SelectBucketIndex(int size)
         {

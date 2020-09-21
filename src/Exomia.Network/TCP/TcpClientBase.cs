@@ -20,29 +20,10 @@ namespace Exomia.Network.TCP
     /// </summary>
     public abstract class TcpClientBase : ClientBase
     {
-        /// <summary>
-        ///     Size of the maximum payload.
-        /// </summary>
-        private readonly ushort _maxPayloadSize;
-
-        /// <summary>
-        ///     Buffer for circular data.
-        /// </summary>
-        private protected readonly CircularBuffer _circularBuffer;
-
-        /// <summary>
-        ///     The buffer read.
-        /// </summary>
-        private protected readonly byte[] _bufferRead;
-
-        /// <summary>
-        ///     Size of the payload.
-        /// </summary>
-        private protected readonly ushort _payloadSize;
-
-        /// <summary>
-        ///     The big data handler.
-        /// </summary>
+        private readonly           ushort              _maxPayloadSize;
+        private protected readonly CircularBuffer      _circularBuffer;
+        private protected readonly byte[]              _bufferRead;
+        private protected readonly ushort              _payloadSize;
         private protected readonly BigDataHandler<int> _bigDataHandler;
 
         /// <inheritdoc />
@@ -118,11 +99,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Receives.
-        /// </summary>
-        /// <param name="buffer">           The buffer. </param>
-        /// <param name="bytesTransferred"> The bytes transferred. </param>
         private protected unsafe void Receive(byte[] buffer,
                                               int    bytesTransferred)
         {

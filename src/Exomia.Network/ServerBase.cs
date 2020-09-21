@@ -32,39 +32,12 @@ namespace Exomia.Network
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        /// <summary>
-        ///     The close timeout.
-        /// </summary>
-        private protected const int CLOSE_TIMEOUT = 10;
-
-        /// <summary>
-        ///     The receive flag.
-        /// </summary>
-        private protected const byte RECEIVE_FLAG = 0b0000_0001;
-
-        /// <summary>
-        ///     The send flag.
-        /// </summary>
-        private protected const byte SEND_FLAG = 0b0000_0010;
-
-        /// <summary>
-        ///     Initial size of the queue.
-        /// </summary>
-        private const int INITIAL_QUEUE_SIZE = 16;
-
-        /// <summary>
-        ///     Initial size of the client queue.
-        /// </summary>
-        private const int INITIAL_CLIENT_QUEUE_SIZE = 32;
-
-        /// <summary>
-        ///     Initial size of the task completion queue.
-        /// </summary>
-        private const int INITIAL_TASK_COMPLETION_QUEUE_SIZE = 128;
-
-        /// <summary>
-        ///     The default timeout.
-        /// </summary>
+        private protected const int  CLOSE_TIMEOUT                      = 10;
+        private protected const byte RECEIVE_FLAG                       = 0b0000_0001;
+        private protected const byte SEND_FLAG                          = 0b0000_0010;
+        private const           int  INITIAL_QUEUE_SIZE                 = 16;
+        private const           int  INITIAL_CLIENT_QUEUE_SIZE          = 32;
+        private const           int  INITIAL_TASK_COMPLETION_QUEUE_SIZE = 128;
 
         // ReSharper disable once StaticMemberInGenericType
         private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(10);
@@ -93,79 +66,25 @@ namespace Exomia.Network
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
 
-        /// <summary>
-        ///     The listener.
-        /// </summary>
         private protected Socket? _listener;
-
-        /// <summary>
-        ///     The port.
-        /// </summary>
-        private protected int _port;
-
-        /// <summary>
-        ///     Identifier for the request.
-        /// </summary>
-        private uint _requestID;
-
-        /// <summary>
-        ///     The state.
-        /// </summary>
-        private protected byte _state;
+        private protected int     _port;
+        private           uint    _requestID;
+        private protected byte    _state;
 
         /// <summary>
         ///     The compression mode.
         /// </summary>
         protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
-        /// <summary>
-        ///     The encryption mode.
-        /// </summary>
         private protected EncryptionMode _encryptionMode = EncryptionMode.None;
-
-        /// <summary>
-        ///     The data received callbacks.
-        /// </summary>
         private readonly Dictionary<uint, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
-
-        /// <summary>
-        ///     The client data received event handler.
-        /// </summary>
         private readonly Event<ClientCommandDataReceivedHandler<TServerClient>> _clientDataReceived;
-
-        /// <summary>
-        ///     The task completion sources.
-        /// </summary>
         private readonly Dictionary<uint, TaskCompletionSource<(uint requestID, Packet packet)>> _taskCompletionSources;
-
-        /// <summary>
-        ///     The listener count.
-        /// </summary>
         private readonly byte _listenerCount;
-
-        /// <summary>
-        ///     The clients lock.
-        /// </summary>
         private SpinLock _clientsLock;
-
-        /// <summary>
-        ///     The data received callbacks lock.
-        /// </summary>
         private SpinLock _dataReceivedCallbacksLock;
-
-        /// <summary>
-        ///     The lock task completion sources.
-        /// </summary>
         private SpinLock _lockTaskCompletionSources;
-
-        /// <summary>
-        ///     True if this object is running.
-        /// </summary>
         private bool _isRunning;
-
-        /// <summary>
-        ///     Identifier for the packet.
-        /// </summary>
         private int _packetID;
 
         /// <summary>
@@ -178,14 +97,6 @@ namespace Exomia.Network
         {
             get { return _port; }
         }
-
-        /// <summary>
-        ///     Gets the maximum size of the payload.
-        /// </summary>
-        /// <value>
-        ///     The size of the maximum payload.
-        /// </value>
-        private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
         ///     Gets or sets the size of the receive buffer in bytes.
@@ -296,6 +207,8 @@ namespace Exomia.Network
                 }
             }
         }
+
+        private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="ServerBase{T, TServerClient}" /> class.

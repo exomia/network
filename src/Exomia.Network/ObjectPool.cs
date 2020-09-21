@@ -19,20 +19,9 @@ namespace Exomia.Network
     /// <typeparam name="T"> Generic type parameter. </typeparam>
     sealed class ObjectPool<T> where T : class
     {
-        /// <summary>
-        ///     The buffers.
-        /// </summary>
-        private readonly T?[] _buffers;
-
-        /// <summary>
-        ///     The index.
-        /// </summary>
-        private int _index;
-
-        /// <summary>
-        ///     The lock.
-        /// </summary>
-        private SpinLock _lock;
+        private readonly T?[]     _buffers;
+        private          int      _index;
+        private          SpinLock _lock;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="ObjectPool{T}" /> class.
@@ -44,12 +33,6 @@ namespace Exomia.Network
             _buffers = new T[numberOfBuffers];
         }
 
-        /// <summary>
-        ///     Gets the rent.
-        /// </summary>
-        /// <returns>
-        ///     A ServerClientStateObject.
-        /// </returns>
         internal T? Rent()
         {
             T?   buffer    = null;
@@ -75,10 +58,6 @@ namespace Exomia.Network
             return buffer;
         }
 
-        /// <summary>
-        ///     Returns the given object.
-        /// </summary>
-        /// <param name="obj"> The Object to return. </param>
         internal void Return(T obj)
         {
             bool lockTaken = false;

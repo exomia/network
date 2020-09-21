@@ -21,11 +21,7 @@ namespace Exomia.Network.UDP
     public abstract class UdpServerBase<TServerClient> : ServerBase<EndPoint, TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
-        /// <summary>
-        ///     Size of the maximum payload.
-        /// </summary>
-        private readonly ushort _maxPayloadSize;
-
+        private readonly           ushort                          _maxPayloadSize;
         private protected readonly BigDataHandler<(EndPoint, int)> _bigDataHandler;
 
         /// <inheritdoc />

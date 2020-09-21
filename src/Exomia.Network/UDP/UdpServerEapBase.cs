@@ -21,14 +21,7 @@ namespace Exomia.Network.UDP
     public abstract class UdpServerEapBase<TServerClient> : UdpServerBase<TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
-        /// <summary>
-        ///     The receive event arguments pool.
-        /// </summary>
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
-
-        /// <summary>
-        ///     The send event arguments pool.
-        /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <summary>
@@ -54,12 +47,6 @@ namespace Exomia.Network.UDP
             }
         }
 
-        /// <summary>
-        ///     Receive from asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveFromAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             ListenAsync();
@@ -85,11 +72,6 @@ namespace Exomia.Network.UDP
             _receiveEventArgsPool.Return(e);
         }
 
-        /// <summary>
-        ///     Sends to asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
         private void SendToAsyncCompleted(object? sender, SocketAsyncEventArgs e)
         {
             if (e.SocketError != SocketError.Success)
@@ -99,9 +81,7 @@ namespace Exomia.Network.UDP
             _sendEventArgsPool.Return(e);
         }
 
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
+        /// <inheritdoc />
         private protected override void ListenAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)

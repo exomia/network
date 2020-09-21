@@ -20,15 +20,8 @@ namespace Exomia.Network
     public abstract class ServerClientBase<T> : IServerClient
         where T : class
     {
-        /// <summary>
-        ///     The last received packet time stamp Date/Time.
-        /// </summary>
-        private DateTime _lastReceivedPacketTimeStamp;
-
-        /// <summary>
-        ///     Socket|Endpoint.
-        /// </summary>
-        private protected T _arg0;
+        private           DateTime _lastReceivedPacketTimeStamp;
+        private protected T        _arg0;
 
         /// <inheritdoc />
         public abstract IPAddress IPAddress { get; }
@@ -39,12 +32,6 @@ namespace Exomia.Network
             get { return _lastReceivedPacketTimeStamp; }
         }
 
-        /// <summary>
-        ///     Gets the argument 0.
-        /// </summary>
-        /// <value>
-        ///     The argument 0.
-        /// </value>
         internal T Arg0
         {
             get { return _arg0; }
@@ -59,9 +46,6 @@ namespace Exomia.Network
             _arg0 = null!;
         }
 
-        /// <summary>
-        ///     Sets last received packet time stamp.
-        /// </summary>
         internal void SetLastReceivedPacketTimeStamp()
         {
             _lastReceivedPacketTimeStamp = DateTime.Now;

@@ -19,9 +19,6 @@ namespace Exomia.Network.TCP
     /// </summary>
     public sealed class TcpClientApm : TcpClientBase
     {
-        /// <summary>
-        ///     The buffer write.
-        /// </summary>
         private readonly byte[] _bufferWrite;
 
         /// <summary>
@@ -41,10 +38,6 @@ namespace Exomia.Network.TCP
             _circularBuffer.Dispose();
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of receive Asynchronous callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
         private void ReceiveAsyncCallback(IAsyncResult iar)
         {
             int bytesTransferred;
@@ -76,10 +69,6 @@ namespace Exomia.Network.TCP
             ReceiveAsync();
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of send data callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
         private void SendDataCallback(IAsyncResult iar)
         {
             try
@@ -97,9 +86,7 @@ namespace Exomia.Network.TCP
             ByteArrayPool.Return(send);
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
+        /// <inheritdoc />
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -115,6 +102,7 @@ namespace Exomia.Network.TCP
             }
         }
 
+        /// <inheritdoc />
         private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
         {
             int    size;

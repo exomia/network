@@ -39,19 +39,6 @@ namespace Exomia.Network.Serialization
     /// </content>
     static unsafe partial class Serialization
     {
-        /// <summary>
-        ///     Serialize TCP.
-        /// </summary>
-        /// <param name="packetInfo">      Identifier for the packet. </param>
-        /// <param name="dst">             [in,out] If non-null, destination for the. </param>
-        /// <param name="encryptionMode">  The encryption mode. </param>
-        /// <returns>
-        ///     An int.
-        /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException">
-        ///     Thrown when one or more arguments are outside
-        ///     the required range.
-        /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int SerializeTcp(in PacketInfo  packetInfo,
                                          byte*          dst,
@@ -101,22 +88,6 @@ namespace Exomia.Network.Serialization
             return Constants.TCP_HEADER_SIZE + offset + l + 1;
         }
 
-        /// <summary>
-        ///     Deserialize TCP.
-        /// </summary>
-        /// <param name="packetHeader">     The packet header. </param>
-        /// <param name="checksum">         The checksum. </param>
-        /// <param name="source">           Source for the. </param>
-        /// <param name="bigDataHandler">   The big data handler. </param>
-        /// <param name="payload">          [out] The payload. </param>
-        /// <param name="length">           [in,out] The length. </param>
-        /// <param name="requestID">        [out] Identifier for the request. </param>
-        /// <param name="isResponseBitSet"> [out] True if the response bit is set; false otherwise. </param>
-        /// <returns>
-        ///     True if it succeeds, false if it fails.
-        /// </returns>
-        /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         internal static bool DeserializeTcp(byte                packetHeader,
                                             ushort              checksum,
                                             byte[]              source,
