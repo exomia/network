@@ -48,7 +48,11 @@ namespace Exomia.Network.Encoding
                 data   += 7;
                 length -= 7;
             }
-            Encode(&checksum, buffer, data, length);
+            
+            if (length > 0)
+            {
+                Encode(&checksum, buffer, data, length);
+            }
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
@@ -65,7 +69,11 @@ namespace Exomia.Network.Encoding
                 src    += 8;
                 length -= 8;
             }
-            Decode(&checksum, dst, src, length);
+            
+            if (length > 0)
+            {
+                Decode(&checksum, dst, src, length);
+            }
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
