@@ -360,7 +360,7 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + _tail + skip);
                     uint h2 = *(uint*)(_ptr + _tail + skip + 1);
-                    commandID  = h2 >> Constants.COMMAND_ID_SHIFT;
+                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
                     dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
                     checksum   = *(ushort*)(_ptr + _tail + skip + 5);
                 }
@@ -371,7 +371,7 @@ namespace Exomia.Network.Native
                                    | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
                                    | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
                                    | *(_ptr + ((_tail + skip + 1) & _mask)));
-                    commandID  = h2 >> Constants.COMMAND_ID_SHIFT;
+                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
                     dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
                     checksum = (ushort)(
                         (*(_ptr + ((_tail + skip + 6) & _mask)) << 8)
@@ -381,7 +381,7 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + ((_tail + skip) & _mask));
                     uint h2 = *(uint*)(_ptr + ((_tail + skip + 1) & _mask));
-                    commandID  = h2 >> Constants.COMMAND_ID_SHIFT;
+                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
                     dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
                     checksum   = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
                 }

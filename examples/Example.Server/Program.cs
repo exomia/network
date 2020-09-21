@@ -8,16 +8,16 @@
 
 #endregion
 
-#define UDP
+#define TCP
 
+using System;
+using System.Text;
+using Exomia.Network;
 #if TCP
 using Exomia.Network.TCP;
 #else
 using Exomia.Network.UDP;
 #endif
-using System;
-using System.Text;
-using Exomia.Network;
 
 namespace Example.Server
 {
@@ -30,46 +30,36 @@ namespace Example.Server
             server.ClientConnected += (server1, client) =>
             {
                 Console.WriteLine("Client connected: " + client.IPAddress);
+                SendRequestAndWaitForResponse(server1, client);
             };
             server.ClientDisconnected += (server1, client, reason) =>
             {
                 Console.WriteLine(reason + " Client disconnected: " + client.IPAddress);
             };
-            server.AddCommand(
-                (in Packet packet) =>
-                {
-                    Console.WriteLine(
-                        "{0} >= {1}  ==  {2}", packet.Buffer.Length, packet.Length,
-                        packet.Buffer.Length >= packet.Length);
-                    return packet.Length;
-                }, 1);
-            server.AddDataReceivedCallback(
-                1, (server1, client, data, responseid) =>
-                {
-                    int l = (int)data;
-                    server1.SendTo(client, 1, new byte[l], 0, l, responseid);
-                    return true;
-                });
-            server.AddCommand(
-                (in Packet packet) =>
-                {
-                    return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
-                }, 45);
 
-            server.AddDataReceivedCallback(
-                45, (server1, client, data, responseid) =>
-                {
-                    string request = (string)data;
-                    Console.WriteLine($"Request: {request}");
-                    byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
-                    server1.SendTo(client, 45, buffer, 0, buffer.Length, responseid);
-                    return true;
-                });
-
-            Console.WriteLine(server.Run(3000, b => b.ReceiveBufferSize = 64 * 1024));
+            Console.WriteLine(
+                server.Run(3000, b => b.ReceiveBufferSize = 64 * 1024)
+                    ? "Server started..."
+                    : "Server failed to start!");
 
             Console.WriteLine("press any key to exit...");
             Console.ReadKey();
+        }
+
+        private static async void SendRequestAndWaitForResponse(IServer<ServerClient> server, ServerClient client)
+        {
+            byte[] request = Encoding.UTF8.GetBytes("Hello ");
+            Response<string> response = await server.SendToR(
+                client, 1, request, 0, request.Length, DeserializePacketToString);
+            Console.WriteLine("GOT: {0}", response.Result);
+
+            byte[] requestResponse = Encoding.UTF8.GetBytes($"Current server time is: {DateTime.UtcNow}");
+            server.SendTo(client, response.ID, requestResponse, 0, requestResponse.Length, true);
+        }
+
+        private static string DeserializePacketToString(in Packet packet)
+        {
+            return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
         }
     }
 

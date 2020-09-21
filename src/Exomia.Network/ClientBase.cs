@@ -482,20 +482,19 @@ namespace Exomia.Network
         /// <param name="deserializePacketInfo"> Information describing the deserialize packet. </param>
         private protected unsafe void DeserializeData(in DeserializePacketInfo deserializePacketInfo)
         {
-            uint commandID  = deserializePacketInfo.CommandID;
-            uint requestID  = deserializePacketInfo.RequestID;
-            uint responseID = deserializePacketInfo.ResponseID;
-            
-            if (responseID != 0)
+            uint commandOrResponseID = deserializePacketInfo.CommandOrResponseID;
+            uint requestID           = deserializePacketInfo.RequestID;
+
+            if (deserializePacketInfo.IsResponseBitSet)
             {
                 TaskCompletionSource<(uint, Packet)>? cs;
                 bool                                  lockTaken = false;
                 try
                 {
                     _lockTaskCompletionSources.Enter(ref lockTaken);
-                    if (_taskCompletionSources.TryGetValue(responseID, out cs))
+                    if (_taskCompletionSources.TryGetValue(commandOrResponseID, out cs))
                     {
-                        _taskCompletionSources.Remove(responseID);
+                        _taskCompletionSources.Remove(commandOrResponseID);
                     }
                 }
                 finally
@@ -509,7 +508,7 @@ namespace Exomia.Network
                 }
                 return;
             }
-            switch (commandID)
+            switch (commandOrResponseID)
             {
                 case CommandID.PING:
                     {
@@ -535,8 +534,8 @@ namespace Exomia.Network
                     }
                 default:
                     {
-                        if (commandID <= Constants.USER_COMMAND_LIMIT &&
-                            _dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry? cee))
+                        if (commandOrResponseID <= Constants.USER_COMMAND_LIMIT &&
+                            _dataReceivedCallbacks.TryGetValue(commandOrResponseID, out ClientEventEntry? cee))
                         {
                             Packet packet = new Packet(deserializePacketInfo.Data, 0, deserializePacketInfo.Length);
                             ThreadPool.QueueUserWorkItem(
@@ -549,7 +548,7 @@ namespace Exomia.Network
                                     {
                                         for (int i = _dataReceived.Count - 1; i >= 0; --i)
                                         {
-                                            if (!_dataReceived[i].Invoke(this, commandID, res, requestID))
+                                            if (!_dataReceived[i].Invoke(this, commandOrResponseID, res, requestID))
                                             {
                                                 _dataReceived.Remove(i);
                                             }

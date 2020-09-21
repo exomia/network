@@ -21,9 +21,9 @@ namespace Exomia.Network
         public int PacketID;
 
         /// <summary>
-        ///     Identifier for the command.
+        ///     Identifier for the command or response.
         /// </summary>
-        public uint CommandID;
+        public uint CommandOrResponseID;
 
         /// <summary>
         ///     Identifier for the request.
@@ -31,9 +31,9 @@ namespace Exomia.Network
         public uint RequestID;
 
         /// <summary>
-        ///     Identifier for the response.
+        ///     True if this object is response.
         /// </summary>
-        public uint ResponseID;
+        public bool IsResponse;
 
         /// <summary>
         ///     Source for the.

@@ -34,6 +34,6 @@ namespace Exomia.Network
         /// <summary>
         ///     Unused2
         /// </summary>
-        Unused2 = 0b011000,
+        Unused2 = 0b011000
     }
 }

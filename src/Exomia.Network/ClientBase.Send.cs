@@ -24,39 +24,39 @@ namespace Exomia.Network
     public abstract partial class ClientBase
     {
         /// <inheritdoc />
-        public SendError Send(uint commandID, byte[] data, int offset, int length, uint responseID = 0)
+        public SendError Send(uint commandOrResponseID, byte[] data, int offset, int length, bool isResponse = false)
         {
-            return BeginSend(commandID, data, offset, length, 0, responseID);
+            return BeginSend(commandOrResponseID, data, offset, length, 0, isResponse);
         }
 
         /// <inheritdoc />
-        public SendError Send(uint commandID, byte[] data, uint responseID = 0)
+        public SendError Send(uint commandOrResponseID, byte[] data, bool isResponse = false)
         {
-            return BeginSend(commandID, data, 0, data.Length, 0, responseID);
+            return BeginSend(commandOrResponseID, data, 0, data.Length, 0, isResponse);
         }
 
         /// <inheritdoc />
-        public SendError Send<T>(uint commandID, in T data, uint responseID = 0) where T : unmanaged
+        public SendError Send<T>(uint commandOrResponseID, in T data, bool isResponse = false) where T : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return BeginSend(commandID, dataB, 0, length, 0, responseID);
+            return BeginSend(commandOrResponseID, dataB, 0, length, 0, isResponse);
         }
 
         /// <inheritdoc />
-        public SendError Send(uint commandID, ISerializable serializable, uint responseID = 0)
+        public SendError Send(uint commandOrResponseID, ISerializable serializable, bool isResponse = false)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return BeginSend(commandID, dataB, 0, length, 0, responseID);
+            return BeginSend(commandOrResponseID, dataB, 0, length, 0, isResponse);
         }
 
         /// <inheritdoc />
-        public async Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        public async Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                             byte[]                            data,
                                                             int                               offset,
                                                             int                               length,
                                                             DeserializePacketHandler<TResult> deserialize,
                                                             TimeSpan                          timeout,
-                                                            uint                              responseID = 0)
+                                                            bool                              isResponse = false)
         {
             TaskCompletionSource<(uint requestID, Packet packet)> tcs =
                 new TaskCompletionSource<(uint, Packet)>(TaskCreationOptions.None);
@@ -89,7 +89,7 @@ namespace Exomia.Network
                     }
                     tcs.TrySetResult(default);
                 }, false);
-            SendError sendError = BeginSend(commandID, data, offset, length, requestID, responseID);
+            SendError sendError = BeginSend(commandOrResponseID, data, offset, length, requestID, isResponse);
             if (sendError == SendError.None)
             {
                 (uint rID, Packet packet) = await tcs.Task;
@@ -121,156 +121,162 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint commandID, byte[] data, uint responseID = 0)
+        public Task<Response<TResult>> SendR<TResult>(uint commandOrResponseID, byte[] data, bool isResponse = false)
             where TResult : unmanaged
         {
-            return SendR(commandID, data, 0, data.Length, DeserializeResponse<TResult>, s_defaultTimeout, responseID);
+            return SendR(
+                commandOrResponseID, data, 0, data.Length, DeserializeResponse<TResult>, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint   commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint   commandOrResponseID,
                                                       byte[] data,
                                                       int    offset,
                                                       int    length,
-                                                      uint   responseID = 0)
+                                                      bool   isResponse = false)
             where TResult : unmanaged
         {
-            return SendR(commandID, data, offset, length, DeserializeResponse<TResult>, s_defaultTimeout, responseID);
+            return SendR(
+                commandOrResponseID, data, offset, length, DeserializeResponse<TResult>, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                       byte[]                            data,
                                                       int                               offset,
                                                       int                               length,
                                                       DeserializePacketHandler<TResult> deserialize,
-                                                      uint                              responseID = 0)
+                                                      bool                              isResponse = false)
         {
-            return SendR(commandID, data, offset, length, deserialize, s_defaultTimeout, responseID);
+            return SendR(commandOrResponseID, data, offset, length, deserialize, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                       byte[]                            data,
                                                       DeserializePacketHandler<TResult> deserialize,
-                                                      uint                              responseID = 0)
+                                                      bool                              isResponse = false)
         {
-            return SendR(commandID, data, 0, data.Length, deserialize, s_defaultTimeout, responseID);
+            return SendR(commandOrResponseID, data, 0, data.Length, deserialize, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint     commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint     commandOrResponseID,
                                                       byte[]   data,
                                                       int      offset,
                                                       int      length,
                                                       TimeSpan timeout,
-                                                      uint     responseID = 0)
+                                                      bool     isResponse = false)
             where TResult : unmanaged
         {
-            return SendR(commandID, data, offset, length, DeserializeResponse<TResult>, timeout, responseID);
+            return SendR(commandOrResponseID, data, offset, length, DeserializeResponse<TResult>, timeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint     commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint     commandOrResponseID,
                                                       byte[]   data,
                                                       TimeSpan timeout,
-                                                      uint     responseID = 0)
+                                                      bool     isResponse = false)
             where TResult : unmanaged
         {
-            return SendR(commandID, data, 0, data.Length, DeserializeResponse<TResult>, timeout, responseID);
+            return SendR(commandOrResponseID, data, 0, data.Length, DeserializeResponse<TResult>, timeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                       byte[]                            data,
                                                       DeserializePacketHandler<TResult> deserialize,
                                                       TimeSpan                          timeout,
-                                                      uint                              responseID = 0)
+                                                      bool                              isResponse = false)
         {
-            return SendR(commandID, data, 0, data.Length, deserialize, timeout, responseID);
+            return SendR(commandOrResponseID, data, 0, data.Length, deserialize, timeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint commandID, ISerializable serializable, uint responseID = 0)
+        public Task<Response<TResult>> SendR<TResult>(uint          commandOrResponseID,
+                                                      ISerializable serializable,
+                                                      bool          isResponse = false)
             where TResult : unmanaged
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR(commandID, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout, responseID);
+            return SendR(
+                commandOrResponseID, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                       ISerializable                     serializable,
                                                       DeserializePacketHandler<TResult> deserialize,
-                                                      uint                              responseID = 0)
+                                                      bool                              isResponse = false)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR(commandID, dataB, 0, length, deserialize, s_defaultTimeout, responseID);
+            return SendR(commandOrResponseID, dataB, 0, length, deserialize, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint          commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint          commandOrResponseID,
                                                       ISerializable serializable,
                                                       TimeSpan      timeout,
-                                                      uint          responseID = 0)
+                                                      bool          isResponse = false)
             where TResult : unmanaged
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR(commandID, dataB, 0, length, DeserializeResponse<TResult>, timeout, responseID);
+            return SendR(commandOrResponseID, dataB, 0, length, DeserializeResponse<TResult>, timeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        public Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                       ISerializable                     serializable,
                                                       DeserializePacketHandler<TResult> deserialize,
                                                       TimeSpan                          timeout,
-                                                      uint                              responseID = 0)
+                                                      bool                              isResponse = false)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendR(commandID, dataB, 0, length, deserialize, timeout, responseID);
+            return SendR(commandOrResponseID, dataB, 0, length, deserialize, timeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint commandID, in T data, uint responseID = 0)
+        public Task<Response<TResult>> SendR<T, TResult>(uint commandOrResponseID, in T data, bool isResponse = false)
             where T : unmanaged
             where TResult : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendR(commandID, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout, responseID);
+            return SendR(
+                commandOrResponseID, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandID,
+        public Task<Response<TResult>> SendR<T, TResult>(uint                              commandOrResponseID,
                                                          in T                              data,
                                                          DeserializePacketHandler<TResult> deserialize,
-                                                         uint                              responseID = 0)
+                                                         bool                              isResponse = false)
             where T : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendR(commandID, dataB, 0, length, deserialize, s_defaultTimeout, responseID);
+            return SendR(commandOrResponseID, dataB, 0, length, deserialize, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint     commandID,
+        public Task<Response<TResult>> SendR<T, TResult>(uint     commandOrResponseID,
                                                          in T     data,
                                                          TimeSpan timeout,
-                                                         uint     responseID = 0)
+                                                         bool     isResponse = false)
             where T : unmanaged
             where TResult : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendR(commandID, dataB, 0, length, DeserializeResponse<TResult>, timeout, responseID);
+            return SendR(commandOrResponseID, dataB, 0, length, DeserializeResponse<TResult>, timeout, isResponse);
         }
 
         /// <inheritdoc />
-        public Task<Response<TResult>> SendR<T, TResult>(uint commandID,
+        public Task<Response<TResult>> SendR<T, TResult>(uint commandOrResponseID,
                                                          in T data,
                                                          DeserializePacketHandler<TResult> deserialize,
                                                          TimeSpan timeout,
-                                                         uint responseID = 0) where T : unmanaged
+                                                         bool isResponse = false) where T : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendR(commandID, dataB, 0, length, deserialize, timeout, responseID);
+            return SendR(commandOrResponseID, dataB, 0, length, deserialize, timeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -304,32 +310,32 @@ namespace Exomia.Network
         /// <summary>
         ///     Begins send data.
         /// </summary>
-        /// <param name="commandID">  The command id. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length. </param>
-        /// <param name="requestID">  Identifier for the request. </param>
-        /// <param name="responseID"> Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> The command or response id. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="offset">              The offset. </param>
+        /// <param name="length">              The length. </param>
+        /// <param name="requestID">           Identifier for the request. </param>
+        /// <param name="isResponse">          Identifier for the response. </param>
         /// <returns>
         ///     A SendError.
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        private unsafe SendError BeginSend(uint   commandID,
+        private unsafe SendError BeginSend(uint   commandOrResponseID,
                                            byte[] data,
                                            int    offset,
                                            int    length,
                                            uint   requestID,
-                                           uint   responseID)
+                                           bool   isResponse)
         {
             if (_clientSocket == null || (_state & SEND_FLAG) != SEND_FLAG) { return SendError.Invalid; }
 
             PacketInfo packetInfo;
-            packetInfo.CommandID        = commandID;
-            packetInfo.RequestID        = requestID;
-            packetInfo.ResponseID       = responseID;
-            packetInfo.Length           = length;
-            packetInfo.CompressedLength = length;
-            packetInfo.CompressionMode  = CompressionMode.None;
+            packetInfo.CommandOrResponseID = commandOrResponseID;
+            packetInfo.RequestID           = requestID;
+            packetInfo.IsResponse          = isResponse;
+            packetInfo.Length              = length;
+            packetInfo.CompressedLength    = length;
+            packetInfo.CompressionMode     = CompressionMode.None;
             if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
             {
                 byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];

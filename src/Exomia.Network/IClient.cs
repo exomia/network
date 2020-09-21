@@ -56,265 +56,274 @@ namespace Exomia.Network
         /// <summary>
         ///     send data to the server.
         /// </summary>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length of data. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="offset">              The offset. </param>
+        /// <param name="length">              The length of data. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     SendError.
         /// </returns>
-        SendError Send(uint commandID, byte[] data, int offset, int length, uint responseID = 0);
+        SendError Send(uint commandOrResponseID, byte[] data, int offset, int length, bool isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     SendError.
         /// </returns>
-        SendError Send(uint commandID, byte[] data, uint responseID = 0);
+        SendError Send(uint commandOrResponseID, byte[] data, bool isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
-        /// <param name="commandID">    Identifier for the command. </param>
-        /// <param name="serializable"> ISerializable. </param>
-        /// <param name="responseID">   (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="serializable">        ISerializable. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     SendError.
         /// </returns>
-        SendError Send(uint commandID, ISerializable serializable, uint responseID = 0);
+        SendError Send(uint commandOrResponseID, ISerializable serializable, bool isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The struct data. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The struct data. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     SendError.
         /// </returns>
-        SendError Send<T>(uint commandID, in T data, uint responseID = 0) where T : unmanaged;
+        SendError Send<T>(uint commandOrResponseID, in T data, bool isResponse = false) where T : unmanaged;
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length of data. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="offset">              The offset. </param>
+        /// <param name="length">              The length of data. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint commandID, byte[] data, int offset, int length, uint responseID = 0)
+        Task<Response<TResult>> SendR<TResult>(uint   commandOrResponseID,
+                                               byte[] data,
+                                               int    offset,
+                                               int    length,
+                                               bool   isResponse = false)
             where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint commandID, byte[] data, uint responseID = 0)
+        Task<Response<TResult>> SendR<TResult>(uint commandOrResponseID, byte[] data, bool isResponse = false)
             where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        The data. </param>
-        /// <param name="offset">      The offset. </param>
-        /// <param name="length">      The length of data. </param>
-        /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="responseID">  (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="offset">              The offset. </param>
+        /// <param name="length">              The length of data. </param>
+        /// <param name="deserialize">         The deserialize. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                byte[]                            data,
                                                int                               offset,
                                                int                               length,
                                                DeserializePacketHandler<TResult> deserialize,
-                                               uint                              responseID = 0);
+                                               bool                              isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        The data. </param>
-        /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="responseID">  (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="deserialize">         The deserialize. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                byte[]                            data,
                                                DeserializePacketHandler<TResult> deserialize,
-                                               uint                              responseID = 0);
+                                               bool                              isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="offset">     The offset. </param>
-        /// <param name="length">     The length of data. </param>
-        /// <param name="timeout">    The timeout. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="offset">              The offset. </param>
+        /// <param name="length">              The length of data. </param>
+        /// <param name="timeout">             The timeout. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint     commandID,
+        Task<Response<TResult>> SendR<TResult>(uint     commandOrResponseID,
                                                byte[]   data,
                                                int      offset,
                                                int      length,
                                                TimeSpan timeout,
-                                               uint     responseID = 0)
+                                               bool     isResponse = false)
             where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="timeout">    The timeout. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="timeout">             The timeout. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint commandID, byte[] data, TimeSpan timeout, uint responseID = 0)
+        Task<Response<TResult>> SendR<TResult>(uint     commandOrResponseID,
+                                               byte[]   data,
+                                               TimeSpan timeout,
+                                               bool     isResponse = false)
             where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        The data. </param>
-        /// <param name="offset">      The offset. </param>
-        /// <param name="length">      The length of data. </param>
-        /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="timeout">     The timeout. </param>
-        /// <param name="responseID">  (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="offset">              The offset. </param>
+        /// <param name="length">              The length of data. </param>
+        /// <param name="deserialize">         The deserialize. </param>
+        /// <param name="timeout">             The timeout. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                byte[]                            data,
                                                int                               offset,
                                                int                               length,
                                                DeserializePacketHandler<TResult> deserialize,
                                                TimeSpan                          timeout,
-                                               uint                              responseID = 0);
+                                               bool                              isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        The data. </param>
-        /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="timeout">     The timeout. </param>
-        /// <param name="responseID">  (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The data. </param>
+        /// <param name="deserialize">         The deserialize. </param>
+        /// <param name="timeout">             The timeout. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                byte[]                            data,
                                                DeserializePacketHandler<TResult> deserialize,
                                                TimeSpan                          timeout,
-                                               uint                              responseID = 0);
+                                               bool                              isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">    Identifier for the command. </param>
-        /// <param name="serializable"> ISerializable. </param>
-        /// <param name="responseID">   (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="serializable">        ISerializable. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint commandID, ISerializable serializable, uint responseID = 0)
+        Task<Response<TResult>> SendR<TResult>(uint          commandOrResponseID,
+                                               ISerializable serializable,
+                                               bool          isResponse = false)
             where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">    Identifier for the command. </param>
-        /// <param name="serializable"> ISerializable. </param>
-        /// <param name="deserialize">  The deserialize. </param>
-        /// <param name="responseID">   (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="serializable">        ISerializable. </param>
+        /// <param name="deserialize">         The deserialize. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                ISerializable                     serializable,
                                                DeserializePacketHandler<TResult> deserialize,
-                                               uint                              responseID = 0);
+                                               bool                              isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">    Identifier for the command. </param>
-        /// <param name="serializable"> ISerializable. </param>
-        /// <param name="timeout">      The timeout. </param>
-        /// <param name="responseID">   (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="serializable">        ISerializable. </param>
+        /// <param name="timeout">             The timeout. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint          commandID,
+        Task<Response<TResult>> SendR<TResult>(uint          commandOrResponseID,
                                                ISerializable serializable,
                                                TimeSpan      timeout,
-                                               uint          responseID = 0)
+                                               bool          isResponse = false)
             where TResult : unmanaged;
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">    Identifier for the command. </param>
-        /// <param name="serializable"> ISerializable. </param>
-        /// <param name="deserialize">  The deserialize. </param>
-        /// <param name="timeout">      The timeout. </param>
-        /// <param name="responseID">   (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="serializable">        ISerializable. </param>
+        /// <param name="deserialize">         The deserialize. </param>
+        /// <param name="timeout">             The timeout. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<TResult>(uint                              commandID,
+        Task<Response<TResult>> SendR<TResult>(uint                              commandOrResponseID,
                                                ISerializable                     serializable,
                                                DeserializePacketHandler<TResult> deserialize,
                                                TimeSpan                          timeout,
-                                               uint                              responseID = 0);
+                                               bool                              isResponse = false);
 
         /// <summary>
         ///     send data to the server.
         /// </summary>
         /// <typeparam name="T">       struct type. </typeparam>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The struct data. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The struct data. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint commandID, in T data, uint responseID = 0)
+        Task<Response<TResult>> SendR<T, TResult>(uint commandOrResponseID, in T data, bool isResponse = false)
             where T : unmanaged
             where TResult : unmanaged;
 
@@ -323,17 +332,17 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="T">       struct type. </typeparam>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        The struct data. </param>
-        /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="responseID">  (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The struct data. </param>
+        /// <param name="deserialize">         The deserialize. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint                              commandID,
+        Task<Response<TResult>> SendR<T, TResult>(uint                              commandOrResponseID,
                                                   in T                              data,
                                                   DeserializePacketHandler<TResult> deserialize,
-                                                  uint                              responseID = 0)
+                                                  bool                              isResponse = false)
             where T : unmanaged;
 
         /// <summary>
@@ -341,14 +350,17 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="T">       struct type. </typeparam>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">  Identifier for the command. </param>
-        /// <param name="data">       The struct data. </param>
-        /// <param name="timeout">    The timeout. </param>
-        /// <param name="responseID"> (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The struct data. </param>
+        /// <param name="timeout">             The timeout. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint commandID, in T data, TimeSpan timeout, uint responseID = 0)
+        Task<Response<TResult>> SendR<T, TResult>(uint     commandOrResponseID,
+                                                  in T     data,
+                                                  TimeSpan timeout,
+                                                  bool     isResponse = false)
             where T : unmanaged
             where TResult : unmanaged;
 
@@ -357,19 +369,19 @@ namespace Exomia.Network
         /// </summary>
         /// <typeparam name="T">       struct type. </typeparam>
         /// <typeparam name="TResult"> struct type. </typeparam>
-        /// <param name="commandID">   Identifier for the command. </param>
-        /// <param name="data">        The struct data. </param>
-        /// <param name="deserialize"> The deserialize. </param>
-        /// <param name="timeout">     The timeout. </param>
-        /// <param name="responseID">  (Optional) Identifier for the response. </param>
+        /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
+        /// <param name="data">                The struct data. </param>
+        /// <param name="deserialize">         The deserialize. </param>
+        /// <param name="timeout">             The timeout. </param>
+        /// <param name="isResponse">          (Optional) True if this object is response. </param>
         /// <returns>
         ///     task of Response{TResult}
         /// </returns>
-        Task<Response<TResult>> SendR<T, TResult>(uint                              commandID,
+        Task<Response<TResult>> SendR<T, TResult>(uint                              commandOrResponseID,
                                                   in T                              data,
                                                   DeserializePacketHandler<TResult> deserialize,
                                                   TimeSpan                          timeout,
-                                                  uint                              responseID = 0)
+                                                  bool                              isResponse = false)
             where T : unmanaged;
 
         /// <summary>

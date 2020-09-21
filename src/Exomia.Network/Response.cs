@@ -17,9 +17,12 @@ namespace Exomia.Network
     public readonly struct Response<TResult>
     {
         /// <summary>
-        ///     The result.
+        ///     The response id.
         /// </summary>
-        public readonly uint ResponseID;
+        /// <remarks>
+        ///     <p>Specify this id instead of a command id in case you need to respond to a request.</p>
+        /// </remarks>
+        public readonly uint ID;
 
         /// <summary>
         ///     The result.
@@ -39,9 +42,9 @@ namespace Exomia.Network
         /// <param name="sendError">  The send error. </param>
         internal Response(in TResult result, uint responseID, SendError sendError)
         {
-            Result     = result;
-            ResponseID = responseID;
-            SendError  = sendError;
+            Result    = result;
+            ID        = responseID;
+            SendError = sendError;
         }
 
         /// <summary>

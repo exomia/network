@@ -58,7 +58,7 @@ namespace Exomia.Network
         /// <summary>
         ///     The command identifier shift.
         /// </summary>
-        internal const int COMMAND_ID_SHIFT = 16;
+        internal const int COMMAND_OR_RESPONSE_ID_SHIFT = 16;
 
         /// <summary>
         ///     The data length mask.

@@ -129,7 +129,7 @@ namespace Exomia.Network.TCP
             DeserializePacketInfo deserializePacketInfo;
             int                   size = _circularBuffer.Write(buffer, 0, bytesTransferred);
             while (_circularBuffer.PeekHeader(
-                       0, out byte packetHeader, out deserializePacketInfo.CommandID,
+                       0, out byte packetHeader, out deserializePacketInfo.CommandOrResponseID,
                        out deserializePacketInfo.Length, out ushort checksum)
                 && deserializePacketInfo.Length <= _circularBuffer.Count - Constants.TCP_HEADER_SIZE)
             {
@@ -149,7 +149,7 @@ namespace Exomia.Network.TCP
                     if (Serialization.Serialization.DeserializeTcp(
                         packetHeader, checksum, _bufferRead, _bigDataHandler,
                         out deserializePacketInfo.Data, ref deserializePacketInfo.Length,
-                        out deserializePacketInfo.RequestID, out deserializePacketInfo.ResponseID))
+                        out deserializePacketInfo.RequestID, out deserializePacketInfo.IsResponseBitSet))
                     {
                         DeserializeData(in deserializePacketInfo);
                     }

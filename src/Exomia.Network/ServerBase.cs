@@ -388,20 +388,19 @@ namespace Exomia.Network
         private protected void DeserializeData(T                        arg0,
                                                in DeserializePacketInfo deserializePacketInfo)
         {
-            uint commandID  = deserializePacketInfo.CommandID;
-            uint requestID  = deserializePacketInfo.RequestID;
-            uint responseID = deserializePacketInfo.ResponseID;
+            uint commandOrResponseID = deserializePacketInfo.CommandOrResponseID;
+            uint requestID           = deserializePacketInfo.RequestID;
 
-            if (responseID != 0)
+            if (deserializePacketInfo.IsResponseBitSet)
             {
                 TaskCompletionSource<(uint, Packet)>? cs;
                 bool                                  lockTaken = false;
                 try
                 {
                     _lockTaskCompletionSources.Enter(ref lockTaken);
-                    if (_taskCompletionSources.TryGetValue(responseID, out cs))
+                    if (_taskCompletionSources.TryGetValue(commandOrResponseID, out cs))
                     {
-                        _taskCompletionSources.Remove(responseID);
+                        _taskCompletionSources.Remove(commandOrResponseID);
                     }
                 }
                 finally
@@ -416,7 +415,7 @@ namespace Exomia.Network
                 }
                 return;
             }
-            switch (commandID)
+            switch (commandOrResponseID)
             {
                 case CommandID.PING:
                     {
@@ -447,9 +446,9 @@ namespace Exomia.Network
                     {
                         if (_clients.TryGetValue(arg0, out TServerClient sClient))
                         {
-                            if (commandID <= Constants.USER_COMMAND_LIMIT &&
+                            if (commandOrResponseID <= Constants.USER_COMMAND_LIMIT &&
                                 _dataReceivedCallbacks.TryGetValue(
-                                    commandID, out ServerClientEventEntry<TServerClient>? scee))
+                                    commandOrResponseID, out ServerClientEventEntry<TServerClient>? scee))
                             {
                                 sClient.SetLastReceivedPacketTimeStamp();
 
@@ -465,7 +464,7 @@ namespace Exomia.Network
                                             for (int i = _clientDataReceived.Count - 1; i >= 0; --i)
                                             {
                                                 if (!_clientDataReceived[i]
-                                                    .Invoke(this, sClient, commandID, res, requestID))
+                                                    .Invoke(this, sClient, commandOrResponseID, res, requestID))
                                                 {
                                                     _clientDataReceived.Remove(i);
                                                 }

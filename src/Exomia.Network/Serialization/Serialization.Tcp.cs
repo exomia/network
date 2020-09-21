@@ -18,7 +18,7 @@ namespace Exomia.Network.Serialization
 {
     /// 8bit
     /// | IS_CHUNKED BIT | REQUEST BIT | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
-    /// | 7              | 6           | 6            |  4  3           | 2  1  0      |
+    /// | 7              | 6           | 6            | 4  3            | 2  1  0      |
     /// | VR: 0/1        | VR: 0/1     | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
     /// -------------------------------------------------------------------------------------------------------------------------------------
     /// | 0              | 0           | 0            | 0  0            | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
@@ -27,7 +27,7 @@ namespace Exomia.Network.Serialization
     /// | 0              | 1           | 0            | 0  0            | 0  0  0      | REQUEST_BIT_MASK     0b01000000
     /// | 1              | 0           | 0            | 0  0            | 0  0  0      | IS_CHUNKED_BIT_MASK  0b10000000
     /// 32bit
-    /// | COMMANDID 31-16 (16)bit                          | DATA LENGTH 15-0 (16)bit                        |
+    /// | COMMANDID OR RESPONSEID 31-16 (16)bit            | DATA LENGTH 15-0 (16)bit                        |
     /// | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
     /// | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE_RANGE
     /// --------------------------------------------------------------------------------------------------------------------------------
@@ -59,19 +59,17 @@ namespace Exomia.Network.Serialization
         {
             *dst = (byte)encryptionMode;
 
+            if (packetInfo.IsResponse)
+            {
+                *dst |= Constants.RESPONSE_1_BIT;
+            }
+
             int offset = 0;
             if (packetInfo.RequestID != 0)
             {
                 *dst                                      |= Constants.REQUEST_1_BIT;
                 *(uint*)(dst + Constants.TCP_HEADER_SIZE) =  packetInfo.RequestID;
                 offset                                    =  4;
-            }
-
-            if (packetInfo.ResponseID != 0)
-            {
-                *dst                                               |= Constants.RESPONSE_1_BIT;
-                *(uint*)(dst + Constants.TCP_HEADER_SIZE + offset) =  packetInfo.ResponseID;
-                offset                                             += 4;
             }
 
             if (packetInfo.CompressionMode != CompressionMode.None)
@@ -96,7 +94,7 @@ namespace Exomia.Network.Serialization
 
             *(uint*)(dst + 1) =
                 ((uint)(l + offset + 1) & Constants.DATA_LENGTH_MASK) |
-                (packetInfo.CommandID << Constants.COMMAND_ID_SHIFT);
+                (packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
             *(ushort*)(dst + 5)                                   = checksum;
             *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
 
@@ -106,14 +104,14 @@ namespace Exomia.Network.Serialization
         /// <summary>
         ///     Deserialize TCP.
         /// </summary>
-        /// <param name="packetHeader">   The packet header. </param>
-        /// <param name="checksum">       The checksum. </param>
-        /// <param name="source">         Source for the. </param>
-        /// <param name="bigDataHandler"> The big data handler. </param>
-        /// <param name="payload">        [out] The payload. </param>
-        /// <param name="length">         [in,out] The length. </param>
-        /// <param name="requestID">      [out] Identifier for the request. </param>
-        /// <param name="responseID">     [out] Identifier for the response. </param>
+        /// <param name="packetHeader">     The packet header. </param>
+        /// <param name="checksum">         The checksum. </param>
+        /// <param name="source">           Source for the. </param>
+        /// <param name="bigDataHandler">   The big data handler. </param>
+        /// <param name="payload">          [out] The payload. </param>
+        /// <param name="length">           [in,out] The length. </param>
+        /// <param name="requestID">        [out] Identifier for the request. </param>
+        /// <param name="isResponseBitSet"> [out] True if the response bit is set; false otherwise. </param>
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
@@ -126,25 +124,20 @@ namespace Exomia.Network.Serialization
                                             out byte[]          payload,
                                             ref int             length,
                                             out uint            requestID,
-                                            out uint            responseID)
+                                            out bool            isResponseBitSet)
         {
             fixed (byte* ptr = source)
             {
-                requestID  = 0;
-                responseID = 0;
+                requestID = 0;
 
                 int offset = 0;
                 if ((packetHeader & Constants.REQUEST_BIT_MASK) != 0)
                 {
-                    requestID = *(uint*)(ptr);
-                    offset     = 4;
+                    requestID = *(uint*)ptr;
+                    offset    = 4;
                 }
 
-                if ((packetHeader & Constants.RESPONSE_BIT_MASK) != 0)
-                {
-                    responseID =  *(uint*)(ptr + offset);
-                    offset     += 4;
-                }
+                isResponseBitSet = (packetHeader & Constants.RESPONSE_BIT_MASK) != 0;
 
                 int l = 0;
                 CompressionMode compressionMode =
