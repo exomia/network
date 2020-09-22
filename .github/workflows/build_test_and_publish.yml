@@ -63,7 +63,7 @@ jobs:
         dotnet pack --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        until dotnet nuget push **/*.nupkg --source github --api-key ${{ secrets.EXOMIA_NUGET_API_KEY_PUSH }} --skip-duplicate --disable-buffering --no-service-endpoint; do echo "retrying in 10s..."; sleep 10; done
+        until dotnet nuget push **/*.nupkg --source github --api-key ${{ github.token }} --skip-duplicate --disable-buffering --no-service-endpoint; do echo "retrying in 10s..."; sleep 10; done
       shell: bash
       working-directory: src/Exomia.Network
   publish-nuget-windows:
@@ -142,7 +142,7 @@ jobs:
         dotnet pack --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        until dotnet nuget push **/*.nupkg --source github --api-key ${{ secrets.EXOMIA_NUGET_API_KEY_PUSH }} --skip-duplicate --disable-buffering --no-service-endpoint; do echo "retrying in 10s..."; sleep 10; done
+        until dotnet nuget push **/*.nupkg --source github --api-key ${{ github.token }} --skip-duplicate --disable-buffering --no-service-endpoint; do echo "retrying in 10s..."; sleep 10; done
       shell: bash     
       working-directory: src/Exomia.Network
   publish-nuget-linux:
