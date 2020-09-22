@@ -2,6 +2,10 @@ name: build, test & publish
 on: 
     release:
         types: [published]
+env:  
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+    DOTNET_NOLOGO: 1
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
 jobs:
   build-windows:
     name: build release and debug for windows
@@ -12,17 +16,11 @@ jobs:
       with:
         dotnet-version: 3.1.301
     - name: build debug
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1 
       run: |
         dotnet build src/Exomia.Network --configuration Windows-Debug --force --nologo -p:Platform=AnyCPU
         dotnet build src/Exomia.Network --configuration Windows-Debug --force --nologo -p:Platform=x86
         dotnet build src/Exomia.Network --configuration Windows-Debug --force --nologo -p:Platform=x64
     - name: build release
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1 
       run: |
         dotnet build src/Exomia.Network --configuration Windows-Release --force --nologo -p:Platform=AnyCPU
         dotnet build src/Exomia.Network --configuration Windows-Release --force --nologo -p:Platform=x86
@@ -37,17 +35,11 @@ jobs:
       with:
         dotnet-version: 3.1.301
     - name: test debug
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
         dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Debug --nologo -p:Platform=AnyCPU
         dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Debug --nologo -p:Platform=x86
         dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Debug --nologo -p:Platform=x64
     - name: test release
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
         dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Release --nologo -p:Platform=AnyCPU
         dotnet test tests/L0/Exomia.Network.Tests --configuration Windows-Release --nologo -p:Platform=x86
@@ -66,15 +58,12 @@ jobs:
       with:
         dotnet-version: 3.1.301
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
-        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json -n github -u exomia -p ${{ github.token }} --store-password-in-clear-text
+        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json --store-password-in-clear-text --name github --username exomia --password ${{ github.token }}
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        dotnet nuget push "**/*.nupkg" --source "github" --api-key ${{ github.token }} --skip-duplicate
+        dotnet nuget push **/*.nupkg --source github --api-key ${{ github.token }} --skip-duplicate --no-service-endpoint --disable-buffering true
       shell: bash
   publish-nuget-windows:
     name: publish release for windows on nuget
@@ -90,9 +79,6 @@ jobs:
       with:
         dotnet-version: 3.1.301
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
         dotnet pack src/Exomia.Network --configuration Windows-Release --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Windows-Release --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
@@ -108,17 +94,11 @@ jobs:
       with:
         dotnet-version: 3.1.301
     - name: build debug
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1 
       run: |
         dotnet build src/Exomia.Network --configuration Linux-Debug --force --nologo -p:Platform=AnyCPU
         dotnet build src/Exomia.Network --configuration Linux-Debug --force --nologo -p:Platform=x86
         dotnet build src/Exomia.Network --configuration Linux-Debug --force --nologo -p:Platform=x64
     - name: build release
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1 
       run: |
         dotnet build src/Exomia.Network --configuration Linux-Release --force --nologo -p:Platform=AnyCPU
         dotnet build src/Exomia.Network --configuration Linux-Release --force --nologo -p:Platform=x86
@@ -133,17 +113,11 @@ jobs:
       with:
         dotnet-version: 3.1.301
     - name: test debug
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
         dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Debug --nologo -p:Platform=AnyCPU
         dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Debug --nologo -p:Platform=x86
         dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Debug --nologo -p:Platform=x64
     - name: test release
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
         dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Release --nologo -p:Platform=AnyCPU
         dotnet test tests/L0/Exomia.Network.Tests --configuration Linux-Release --nologo -p:Platform=x86
@@ -162,15 +136,12 @@ jobs:
       with:
         dotnet-version: 3.1.301
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
-        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json -n github -u exomia -p ${{ github.token }} --store-password-in-clear-text
+        dotnet nuget add source https://nuget.pkg.github.com/exomia/index.json --store-password-in-clear-text --name github --username exomia --password ${{ github.token }}
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
-        dotnet nuget push "**/*.nupkg" --source "github" --api-key ${{ github.token }} --skip-duplicate
+        dotnet nuget push **/*.nupkg --source github --api-key ${{ github.token }} --skip-duplicate --no-service-endpoint --disable-buffering true
       shell: bash
   publish-nuget-linux:
     name: publish release for linux on nuget
@@ -186,9 +157,6 @@ jobs:
       with:
         dotnet-version: 3.1.301
     - name: publish ${{ github.repository }} [v${{ env.TAG_VERSION }}]
-      env:
-        DOTNET_NOLOGO: 1
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
       run: |
         dotnet pack src/Exomia.Network --configuration Linux-Release --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=$TAG_VERSION
         dotnet pack src/Exomia.Network --configuration Linux-Release --verbosity m --force --nologo -p:Platform=x86 -p:Version=$TAG_VERSION

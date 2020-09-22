@@ -13,7 +13,7 @@ using System.Linq;
 using Exomia.Network.Native;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Exomia.Network.Tests
+namespace Exomia.Network.Tests.Native
 {
     [TestClass]
     public unsafe class CircularBufferTest
@@ -34,8 +34,8 @@ namespace Exomia.Network.Tests
         [TestMethod]
         [DataRow(0)]
         [DataRow(-1)]
-        [DataRow(int.MinValue)]
         [DataRow(0x7FFFFFFF)]
+        [DataRow(int.MinValue)]
         public void InitTest_CircularBuffer_Initialize_With_InvalidNumbers_ShouldFail(int count)
         {
             Assert.ThrowsException<ArgumentOutOfRangeException>(
