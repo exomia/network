@@ -17,6 +17,14 @@ namespace Exomia.Network
     public readonly struct Response<TResult>
     {
         /// <summary>
+        ///     The response id.
+        /// </summary>
+        /// <remarks>
+        ///     <p>Specify this id instead of a command id in case you need to respond to a request.</p>
+        /// </remarks>
+        public readonly uint ID;
+
+        /// <summary>
         ///     The result.
         /// </summary>
         public readonly TResult Result;
@@ -29,16 +37,18 @@ namespace Exomia.Network
         /// <summary>
         ///     Initializes a new instance of the <see cref="Response{TResult}" /> struct.
         /// </summary>
-        /// <param name="result">    The result. </param>
-        /// <param name="sendError"> The send error. </param>
-        internal Response(in TResult result, SendError sendError)
+        /// <param name="result">     The result. </param>
+        /// <param name="responseID"> The result. </param>
+        /// <param name="sendError">  The send error. </param>
+        internal Response(in TResult result, uint responseID, SendError sendError)
         {
             Result    = result;
+            ID        = responseID;
             SendError = sendError;
         }
 
         /// <summary>
-        ///     <c>true</c> if no SendError occured; <c>false</c> otherwise.
+        ///     <c>true</c> if no SendError occurred; <c>false</c> otherwise.
         /// </summary>
         /// <param name="r"> The in <see cref="Response{TResult}" /> to process. </param>
         /// <returns>

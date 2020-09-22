@@ -18,17 +18,10 @@ namespace Exomia.Network.UDP
     /// </summary>
     public abstract class UdpClientBase : ClientBase
     {
-        /// <summary>
-        ///     The big data handler.
-        /// </summary>
+        private readonly           ushort              _maxPayloadSize;
         private protected readonly BigDataHandler<int> _bigDataHandler;
 
-        /// <summary>
-        ///     Size of the maximum payload.
-        /// </summary>
-        private readonly ushort _maxPayloadSize;
-
-        /// <inheritdoc/>
+        /// <inheritdoc />
         private protected override ushort MaxPayloadSize
         {
             get { return _maxPayloadSize; }
@@ -49,7 +42,7 @@ namespace Exomia.Network.UDP
             _bigDataHandler = new BigDataHandler<int>.Timed();
         }
 
-        /// <inheritdoc/>
+        /// <inheritdoc />
         protected override void OnDispose(bool disposing)
         {
             if (disposing)
@@ -58,14 +51,14 @@ namespace Exomia.Network.UDP
             }
         }
 
-        /// <inheritdoc/>
+        /// <inheritdoc />
         private protected override void Configure()
         {
             ReceiveBufferSize = 0; //0kb
             SendBufferSize    = 0; //0kb
         }
-        
-        /// <inheritdoc/>
+
+        /// <inheritdoc />
 #if NETSTANDARD2_1
         private protected override bool TryCreateSocket([NotNullWhen(true)] out Socket? socket)
 #else

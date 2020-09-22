@@ -21,19 +21,8 @@ namespace Exomia.Network.Lib
     /// <typeparam name="T"> typeof delegate. </typeparam>
     sealed class Event<T> where T : Delegate
     {
-        /// <summary>
-        ///     The callbacks.
-        /// </summary>
-        private T[] _callbacks;
-
-        /// <summary>
-        ///     Number of.
-        /// </summary>
-        private int _count;
-
-        /// <summary>
-        ///     The lock.
-        /// </summary>
+        private T[]      _callbacks;
+        private int      _count;
         private SpinLock _lock;
 
         /// <summary>

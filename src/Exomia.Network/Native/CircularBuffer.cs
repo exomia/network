@@ -16,50 +16,16 @@ using System.Threading;
 
 namespace Exomia.Network.Native
 {
-    /// <summary>
-    ///     A circular buffer class.
-    /// </summary>
     unsafe class CircularBuffer : IDisposable
     {
-        /// <summary>
-        ///     The pointer.
-        /// </summary>
-        private readonly IntPtr _mPtr;
-
-        /// <summary>
-        ///     The pointer.
-        /// </summary>
-        private readonly byte* _ptr;
-
-        /// <summary>
-        ///     The capacity.
-        /// </summary>
-        private readonly int _capacity;
-
-        /// <summary>
-        ///     The mask.
-        /// </summary>
-        private readonly int _mask;
-
-        /// <summary>
-        ///     The head.
-        /// </summary>
-        private int _head;
-
-        /// <summary>
-        ///     The tail.
-        /// </summary>
-        private int _tail;
-
-        /// <summary>
-        ///     Number of.
-        /// </summary>
-        private int _count;
-
-        /// <summary>
-        ///     The lock.
-        /// </summary>
-        private SpinLock _lock;
+        private readonly IntPtr   _mPtr;
+        private readonly byte*    _ptr;
+        private readonly int      _capacity;
+        private readonly int      _mask;
+        private          int      _head;
+        private          int      _tail;
+        private          int      _count;
+        private          SpinLock _lock;
 
         /// <summary>
         ///     Maximum capacity of the buffer. Elements pushed into the buffer after maximum capacity is
@@ -360,7 +326,7 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + _tail + skip);
                     uint h2 = *(uint*)(_ptr + _tail + skip + 1);
-                    commandID  = h2 >> Constants.COMMAND_ID_SHIFT;
+                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
                     dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
                     checksum   = *(ushort*)(_ptr + _tail + skip + 5);
                 }
@@ -371,7 +337,7 @@ namespace Exomia.Network.Native
                                    | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
                                    | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
                                    | *(_ptr + ((_tail + skip + 1) & _mask)));
-                    commandID  = h2 >> Constants.COMMAND_ID_SHIFT;
+                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
                     dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
                     checksum = (ushort)(
                         (*(_ptr + ((_tail + skip + 6) & _mask)) << 8)
@@ -381,7 +347,7 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + ((_tail + skip) & _mask));
                     uint h2 = *(uint*)(_ptr + ((_tail + skip + 1) & _mask));
-                    commandID  = h2 >> Constants.COMMAND_ID_SHIFT;
+                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
                     dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
                     checksum   = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
                 }

@@ -18,14 +18,7 @@ namespace Exomia.Network.TCP
     /// </summary>
     public sealed class TcpClientEap : TcpClientBase
     {
-        /// <summary>
-        ///     Socket asynchronous event information.
-        /// </summary>
-        private readonly SocketAsyncEventArgs _receiveEventArgs;
-
-        /// <summary>
-        ///     The send event arguments pool.
-        /// </summary>
+        private readonly SocketAsyncEventArgs     _receiveEventArgs;
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <summary>
@@ -42,9 +35,40 @@ namespace Exomia.Network.TCP
             _sendEventArgsPool = new SocketAsyncEventArgsPool();
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
+        /// <inheritdoc />
+        protected override void OnDispose(bool disposing)
+        {
+            _circularBuffer.Dispose();
+        }
+
+        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                Disconnect(DisconnectReason.Error);
+                return;
+            }
+
+            if (e.BytesTransferred <= 0)
+            {
+                Disconnect(DisconnectReason.Graceful);
+                return;
+            }
+
+            Receive(e.Buffer, e.BytesTransferred);
+            ReceiveAsync();
+        }
+
+        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                Disconnect(DisconnectReason.Error);
+            }
+            _sendEventArgsPool.Return(e);
+        }
+
+        /// <inheritdoc />
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -62,7 +86,8 @@ namespace Exomia.Network.TCP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
+        /// <inheritdoc />
+        private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
@@ -103,49 +128,6 @@ namespace Exomia.Network.TCP
                 Disconnect(DisconnectReason.Unspecified);
                 return SendError.Unknown;
             }
-        }
-
-        /// <inheritdoc />
-        protected override void OnDispose(bool disposing)
-        {
-            _circularBuffer.Dispose();
-        }
-
-        /// <summary>
-        ///     Receive asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                Disconnect(DisconnectReason.Error);
-                return;
-            }
-
-            if (e.BytesTransferred <= 0)
-            {
-                Disconnect(DisconnectReason.Graceful);
-                return;
-            }
-
-            Receive(e.Buffer, e.BytesTransferred);
-            ReceiveAsync();
-        }
-
-        /// <summary>
-        ///     Sends an asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                Disconnect(DisconnectReason.Error);
-            }
-            _sendEventArgsPool.Return(e);
         }
     }
 }

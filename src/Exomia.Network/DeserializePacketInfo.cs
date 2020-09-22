@@ -16,14 +16,19 @@ namespace Exomia.Network
     struct DeserializePacketInfo
     {
         /// <summary>
-        ///     Identifier for the command.
+        ///     Identifier for the command or response.
         /// </summary>
-        public uint CommandID;
+        public uint CommandOrResponseID;
 
         /// <summary>
-        ///     Identifier for the response.
+        ///     True if this object is response bit set.
         /// </summary>
-        public uint ResponseID;
+        public bool IsResponseBitSet;
+
+        /// <summary>
+        ///     Identifier for the request.
+        /// </summary>
+        public uint RequestID;
 
         /// <summary>
         ///     The data.

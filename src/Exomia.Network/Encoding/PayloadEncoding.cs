@@ -13,49 +13,16 @@ using Exomia.Network.Lib;
 
 namespace Exomia.Network.Encoding
 {
-    /// <summary>
-    ///     A payload encoding.
-    /// </summary>
     static unsafe class PayloadEncoding
     {
-        /// <summary>
-        ///     The cone.
-        /// </summary>
-        private const ushort CONE = 0b0000_0001_0000_0001;
+        private const ushort CONE  = 0b0000_0001_0000_0001;
+        private const uint   C0    = 0x214EE939;
+        private const uint   C1    = 0x117DFA89;
+        private const byte   ONE   = 0b1000_0000;
+        private const byte   MASK1 = 0b0111_1111;
+        private const byte   MASK2 = 0b0100_0000;
+        private const uint   H0    = 0x209536F9;
 
-        /// <summary>
-        ///     The c 0.
-        /// </summary>
-        private const uint C0 = 0x214EE939;
-
-        /// <summary>
-        ///     The first c.
-        /// </summary>
-        private const uint C1 = 0x117DFA89;
-
-        /// <summary>
-        ///     The one.
-        /// </summary>
-        private const byte ONE = 0b1000_0000;
-
-        /// <summary>
-        ///     The first mask.
-        /// </summary>
-        private const byte MASK1 = 0b0111_1111;
-
-        /// <summary>
-        ///     The second mask.
-        /// </summary>
-        private const byte MASK2 = 0b0100_0000;
-
-        /// <summary>
-        ///     The h 0.
-        /// </summary>
-        private const uint H0 = 0x209536F9;
-
-        /// <summary>
-        ///     The 0.
-        /// </summary>
         private static readonly uint s_h0 = H0 ^ Math2.R1(H0, 12);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -70,16 +37,6 @@ namespace Exomia.Network.Encoding
             return length - Math2.Ceiling(length / 8.0);
         }
 
-        /// <summary>
-        ///     Encodes the data.
-        /// </summary>
-        /// <param name="data">         The data. </param>
-        /// <param name="length">       The length. </param>
-        /// <param name="buffer">       The buffer. </param>
-        /// <param name="bufferLength"> [out] Length of the buffer. </param>
-        /// <returns>
-        ///     An ushort.
-        /// </returns>
         internal static ushort Encode(byte* data, int length, byte* buffer, out int bufferLength)
         {
             bufferLength = EncodedPayloadLength(length);
@@ -91,21 +48,15 @@ namespace Exomia.Network.Encoding
                 data   += 7;
                 length -= 7;
             }
-            Encode(&checksum, buffer, data, length);
+            
+            if (length > 0)
+            {
+                Encode(&checksum, buffer, data, length);
+            }
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
 
-        /// <summary>
-        ///     Decodes the data.
-        /// </summary>
-        /// <param name="src">       [in,out] If non-null, the decode source. </param>
-        /// <param name="length">    The length. </param>
-        /// <param name="dst">       [in,out] The buffer. </param>
-        /// <param name="dstLength"> [out] Length of the destination. </param>
-        /// <returns>
-        ///     An ushort.
-        /// </returns>
         internal static ushort Decode(byte* src, int length, byte* dst, out int dstLength)
         {
             dstLength = DecodedPayloadLength(length);
@@ -118,18 +69,15 @@ namespace Exomia.Network.Encoding
                 src    += 8;
                 length -= 8;
             }
-            Decode(&checksum, dst, src, length);
+            
+            if (length > 0)
+            {
+                Decode(&checksum, dst, src, length);
+            }
 
             return (ushort)(CONE | ((ushort)checksum ^ (checksum >> 16)));
         }
 
-        /// <summary>
-        ///     Encodes the data.
-        /// </summary>
-        /// <param name="checksum"> [in,out] If non-null, the checksum. </param>
-        /// <param name="buffer">   The buffer. </param>
-        /// <param name="data">     The data. </param>
-        /// <param name="size">     The size. </param>
         private static void Encode(uint* checksum, byte* buffer, byte* data, int size)
         {
             byte b = ONE;
@@ -145,13 +93,6 @@ namespace Exomia.Network.Encoding
             *checksum        += Math2.R1(b, 23) + C1;
         }
 
-        /// <summary>
-        ///     Decodes the data.
-        /// </summary>
-        /// <param name="checksum"> [in,out] If non-null, the checksum. </param>
-        /// <param name="dest">     [in,out] If non-null, destination for the. </param>
-        /// <param name="src">      [in,out] If non-null, source for the. </param>
-        /// <param name="size">     The size. </param>
         private static void Decode(uint* checksum, byte* dest, byte* src, int size)
         {
             byte b = *((src + size) - 1);

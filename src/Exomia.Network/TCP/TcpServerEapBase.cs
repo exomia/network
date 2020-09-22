@@ -21,9 +21,6 @@ namespace Exomia.Network.TCP
     public abstract class TcpServerEapBase<TServerClient> : TcpServerBase<TServerClient>
         where TServerClient : ServerClientBase<Socket>
     {
-        /// <summary>
-        ///     The send event arguments pool.
-        /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <summary>
@@ -38,8 +35,124 @@ namespace Exomia.Network.TCP
             _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClients);
         }
 
-        private protected override unsafe SendError SendTo(Socket        arg0,
-                                                           in PacketInfo packetInfo)
+        private void ListenAsync(SocketAsyncEventArgs acceptArgs)
+        {
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                acceptArgs.AcceptSocket = null;
+                try
+                {
+                    if (!_listener!.AcceptAsync(acceptArgs))
+                    {
+                        AcceptAsyncCompleted(_listener, acceptArgs);
+                    }
+                }
+                catch
+                {
+                    /* IGNORE */
+                }
+            }
+        }
+
+        private void AcceptAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                try
+                {
+                    e.AcceptSocket?.Shutdown(SocketShutdown.Both);
+                    e.AcceptSocket?.Close(CLOSE_TIMEOUT);
+                    e.AcceptSocket?.Dispose();
+                }
+                catch
+                {
+                    /* IGNORE */
+                }
+                ListenAsync(e);
+                return;
+            }
+
+#pragma warning disable IDE0068 // Use recommended dispose pattern
+            SocketAsyncEventArgs receiveArgs = new SocketAsyncEventArgs { AcceptSocket = e.AcceptSocket };
+#pragma warning restore IDE0068 // Use recommended dispose pattern
+            receiveArgs.Completed += ReceiveAsyncCompleted;
+            receiveArgs.SetBuffer(
+                new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
+                _payloadSize + Constants.TCP_HEADER_OFFSET);
+            receiveArgs.UserToken = new ServerClientStateObject(
+                new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
+                new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
+                new BigDataHandler<int>.Default());
+
+            ListenAsync(e);
+
+            ReceiveAsync(receiveArgs);
+        }
+
+        private void ReceiveAsync(SocketAsyncEventArgs args)
+        {
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                try
+                {
+                    if (!args.AcceptSocket.ReceiveAsync(args))
+                    {
+                        ReceiveAsyncCompleted(args.AcceptSocket, args);
+                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Aborted);
+                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    args.Dispose();
+                }
+                catch (SocketException)
+                {
+                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Error);
+                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    args.Dispose();
+                }
+                catch
+                {
+                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Unspecified);
+                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    args.Dispose();
+                }
+            }
+        }
+
+        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
+                ((ServerClientStateObject)e.UserToken).Dispose();
+                e.Dispose();
+                return;
+            }
+            if (e.BytesTransferred <= 0)
+            {
+                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Graceful);
+                ((ServerClientStateObject)e.UserToken).Dispose();
+                e.Dispose();
+                return;
+            }
+
+            Receive(e.AcceptSocket, e.Buffer, e.BytesTransferred, (ServerClientStateObject)e.UserToken);
+            ReceiveAsync(e);
+        }
+
+        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
+            }
+            _sendEventArgsPool.Return(e);
+        }
+
+        private protected override unsafe SendError BeginSendTo(Socket        arg0,
+                                                                in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
 
@@ -96,146 +209,6 @@ namespace Exomia.Network.TCP
 #pragma warning restore IDE0068 // Use recommended dispose pattern
             acceptArgs.Completed += AcceptAsyncCompleted;
             ListenAsync(acceptArgs);
-        }
-
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
-        /// <param name="acceptArgs"> Socket asynchronous event information. </param>
-        private void ListenAsync(SocketAsyncEventArgs acceptArgs)
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                acceptArgs.AcceptSocket = null;
-                try
-                {
-                    if (!_listener!.AcceptAsync(acceptArgs))
-                    {
-                        AcceptAsyncCompleted(_listener, acceptArgs);
-                    }
-                }
-                catch
-                {
-                    /* IGNORE */
-                }
-            }
-        }
-
-        /// <summary>
-        ///     Accept asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        private void AcceptAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                try
-                {
-                    e.AcceptSocket?.Shutdown(SocketShutdown.Both);
-                    e.AcceptSocket?.Close(CLOSE_TIMEOUT);
-                    e.AcceptSocket?.Dispose();
-                }
-                catch
-                {
-                    /* IGNORE */
-                }
-                ListenAsync(e);
-                return;
-            }
-
-#pragma warning disable IDE0068 // Use recommended dispose pattern
-            SocketAsyncEventArgs receiveArgs = new SocketAsyncEventArgs { AcceptSocket = e.AcceptSocket };
-#pragma warning restore IDE0068 // Use recommended dispose pattern
-            receiveArgs.Completed += ReceiveAsyncCompleted;
-            receiveArgs.SetBuffer(
-                new byte[_payloadSize + Constants.TCP_HEADER_OFFSET], 0,
-                _payloadSize + Constants.TCP_HEADER_OFFSET);
-            receiveArgs.UserToken = new ServerClientStateObject(
-                new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
-                new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
-                new BigDataHandler<int>.Default());
-
-            ListenAsync(e);
-
-            ReceiveAsync(receiveArgs);
-        }
-
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
-        /// <param name="args"> Socket asynchronous event information. </param>
-        private void ReceiveAsync(SocketAsyncEventArgs args)
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                try
-                {
-                    if (!args.AcceptSocket.ReceiveAsync(args))
-                    {
-                        ReceiveAsyncCompleted(args.AcceptSocket, args);
-                    }
-                }
-                catch (ObjectDisposedException)
-                {
-                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Aborted);
-                    ((ServerClientStateObject)args.UserToken).Dispose();
-                    args.Dispose();
-                }
-                catch (SocketException)
-                {
-                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Error);
-                    ((ServerClientStateObject)args.UserToken).Dispose();
-                    args.Dispose();
-                }
-                catch
-                {
-                    InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Unspecified);
-                    ((ServerClientStateObject)args.UserToken).Dispose();
-                    args.Dispose();
-                }
-            }
-        }
-
-        /// <summary>
-        ///     Receive asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
-                ((ServerClientStateObject)e.UserToken).Dispose();
-                e.Dispose();
-                return;
-            }
-            if (e.BytesTransferred <= 0)
-            {
-                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Graceful);
-                ((ServerClientStateObject)e.UserToken).Dispose();
-                e.Dispose();
-                return;
-            }
-
-            Receive(e.AcceptSocket, e.Buffer, e.BytesTransferred, (ServerClientStateObject)e.UserToken);
-            ReceiveAsync(e);
-        }
-
-        /// <summary>
-        ///     Sends an asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
-            }
-            _sendEventArgsPool.Return(e);
         }
     }
 }

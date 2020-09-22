@@ -13,14 +13,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 using Exomia.Network.Buffers;
-using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
-using Exomia.Network.Serialization;
-using K4os.Compression.LZ4;
-
 #if NETSTANDARD2_1
 using System.Diagnostics.CodeAnalysis;
+
 #endif
 
 namespace Exomia.Network
@@ -30,34 +28,19 @@ namespace Exomia.Network
     /// </summary>
     /// <typeparam name="T">             Socket|Endpoint. </typeparam>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
-    public abstract class ServerBase<T, TServerClient> : IServer<TServerClient>
+    public abstract partial class ServerBase<T, TServerClient> : IServer<TServerClient>
         where T : class
         where TServerClient : ServerClientBase<T>
     {
-        /// <summary>
-        ///     The close timeout.
-        /// </summary>
-        private protected const int CLOSE_TIMEOUT = 10;
+        private protected const int  CLOSE_TIMEOUT                      = 10;
+        private protected const byte RECEIVE_FLAG                       = 0b0000_0001;
+        private protected const byte SEND_FLAG                          = 0b0000_0010;
+        private const           int  INITIAL_QUEUE_SIZE                 = 16;
+        private const           int  INITIAL_CLIENT_QUEUE_SIZE          = 32;
+        private const           int  INITIAL_TASK_COMPLETION_QUEUE_SIZE = 128;
 
-        /// <summary>
-        ///     The receive flag.
-        /// </summary>
-        private protected const byte RECEIVE_FLAG = 0b0000_0001;
-
-        /// <summary>
-        ///     The send flag.
-        /// </summary>
-        private protected const byte SEND_FLAG = 0b0000_0010;
-
-        /// <summary>
-        ///     Initial size of the queue.
-        /// </summary>
-        private const int INITIAL_QUEUE_SIZE = 16;
-
-        /// <summary>
-        ///     Initial size of the client queue.
-        /// </summary>
-        private const int INITIAL_CLIENT_QUEUE_SIZE = 32;
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(10);
 
         /// <summary>
         ///     Called than a client is connected.
@@ -83,64 +66,25 @@ namespace Exomia.Network
         /// </summary>
         protected readonly Dictionary<T, TServerClient> _clients;
 
-        /// <summary>
-        ///     The listener.
-        /// </summary>
         private protected Socket? _listener;
-
-        /// <summary>
-        ///     The port.
-        /// </summary>
-        private protected int _port;
-
-        /// <summary>
-        ///     The state.
-        /// </summary>
-        private protected byte _state;
+        private protected int     _port;
+        private           uint    _requestID;
+        private protected byte    _state;
 
         /// <summary>
         ///     The compression mode.
         /// </summary>
         protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
-        /// <summary>
-        ///     The encryption mode.
-        /// </summary>
         private protected EncryptionMode _encryptionMode = EncryptionMode.None;
-
-        /// <summary>
-        ///     The data received callbacks.
-        /// </summary>
         private readonly Dictionary<uint, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
-
-        /// <summary>
-        ///     The client data received event handler.
-        /// </summary>
         private readonly Event<ClientCommandDataReceivedHandler<TServerClient>> _clientDataReceived;
-
-        /// <summary>
-        ///     The listener count.
-        /// </summary>
+        private readonly Dictionary<uint, TaskCompletionSource<(uint requestID, Packet packet)>> _taskCompletionSources;
         private readonly byte _listenerCount;
-
-        /// <summary>
-        ///     The clients lock.
-        /// </summary>
         private SpinLock _clientsLock;
-
-        /// <summary>
-        ///     The data received callbacks lock.
-        /// </summary>
         private SpinLock _dataReceivedCallbacksLock;
-
-        /// <summary>
-        ///     True if this object is running.
-        /// </summary>
+        private SpinLock _lockTaskCompletionSources;
         private bool _isRunning;
-
-        /// <summary>
-        ///     Identifier for the packet.
-        /// </summary>
         private int _packetID;
 
         /// <summary>
@@ -153,14 +97,6 @@ namespace Exomia.Network
         {
             get { return _port; }
         }
-
-        /// <summary>
-        ///     Gets the maximum size of the payload.
-        /// </summary>
-        /// <value>
-        ///     The size of the maximum payload.
-        /// </value>
-        private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
         ///     Gets or sets the size of the receive buffer in bytes.
@@ -272,6 +208,8 @@ namespace Exomia.Network
             }
         }
 
+        private protected abstract ushort MaxPayloadSize { get; }
+
         /// <summary>
         ///     Initializes a new instance of the <see cref="ServerBase{T, TServerClient}" /> class.
         /// </summary>
@@ -280,12 +218,17 @@ namespace Exomia.Network
         {
             _listenerCount         = listenerCount;
             _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<TServerClient>>(INITIAL_QUEUE_SIZE);
-            _clients               = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
+            _taskCompletionSources =
+                new Dictionary<uint, TaskCompletionSource<(uint requestID, Packet packet)>>(
+                    INITIAL_TASK_COMPLETION_QUEUE_SIZE);
+            _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
 
             _clientsLock               = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
+            _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
 
-            _packetID = 1;
+            _requestID = 1;
+            _packetID  = 1;
 
             _clientDataReceived = new Event<ClientCommandDataReceivedHandler<TServerClient>>();
         }
@@ -358,16 +301,41 @@ namespace Exomia.Network
         private protected void DeserializeData(T                        arg0,
                                                in DeserializePacketInfo deserializePacketInfo)
         {
-            uint commandID  = deserializePacketInfo.CommandID;
-            uint responseID = deserializePacketInfo.ResponseID;
-            switch (commandID)
+            uint commandOrResponseID = deserializePacketInfo.CommandOrResponseID;
+            uint requestID           = deserializePacketInfo.RequestID;
+
+            if (deserializePacketInfo.IsResponseBitSet)
+            {
+                TaskCompletionSource<(uint, Packet)>? cs;
+                bool                                  lockTaken = false;
+                try
+                {
+                    _lockTaskCompletionSources.Enter(ref lockTaken);
+                    if (_taskCompletionSources.TryGetValue(commandOrResponseID, out cs))
+                    {
+                        _taskCompletionSources.Remove(commandOrResponseID);
+                    }
+                }
+                finally
+                {
+                    if (lockTaken) { _lockTaskCompletionSources.Exit(false); }
+                }
+                if (cs != null && !cs.TrySetResult(
+                    (requestID,
+                     new Packet(deserializePacketInfo.Data, 0, deserializePacketInfo.Length))))
+                {
+                    ByteArrayPool.Return(deserializePacketInfo.Data);
+                }
+                return;
+            }
+            switch (commandOrResponseID)
             {
                 case CommandID.PING:
                     {
                         SendTo(
                             arg0, CommandID.PING,
                             deserializePacketInfo.Data, 0, deserializePacketInfo.Length,
-                            responseID);
+                            requestID);
                         break;
                     }
                 case CommandID.CONNECT:
@@ -376,7 +344,7 @@ namespace Exomia.Network
                         SendTo(
                             arg0, CommandID.CONNECT,
                             deserializePacketInfo.Data, 0, deserializePacketInfo.Length,
-                            responseID);
+                            requestID);
                         break;
                     }
                 case CommandID.DISCONNECT:
@@ -391,9 +359,9 @@ namespace Exomia.Network
                     {
                         if (_clients.TryGetValue(arg0, out TServerClient sClient))
                         {
-                            if (commandID <= Constants.USER_COMMAND_LIMIT &&
+                            if (commandOrResponseID <= Constants.USER_COMMAND_LIMIT &&
                                 _dataReceivedCallbacks.TryGetValue(
-                                    commandID, out ServerClientEventEntry<TServerClient>? scee))
+                                    commandOrResponseID, out ServerClientEventEntry<TServerClient>? scee))
                             {
                                 sClient.SetLastReceivedPacketTimeStamp();
 
@@ -409,12 +377,12 @@ namespace Exomia.Network
                                             for (int i = _clientDataReceived.Count - 1; i >= 0; --i)
                                             {
                                                 if (!_clientDataReceived[i]
-                                                    .Invoke(this, sClient, commandID, res, responseID))
+                                                    .Invoke(this, sClient, commandOrResponseID, res, requestID))
                                                 {
                                                     _clientDataReceived.Remove(i);
                                                 }
                                             }
-                                            scee.Raise(this, sClient, res, responseID);
+                                            scee.Raise(this, sClient, res, requestID);
                                         }
                                     });
                                 return;
@@ -651,172 +619,6 @@ namespace Exomia.Network
 
         #endregion
 
-        #region Send
-
-        /// <summary>
-        ///     Sends to.
-        /// </summary>
-        /// <param name="arg0">       Socket|Endpoint. </param>
-        /// <param name="packetInfo"> Information describing the packet. </param>
-        /// <returns>
-        ///     A SendError.
-        /// </returns>
-        private protected abstract SendError SendTo(T             arg0,
-                                                    in PacketInfo packetInfo);
-
-        private unsafe SendError SendTo(T      arg0,
-                                        uint   commandID,
-                                        byte[] data,
-                                        int    offset,
-                                        int    length,
-                                        uint   responseID)
-        {
-            if (_listener == null || (_state & SEND_FLAG) != SEND_FLAG) { return SendError.Invalid; }
-
-            PacketInfo packetInfo;
-            packetInfo.CommandID        = commandID;
-            packetInfo.ResponseID       = responseID;
-            packetInfo.Length           = length;
-            packetInfo.CompressedLength = length;
-            packetInfo.CompressionMode  = CompressionMode.None;
-            if (length >= Constants.LENGTH_THRESHOLD && _compressionMode != CompressionMode.None)
-            {
-                byte[] buffer = new byte[LZ4Codec.MaximumOutputSize(length)];
-                int s = _compressionMode switch
-                {
-                    CompressionMode.Lz4 => LZ4Codec.Encode(data, offset, length, buffer, 0, buffer.Length),
-                    _ => throw new ArgumentOutOfRangeException(
-                        nameof(_compressionMode), _compressionMode, "Not supported!")
-                };
-                if (s > 0 && s < length)
-                {
-                    packetInfo.CompressedLength = s;
-                    packetInfo.CompressionMode  = _compressionMode;
-                    data                        = buffer;
-                    offset                      = 0;
-                }
-            }
-
-            fixed (byte* src = data)
-            {
-                packetInfo.Src = src + offset;
-                if (packetInfo.CompressedLength <= MaxPayloadSize)
-                {
-                    packetInfo.PacketID    = 0;
-                    packetInfo.ChunkOffset = 0;
-                    packetInfo.ChunkLength = packetInfo.CompressedLength;
-                    packetInfo.IsChunked   = false;
-                    return SendTo(arg0, in packetInfo);
-                }
-
-                packetInfo.PacketID    = Interlocked.Increment(ref _packetID);
-                packetInfo.ChunkOffset = 0;
-                packetInfo.IsChunked   = true;
-                int chunkLength = packetInfo.CompressedLength;
-                while (chunkLength > MaxPayloadSize)
-                {
-                    packetInfo.ChunkLength = MaxPayloadSize;
-                    SendError se = SendTo(arg0, in packetInfo);
-                    if (se != SendError.None)
-                    {
-                        return se;
-                    }
-                    chunkLength            -= MaxPayloadSize;
-                    packetInfo.ChunkOffset += MaxPayloadSize;
-                }
-                packetInfo.ChunkLength = chunkLength;
-                return SendTo(arg0, in packetInfo);
-            }
-        }
-
-        /// <inheritdoc/>
-        public SendError SendTo(TServerClient client,
-                                uint          commandID,
-                                byte[]        data,
-                                int           offset,
-                                int           length,
-                                uint          responseID)
-        {
-            return SendTo(client.Arg0, commandID, data, offset, length, responseID);
-        }
-
-        /// <inheritdoc/>
-        public SendError SendTo(TServerClient client,
-                                uint          commandID,
-                                byte[]        data,
-                                uint          responseID)
-        {
-            return SendTo(client.Arg0, commandID, data, 0, data.Length, responseID);
-        }
-
-        /// <inheritdoc/>
-        public SendError SendTo(TServerClient client,
-                                uint          commandID,
-                                ISerializable serializable,
-                                uint          responseID)
-        {
-            byte[] dataB = serializable.Serialize(out int length);
-            return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
-        }
-
-        /// <inheritdoc/>
-        public SendError SendTo<T1>(TServerClient client,
-                                    uint          commandID,
-                                    in T1         data,
-                                    uint          responseID)
-            where T1 : unmanaged
-        {
-            byte[] dataB = data.ToBytesUnsafe2(out int length);
-            return SendTo(client.Arg0, commandID, dataB, 0, length, responseID);
-        }
-
-        /// <inheritdoc/>
-        public void SendToAll(uint commandID, byte[] data, int offset, int length)
-        {
-            Dictionary<T, TServerClient> clients;
-            bool                         lockTaken = false;
-            try
-            {
-                _clientsLock.Enter(ref lockTaken);
-                clients = new Dictionary<T, TServerClient>(_clients);
-            }
-            finally
-            {
-                if (lockTaken) { _clientsLock.Exit(false); }
-            }
-
-            if (clients.Count > 0)
-            {
-                foreach (T arg0 in clients.Keys)
-                {
-                    SendTo(arg0, commandID, data, offset, length, 0);
-                }
-            }
-        }
-
-        /// <inheritdoc/>
-        public void SendToAll(uint commandID, byte[] data)
-        {
-            SendToAll(commandID, data, 0, data.Length);
-        }
-
-        /// <inheritdoc/>
-        public void SendToAll<T1>(uint commandID, in T1 data)
-            where T1 : unmanaged
-        {
-            byte[] buffer = data.ToBytesUnsafe2(out int length);
-            SendToAll(commandID, buffer, 0, length);
-        }
-
-        /// <inheritdoc/>
-        public void SendToAll(uint commandID, ISerializable serializable)
-        {
-            byte[] buffer = serializable.Serialize(out int length);
-            SendToAll(commandID, buffer, 0, length);
-        }
-
-        #endregion
-
         #region IDisposable Support
 
         /// <summary>
@@ -824,7 +626,7 @@ namespace Exomia.Network
         /// </summary>
         private bool _disposed;
 
-        /// <inheritdoc/>
+        /// <inheritdoc />
         public void Dispose()
         {
             Dispose(true);

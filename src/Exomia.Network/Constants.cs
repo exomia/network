@@ -15,89 +15,24 @@ namespace Exomia.Network
     /// </summary>
     static class Constants
     {
-        /// <summary>
-        ///     The safety payload offset.
-        /// </summary>
-        internal const int SAFETY_PAYLOAD_OFFSET = 20;
-
-        /// <summary>
-        ///     Size of the TCP header.
-        /// </summary>
-        internal const int TCP_HEADER_SIZE = 7;
-
-        /// <summary>
-        ///     The TCP header offset.
-        /// </summary>
-        internal const int TCP_HEADER_OFFSET = TCP_HEADER_SIZE + SAFETY_PAYLOAD_OFFSET;
-
-        /// <summary>
-        ///     The TCP maximum payload size.
-        /// </summary>
-        internal const ushort TCP_PAYLOAD_SIZE_MAX = 65535 - TCP_HEADER_OFFSET - 1 - 8189;
-
-        /// <summary>
-        ///     Size of the UDP header.
-        /// </summary>
-        internal const int UDP_HEADER_SIZE = 5;
-
-        /// <summary>
-        ///     The UDP header offset.
-        /// </summary>
-        internal const int UDP_HEADER_OFFSET = UDP_HEADER_SIZE + SAFETY_PAYLOAD_OFFSET;
-
-        /// <summary>
-        ///     The UDP maximum payload size.
-        /// </summary>
-        internal const ushort UDP_PAYLOAD_SIZE_MAX = 65507 - UDP_HEADER_OFFSET;
-
-        /// <summary>
-        ///     The user command limit.
-        /// </summary>
-        internal const uint USER_COMMAND_LIMIT = 65500;
-
-        /// <summary>
-        ///     The command identifier shift.
-        /// </summary>
-        internal const int COMMAND_ID_SHIFT = 16;
-
-        /// <summary>
-        ///     The data length mask.
-        /// </summary>
-        internal const int DATA_LENGTH_MASK = 0xFFFF;
-
-        /// <summary>
-        ///     LENGTH_THRESHOLD 4096.
-        /// </summary>
-        internal const int LENGTH_THRESHOLD = 1 << 12;
-
-        /// <summary>
-        ///     The response bit.
-        /// </summary>
-        internal const byte RESPONSE_1_BIT = 1 << 6;
-
-        /// <summary>
-        ///     The is chunked bit.
-        /// </summary>
-        internal const byte IS_CHUNKED_1_BIT = 1 << 7;
-
-        /// <summary>
-        ///     The compressed mode mask.
-        /// </summary>
-        internal const byte COMPRESSED_MODE_MASK = 0b0011_1000;
-
-        /// <summary>
-        ///     The response bit mask.
-        /// </summary>
-        internal const uint RESPONSE_BIT_MASK = 0b0100_0000;
-
-        /// <summary>
-        ///     The is chunked bit mask.
-        /// </summary>
-        internal const uint IS_CHUNKED_BIT_MASK = 0b1000_0000;
-
-        /// <summary>
-        ///     The zero byte.
-        /// </summary>
-        internal const byte ZERO_BYTE = 0;
+        internal const int    SAFETY_PAYLOAD_OFFSET        = 20;
+        internal const int    TCP_HEADER_SIZE              = 7;
+        internal const int    TCP_HEADER_OFFSET            = TCP_HEADER_SIZE + SAFETY_PAYLOAD_OFFSET;
+        internal const ushort TCP_PAYLOAD_SIZE_MAX         = 65535 - TCP_HEADER_OFFSET - 1 - 8189;
+        internal const int    UDP_HEADER_SIZE              = 5;
+        internal const int    UDP_HEADER_OFFSET            = UDP_HEADER_SIZE + SAFETY_PAYLOAD_OFFSET;
+        internal const ushort UDP_PAYLOAD_SIZE_MAX         = 65507 - UDP_HEADER_OFFSET;
+        internal const uint   USER_COMMAND_LIMIT           = 65500;
+        internal const int    COMMAND_OR_RESPONSE_ID_SHIFT = 16;
+        internal const int    DATA_LENGTH_MASK             = 0xFFFF;
+        internal const int    LENGTH_THRESHOLD             = 1 << 12;
+        internal const byte   RESPONSE_1_BIT               = 1 << 5;
+        internal const byte   REQUEST_1_BIT                = 1 << 6;
+        internal const byte   IS_CHUNKED_1_BIT             = 1 << 7;
+        internal const byte   COMPRESSED_MODE_MASK         = 0b0001_1000;
+        internal const uint   RESPONSE_BIT_MASK            = 0b0010_0000;
+        internal const uint   REQUEST_BIT_MASK             = 0b0100_0000;
+        internal const uint   IS_CHUNKED_BIT_MASK          = 0b1000_0000;
+        internal const byte   ZERO_BYTE                    = 0;
     }
 }

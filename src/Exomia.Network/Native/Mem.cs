@@ -13,9 +13,6 @@ using System.Security;
 
 namespace Exomia.Network.Native
 {
-    /// <summary>
-    ///     A memory.
-    /// </summary>
     static unsafe class Mem
     {
 #if WINDOWS

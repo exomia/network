@@ -18,14 +18,7 @@ namespace Exomia.Network.UDP
     /// </summary>
     public sealed class UdpClientEap : UdpClientBase
     {
-        /// <summary>
-        ///     The receive event arguments pool.
-        /// </summary>
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
-
-        /// <summary>
-        ///     The send event arguments pool.
-        /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <summary>
@@ -39,9 +32,39 @@ namespace Exomia.Network.UDP
             _sendEventArgsPool    = new SocketAsyncEventArgsPool();
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
+        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                Disconnect(DisconnectReason.Error);
+                return;
+            }
+            if (e.BytesTransferred <= 0)
+            {
+                Disconnect(DisconnectReason.Graceful);
+                return;
+            }
+
+            ReceiveAsync();
+
+            if (Serialization.Serialization.DeserializeUdp(
+                e.Buffer, e.BytesTransferred, _bigDataHandler, i => i,
+                out DeserializePacketInfo deserializePacketInfo))
+            {
+                DeserializeData(in deserializePacketInfo);
+            }
+        }
+
+        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                Disconnect(DisconnectReason.Error);
+            }
+            _sendEventArgsPool.Return(e);
+        }
+
+        /// <inheritdoc />
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -83,7 +106,7 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
+        private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
@@ -128,49 +151,6 @@ namespace Exomia.Network.UDP
                 _sendEventArgsPool.Return(sendEventArgs);
                 return SendError.Unknown;
             }
-        }
-
-        /// <summary>
-        ///     Receive asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private void ReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                Disconnect(DisconnectReason.Error);
-                return;
-            }
-            if (e.BytesTransferred <= 0)
-            {
-                Disconnect(DisconnectReason.Graceful);
-                return;
-            }
-
-            ReceiveAsync();
-
-            if (Serialization.Serialization.DeserializeUdp(
-                e.Buffer, e.BytesTransferred, _bigDataHandler, i => i,
-                out DeserializePacketInfo deserializePacketInfo))
-            {
-                DeserializeData(in deserializePacketInfo);
-            }
-        }
-
-        /// <summary>
-        ///     Sends an asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                Disconnect(DisconnectReason.Error);
-            }
-            _sendEventArgsPool.Return(e);
         }
     }
 }

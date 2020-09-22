@@ -13,7 +13,7 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <Version>1.6.7</Version>
+    <Version>1.7.0</Version>
     <Company>exomia</Company>
     <Authors>exomia;saika01</Authors>
     <Description>a tcp- / udp- client and server</Description>
@@ -60,18 +60,24 @@
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   
-  <PropertyGroup Condition="'$(OS)'=='Windows'">
-    <AssemblyName Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName)</AssemblyName>
-    <PackageId Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName)</PackageId>
-    <AssemblyName Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(Platform)</AssemblyName>
-    <PackageId Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(Platform)</PackageId>
+  <PropertyGroup Condition="'$(OS)'=='Windows' And '$(Platform)'=='AnyCPU'">
+    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+    <PackageId>$(MSBuildProjectName)</PackageId>
   </PropertyGroup>
   
-  <PropertyGroup Condition="'$(OS)'!='Windows'">
-    <AssemblyName Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName).$(OS)</AssemblyName>
-    <PackageId Condition="'$(Platform)'=='AnyCPU'">$(MSBuildProjectName).$(OS)</PackageId>
-    <AssemblyName Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(OS).$(Platform)</AssemblyName>
-    <PackageId Condition="'$(Platform)'!='AnyCPU'">$(MSBuildProjectName).$(OS).$(Platform)</PackageId>
+  <PropertyGroup Condition="'$(OS)'=='Windows' And '$(Platform)'!='AnyCPU'">
+    <AssemblyName>$(MSBuildProjectName).$(Platform)</AssemblyName>
+    <PackageId>$(MSBuildProjectName).$(Platform)</PackageId>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(OS)'!='Windows' And '$(Platform)'=='AnyCPU' ">
+    <AssemblyName>$(MSBuildProjectName).$(OS)</AssemblyName>
+    <PackageId>$(MSBuildProjectName).$(OS)</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)'!='Windows' And '$(Platform)'!='AnyCPU' ">
+    <AssemblyName>$(MSBuildProjectName).$(OS).$(Platform)</AssemblyName>
+    <PackageId>$(MSBuildProjectName).$(OS).$(Platform)</PackageId>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -88,6 +94,20 @@
     <None Include="..\..\.editorconfig" Link=".editorconfig" />
     <None Include="..\..\LICENSE" Pack="true" Visible="false" PackagePath="" />
     <None Include="..\..\icon.png" Pack="true" Visible="false" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="ServerBase.cs" />
+    <Compile Update="ServerBase.*.cs">
+      <DependentUpon>ServerBase.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="ClientBase.cs" />
+    <Compile Update="ClientBase.*.cs">
+      <DependentUpon>ClientBase.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   
   <!-- Source Link Support -->

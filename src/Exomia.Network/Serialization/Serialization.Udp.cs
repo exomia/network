@@ -18,16 +18,17 @@ namespace Exomia.Network.Serialization
 {
     /// UDP HEADER LAYOUT
     /// 8bit
-    /// | IS_CHUNKED BIT | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
-    /// | 7              | 6            | 5  4  3         | 2  1  0      |
-    /// | VR: 0/1        | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
-    /// -----------------------------------------------------------------------------------------------------------------------
-    /// | 0              | 0            | 0  0  0         | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
-    /// | 0              | 0            | 1  1  1         | 0  0  0      | COMPRESSED_MODE_MASK 0b00111000
-    /// | 0              | 1            | 0  0  0         | 0  0  0      | RESPONSE_BIT_MASK    0b01000000
-    /// | 1              | 0            | 0  0  0         | 0  0  0      | IS_CHUNKED_BIT_MASK  0b10000000
+    /// | IS_CHUNKED BIT | REQUEST BIT | RESPONSE BIT | COMPRESSED MODE | ENCRYPT MODE |
+    /// | 7              | 6           | 6            | 4  3            | 2  1  0      |
+    /// | VR: 0/1        | VR: 0/1     | VR: 0/1      | VR: 0-8         | VR: 0-8      | VR = VALUE RANGE
+    /// -------------------------------------------------------------------------------------------------------------------------------------
+    /// | 0              | 0           | 0            | 0  0            | 1  1  1      | ENCRYPT_MODE_MASK    0b00000111
+    /// | 0              | 0           | 0            | 1  1            | 0  0  0      | COMPRESSED_MODE_MASK 0b00011000
+    /// | 0              | 0           | 1            | 0  0            | 0  0  0      | RESPONSE_BIT_MASK    0b00100000
+    /// | 0              | 1           | 0            | 0  0            | 0  0  0      | REQUEST_BIT_MASK     0b01000000
+    /// | 1              | 0           | 0            | 0  0            | 0  0  0      | IS_CHUNKED_BIT_MASK  0b10000000
     /// 32bit
-    /// | COMMANDID 31-16 (16)bit                          | DATA LENGTH 15-0 (16)bit                        |
+    /// | COMMANDID OR RESPONSEID 31-16 (16)bit            | DATA LENGTH 15-0 (16)bit                        |
     /// | 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17  16 | 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0 |
     /// | VR: 0-65535                                      | VR: 0-65535                                     | VR = VALUE_RANGE
     /// --------------------------------------------------------------------------------------------------------------------------------
@@ -38,27 +39,22 @@ namespace Exomia.Network.Serialization
     /// </content>
     static unsafe partial class Serialization
     {
-        /// <summary>
-        ///     Serialize UDP.
-        /// </summary>
-        /// <param name="packetInfo">      Information describing the packet. </param>
-        /// <param name="dst">             [in,out] If non-null, destination for the. </param>
-        /// <param name="encryptionMode">  The encryption mode. </param>
-        /// <returns>
-        ///     An int.
-        /// </returns>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         internal static int SerializeUdp(in PacketInfo  packetInfo,
                                          byte*          dst,
                                          EncryptionMode encryptionMode)
         {
             *dst = (byte)encryptionMode;
 
-            int offset = 0;
-            if (packetInfo.ResponseID != 0)
+            if (packetInfo.IsResponse)
             {
-                *dst                                      |= Constants.RESPONSE_1_BIT;
-                *(uint*)(dst + Constants.UDP_HEADER_SIZE) =  packetInfo.ResponseID;
+                *dst |= Constants.RESPONSE_1_BIT;
+            }
+
+            int offset = 0;
+            if (packetInfo.RequestID != 0)
+            {
+                *dst                                      |= Constants.REQUEST_1_BIT;
+                *(uint*)(dst + Constants.UDP_HEADER_SIZE) =  packetInfo.RequestID;
                 offset                                    =  4;
             }
 
@@ -80,7 +76,7 @@ namespace Exomia.Network.Serialization
 
             *(uint*)(dst + 1) =
                 ((uint)(packetInfo.ChunkLength + offset) & Constants.DATA_LENGTH_MASK) |
-                (packetInfo.CommandID << Constants.COMMAND_ID_SHIFT);
+                (packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
             Mem.Cpy(
                 dst + Constants.UDP_HEADER_SIZE + offset,
                 packetInfo.Src + packetInfo.ChunkOffset,
@@ -95,7 +91,7 @@ namespace Exomia.Network.Serialization
 #if NETSTANDARD2_1
                                                   [NotNullWhen(true)] out DeserializePacketInfo deserializePacketInfo)
 #else
-                                            out DeserializePacketInfo deserializePacketInfo)
+                                                  out DeserializePacketInfo deserializePacketInfo)
 #endif
             where TKey : struct
         {
@@ -103,17 +99,18 @@ namespace Exomia.Network.Serialization
             {
                 byte packetHeader = *src;
                 uint h2           = *(uint*)(src + 1);
-                deserializePacketInfo.CommandID  = h2 >> Constants.COMMAND_ID_SHIFT;
-                deserializePacketInfo.Length     = (int)(h2 & Constants.DATA_LENGTH_MASK);
-                deserializePacketInfo.ResponseID = 0;
+                deserializePacketInfo.CommandOrResponseID = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
+                deserializePacketInfo.Length              = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                deserializePacketInfo.RequestID           = 0;
+                deserializePacketInfo.IsResponseBitSet    = (packetHeader & Constants.RESPONSE_BIT_MASK) != 0;
 
                 if (bytesTransferred == deserializePacketInfo.Length + Constants.UDP_HEADER_SIZE)
                 {
                     int offset = 0;
-                    if ((packetHeader & Constants.RESPONSE_BIT_MASK) != 0)
+                    if ((packetHeader & Constants.REQUEST_BIT_MASK) != 0)
                     {
-                        deserializePacketInfo.ResponseID = *(uint*)(src + Constants.UDP_HEADER_SIZE);
-                        offset                           = 4;
+                        deserializePacketInfo.RequestID = *(uint*)(src + Constants.UDP_HEADER_SIZE);
+                        offset                          = 4;
                     }
 
                     int l = 0;
@@ -136,6 +133,7 @@ namespace Exomia.Network.Serialization
                         deserializePacketInfo.Length = cl;
                         if (bdb != null)
                         {
+                            // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
                             switch (compressionMode)
                             {
                                 case CompressionMode.None:
@@ -162,6 +160,8 @@ namespace Exomia.Network.Serialization
                     else
                     {
                         deserializePacketInfo.Length -= offset;
+
+                        // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
                         switch (compressionMode)
                         {
                             case CompressionMode.None:

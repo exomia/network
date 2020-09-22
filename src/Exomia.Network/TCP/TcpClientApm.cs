@@ -19,9 +19,6 @@ namespace Exomia.Network.TCP
     /// </summary>
     public sealed class TcpClientApm : TcpClientBase
     {
-        /// <summary>
-        ///     The buffer write.
-        /// </summary>
         private readonly byte[] _bufferWrite;
 
         /// <summary>
@@ -35,9 +32,61 @@ namespace Exomia.Network.TCP
                 new byte[_bufferRead.Length];
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
+        /// <inheritdoc />
+        protected override void OnDispose(bool disposing)
+        {
+            _circularBuffer.Dispose();
+        }
+
+        private void ReceiveAsyncCallback(IAsyncResult iar)
+        {
+            int bytesTransferred;
+            try
+            {
+                if ((bytesTransferred = _clientSocket!.EndReceive(iar)) <= 0)
+                {
+                    Disconnect(DisconnectReason.Graceful);
+                    return;
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                Disconnect(DisconnectReason.Aborted);
+                return;
+            }
+            catch (SocketException)
+            {
+                Disconnect(DisconnectReason.Error);
+                return;
+            }
+            catch
+            {
+                Disconnect(DisconnectReason.Unspecified);
+                return;
+            }
+
+            Receive(_bufferWrite, bytesTransferred);
+            ReceiveAsync();
+        }
+
+        private void SendDataCallback(IAsyncResult iar)
+        {
+            try
+            {
+                if (_clientSocket!.EndSend(iar) <= 0)
+                {
+                    Disconnect(DisconnectReason.Error);
+                }
+            }
+            catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
+            catch (SocketException) { Disconnect(DisconnectReason.Error); }
+            catch { Disconnect(DisconnectReason.Unspecified); }
+
+            byte[] send = (byte[])iar.AsyncState!;
+            ByteArrayPool.Return(send);
+        }
+
+        /// <inheritdoc />
         private protected override void ReceiveAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -53,7 +102,8 @@ namespace Exomia.Network.TCP
             }
         }
 
-        private protected override unsafe SendError BeginSendData(in PacketInfo packetInfo)
+        /// <inheritdoc />
+        private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
         {
             int    size;
             byte[] buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
@@ -86,68 +136,6 @@ namespace Exomia.Network.TCP
                 Disconnect(DisconnectReason.Unspecified);
                 return SendError.Unknown;
             }
-        }
-
-        /// <inheritdoc />
-        protected override void OnDispose(bool disposing)
-        {
-            _circularBuffer.Dispose();
-        }
-
-        /// <summary>
-        ///     Async callback, called on completion of receive Asynchronous callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
-        private void ReceiveAsyncCallback(IAsyncResult iar)
-        {
-            int bytesTransferred;
-            try
-            {
-                if ((bytesTransferred = _clientSocket!.EndReceive(iar)) <= 0)
-                {
-                    Disconnect(DisconnectReason.Graceful);
-                    return;
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-                Disconnect(DisconnectReason.Aborted);
-                return;
-            }
-            catch (SocketException)
-            {
-                Disconnect(DisconnectReason.Error);
-                return;
-            }
-            catch
-            {
-                Disconnect(DisconnectReason.Unspecified);
-                return;
-            }
-
-            Receive(_bufferWrite, bytesTransferred);
-            ReceiveAsync();
-        }
-
-        /// <summary>
-        ///     Async callback, called on completion of send data callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
-        private void SendDataCallback(IAsyncResult iar)
-        {
-            try
-            {
-                if (_clientSocket!.EndSend(iar) <= 0)
-                {
-                    Disconnect(DisconnectReason.Error);
-                }
-            }
-            catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }
-            catch (SocketException) { Disconnect(DisconnectReason.Error); }
-            catch { Disconnect(DisconnectReason.Unspecified); }
-
-            byte[] send = (byte[])iar.AsyncState!;
-            ByteArrayPool.Return(send);
         }
     }
 }

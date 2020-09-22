@@ -29,65 +29,6 @@ namespace Exomia.Network.TCP
         protected TcpServerApmBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize) { }
 
-        private protected override unsafe SendError SendTo(Socket        arg0,
-                                                           in PacketInfo packetInfo)
-        {
-            SendStateObject state;
-            state.Buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
-            state.Socket = arg0;
-            int size;
-            fixed (byte* dst = state.Buffer)
-            {
-                size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
-            }
-
-            try
-            {
-                arg0.BeginSend(state.Buffer, 0, size, SocketFlags.None, BeginSendCallback, state);
-                return SendError.None;
-            }
-            catch (ObjectDisposedException)
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
-                ByteArrayPool.Return(state.Buffer);
-                return SendError.Disposed;
-            }
-            catch (SocketException)
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Error);
-                ByteArrayPool.Return(state.Buffer);
-                return SendError.Socket;
-            }
-            catch
-            {
-                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
-                ByteArrayPool.Return(state.Buffer);
-                return SendError.Unknown;
-            }
-        }
-
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
-        private protected override void ListenAsync()
-        {
-            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
-            {
-                try
-                {
-                    _listener!.BeginAccept(AcceptCallback, null);
-                }
-                catch
-                {
-                    /* IGNORE */
-                }
-            }
-        }
-
-        /// <summary>
-        ///     Async callback, called on completion of begin send callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
         private void BeginSendCallback(IAsyncResult iar)
         {
             SendStateObject state = (SendStateObject)iar.AsyncState!;
@@ -108,10 +49,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of accept callback.
-        /// </summary>
-        /// <param name="ar"> The archive. </param>
         private void AcceptCallback(IAsyncResult ar)
         {
             try
@@ -139,10 +76,6 @@ namespace Exomia.Network.TCP
             ListenAsync();
         }
 
-        /// <summary>
-        ///     Receive asynchronous.
-        /// </summary>
-        /// <param name="state"> The state. </param>
         private void ReceiveAsync(ServerClientStateObjectApm state)
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -171,11 +104,6 @@ namespace Exomia.Network.TCP
             }
         }
 
-        /// <summary>
-        ///     Async callback, called on completion of receive data callback.
-        /// </summary>
-        /// <param name="iar"> The iar. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
         private void ReceiveDataCallback(IAsyncResult iar)
         {
             ServerClientStateObjectApm state = (ServerClientStateObjectApm)iar.AsyncState!;
@@ -212,19 +140,61 @@ namespace Exomia.Network.TCP
             ReceiveAsync(state);
         }
 
-        /// <summary>
-        ///     A send state object.
-        /// </summary>
+        private protected override unsafe SendError BeginSendTo(Socket        arg0,
+                                                                in PacketInfo packetInfo)
+        {
+            SendStateObject state;
+            state.Buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
+            state.Socket = arg0;
+            int size;
+            fixed (byte* dst = state.Buffer)
+            {
+                size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
+            }
+
+            try
+            {
+                arg0.BeginSend(state.Buffer, 0, size, SocketFlags.None, BeginSendCallback, state);
+                return SendError.None;
+            }
+            catch (ObjectDisposedException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Aborted);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Disposed;
+            }
+            catch (SocketException)
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Error);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Socket;
+            }
+            catch
+            {
+                InvokeClientDisconnect(arg0, DisconnectReason.Unspecified);
+                ByteArrayPool.Return(state.Buffer);
+                return SendError.Unknown;
+            }
+        }
+
+        private protected override void ListenAsync()
+        {
+            if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
+            {
+                try
+                {
+                    _listener!.BeginAccept(AcceptCallback, null);
+                }
+                catch
+                {
+                    /* IGNORE */
+                }
+            }
+        }
+
         private struct SendStateObject
         {
-            /// <summary>
-            ///     The buffer.
-            /// </summary>
             public byte[] Buffer;
-
-            /// <summary>
-            ///     The socket.
-            /// </summary>
             public Socket Socket;
         }
 
@@ -233,14 +203,7 @@ namespace Exomia.Network.TCP
         /// </summary>
         private sealed class ServerClientStateObjectApm : ServerClientStateObject
         {
-            /// <summary>
-            ///     The socket.
-            /// </summary>
-            public Socket Socket { get; }
-
-            /// <summary>
-            ///     The buffer write.
-            /// </summary>
+            public Socket Socket      { get; }
             public byte[] BufferWrite { get; }
 
             /// <summary>

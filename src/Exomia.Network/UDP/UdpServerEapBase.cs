@@ -21,14 +21,7 @@ namespace Exomia.Network.UDP
     public abstract class UdpServerEapBase<TServerClient> : UdpServerBase<TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
-        /// <summary>
-        ///     The receive event arguments pool.
-        /// </summary>
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
-
-        /// <summary>
-        ///     The send event arguments pool.
-        /// </summary>
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
         /// <summary>
@@ -44,9 +37,51 @@ namespace Exomia.Network.UDP
             _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients + 5));
         }
 
-        /// <summary>
-        ///     Listen asynchronous.
-        /// </summary>
+        /// <inheritdoc />
+        protected override void OnDispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _receiveEventArgsPool?.Dispose();
+                _sendEventArgsPool?.Dispose();
+            }
+        }
+
+        private void ReceiveFromAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            ListenAsync();
+
+            if (e.SocketError != SocketError.Success)
+            {
+                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Error);
+                return;
+            }
+            if (e.BytesTransferred <= 0)
+            {
+                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Graceful);
+                return;
+            }
+
+            if (Serialization.Serialization.DeserializeUdp(
+                e.Buffer, e.BytesTransferred, _bigDataHandler, i => (e.RemoteEndPoint, i),
+                out DeserializePacketInfo deserializePacketInfo))
+            {
+                DeserializeData(e.RemoteEndPoint, in deserializePacketInfo);
+            }
+
+            _receiveEventArgsPool.Return(e);
+        }
+
+        private void SendToAsyncCompleted(object? sender, SocketAsyncEventArgs e)
+        {
+            if (e.SocketError != SocketError.Success)
+            {
+                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Error);
+            }
+            _sendEventArgsPool.Return(e);
+        }
+
+        /// <inheritdoc />
         private protected override void ListenAsync()
         {
             if ((_state & RECEIVE_FLAG) == RECEIVE_FLAG)
@@ -80,18 +115,8 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-        protected override void OnDispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _receiveEventArgsPool?.Dispose();
-                _sendEventArgsPool?.Dispose();
-            }
-        }
-
-        /// <inheritdoc />
-        private protected override unsafe SendError SendTo(EndPoint      arg0,
-                                                           in PacketInfo packetInfo)
+        private protected override unsafe SendError BeginSendTo(EndPoint      arg0,
+                                                                in PacketInfo packetInfo)
         {
             SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
@@ -137,51 +162,6 @@ namespace Exomia.Network.UDP
                 _sendEventArgsPool.Return(sendEventArgs);
                 return SendError.Unknown;
             }
-        }
-
-        /// <summary>
-        ///     Receive from asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        /// <exception cref="Exception"> Thrown when an exception error condition occurs. </exception>
-        private void ReceiveFromAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            ListenAsync();
-
-            if (e.SocketError != SocketError.Success)
-            {
-                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Error);
-                return;
-            }
-            if (e.BytesTransferred <= 0)
-            {
-                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Graceful);
-                return;
-            }
-
-            if (Serialization.Serialization.DeserializeUdp(
-                e.Buffer, e.BytesTransferred, _bigDataHandler, i => (e.RemoteEndPoint, i),
-                out DeserializePacketInfo deserializePacketInfo))
-            {
-                DeserializeData(e.RemoteEndPoint, in deserializePacketInfo);
-            }
-
-            _receiveEventArgsPool.Return(e);
-        }
-
-        /// <summary>
-        ///     Sends to asynchronous completed.
-        /// </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="e">      Socket asynchronous event information. </param>
-        private void SendToAsyncCompleted(object? sender, SocketAsyncEventArgs e)
-        {
-            if (e.SocketError != SocketError.Success)
-            {
-                InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Error);
-            }
-            _sendEventArgsPool.Return(e);
         }
     }
 }

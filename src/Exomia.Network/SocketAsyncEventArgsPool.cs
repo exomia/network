@@ -15,25 +15,11 @@ using System.Threading;
 
 namespace Exomia.Network
 {
-    /// <summary>
-    ///     A socket asynchronous event arguments pool.
-    /// </summary>
     class SocketAsyncEventArgsPool : IDisposable
     {
-        /// <summary>
-        ///     The buffer.
-        /// </summary>
         private readonly SocketAsyncEventArgs?[] _buffer;
-
-        /// <summary>
-        ///     The index.
-        /// </summary>
-        private int _index;
-
-        /// <summary>
-        ///     The lock.
-        /// </summary>
-        private SpinLock _lock;
+        private          int                     _index;
+        private          SpinLock                _lock;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="SocketAsyncEventArgsPool" /> class.
@@ -51,12 +37,6 @@ namespace Exomia.Network
             _buffer = new SocketAsyncEventArgs[numberOfBuffers];
         }
 
-        /// <summary>
-        ///     Gets the rent.
-        /// </summary>
-        /// <returns>
-        ///     The SocketAsyncEventArgs.
-        /// </returns>
         public SocketAsyncEventArgs? Rent()
         {
             SocketAsyncEventArgs? buffer = null;
@@ -83,10 +63,6 @@ namespace Exomia.Network
             return buffer;
         }
 
-        /// <summary>
-        ///     Returns the given arguments.
-        /// </summary>
-        /// <param name="args"> The Arguments to return. </param>
         public void Return(SocketAsyncEventArgs args)
         {
             bool lockTaken = false;
