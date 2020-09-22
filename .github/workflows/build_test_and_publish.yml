@@ -64,7 +64,9 @@ jobs:
         dotnet pack --configuration Windows-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
         for f in ./*.nupkg
            do
-             curl -fsSX PUT --retry 3 -u "${{ github.repository_owner }}:${{ github.token }}" -F package=@$f https://nuget.pkg.github.com/${{ github.repository_owner }}/ || exit 1
+             STATUSCODE=$(curl -sSX PUT --retry 3 -o /dev/null -w "%{http_code}" -u "${{ github.repository_owner }}:${{ github.token }}" -F package=@$f https://nuget.pkg.github.com/${{ github.repository_owner }}/)
+             echo "[$STATUSCODE:https://nuget.pkg.github.com/${{ github.repository_owner }}/] $f"
+             if [ "${STATUSCODE}" != 200 ] && [ "${STATUSCODE}" != 409 ]; then exit 1; fi
            done
       shell: bash
       working-directory: src/Exomia.Network
@@ -145,7 +147,9 @@ jobs:
         dotnet pack --configuration Linux-Debug --verbosity m --force --nologo -p:Platform=x64 -p:Version=$TAG_VERSION
         for f in ./*.nupkg
            do
-             curl -fsSX PUT --retry 3 -u "${{ github.repository_owner }}:${{ github.token }}" -F package=@$f https://nuget.pkg.github.com/${{ github.repository_owner }}/ || exit 1
+             STATUSCODE=$(curl -sSX PUT --retry 3 -o /dev/null -w "%{http_code}" -u "${{ github.repository_owner }}:${{ github.token }}" -F package=@$f https://nuget.pkg.github.com/${{ github.repository_owner }}/)
+             echo "[$STATUSCODE:https://nuget.pkg.github.com/${{ github.repository_owner }}/] $f"
+             if [ "${STATUSCODE}" != 200 ] && [ "${STATUSCODE}" != 409 ]; then exit 1; fi
            done
       shell: bash     
       working-directory: src/Exomia.Network
