@@ -18,10 +18,6 @@ using Exomia.Network.Native;
 
 namespace Exomia.Network
 {
-    /// <summary>
-    ///     A big data handler.
-    /// </summary>
-    /// <typeparam name="TKey"> Type of the key. </typeparam>
     abstract class BigDataHandler<TKey> : IDisposable where TKey : struct
     {
         private readonly Dictionary<TKey, Buffer> _bigDataBuffers;
