@@ -41,7 +41,7 @@ namespace Exomia.Network.Tests.Native
             Assert.ThrowsException<ArgumentOutOfRangeException>(
                 () =>
                 {
-                    CircularBuffer t1 = new CircularBuffer(count);
+                    return new CircularBuffer(count);
                 });
         }
 
@@ -696,6 +696,41 @@ namespace Exomia.Network.Tests.Native
             Assert.AreEqual(commandID, (uint)((buffer[4] << 8) | buffer[3]));
             Assert.AreEqual(dataLength, (buffer[2] << 8) | buffer[1]);
             Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
+        }
+
+        [TestMethod]
+        [DataRow(0)]
+        [DataRow(1)]
+        [DataRow(2)]
+        [DataRow(3)]
+        [DataRow(4)]
+        [DataRow(5)]
+        [DataRow(6)]
+        public void SkipTest(int skip)
+        {
+            CircularBuffer cb = new CircularBuffer(16);
+
+            byte[] buffer = { 12, 200, 4, 45, 177, 78, 147 };
+            cb.Write(buffer, 0, buffer.Length); // 7
+            cb.Skip(skip);
+            Assert.AreEqual(buffer.Length - skip, cb.Count);
+        }
+
+        [TestMethod]
+        [DataRow(15)]
+        [DataRow(101)]
+        [DataRow(102)]
+        [DataRow(103)]
+        [DataRow(1024)]
+        [DataRow(int.MaxValue)]
+        public void SkipTest_WithOverflow_ShouldBeEmpty(int skip)
+        {
+            CircularBuffer cb = new CircularBuffer(16);
+
+            byte[] buffer = { 12, 200, 4, 45, 177, 78, 147 };
+            cb.Write(buffer, 0, buffer.Length); // 7
+            cb.Skip(skip);
+            Assert.IsTrue(cb.IsEmpty);
         }
     }
 }

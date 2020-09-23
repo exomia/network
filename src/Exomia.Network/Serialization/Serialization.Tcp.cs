@@ -78,7 +78,7 @@ namespace Exomia.Network.Serialization
             ushort checksum = PayloadEncoding.Encode(
                 packetInfo.Src + packetInfo.ChunkOffset, packetInfo.ChunkLength,
                 dst + Constants.TCP_HEADER_SIZE + offset, out int l);
-
+            ;
             *(uint*)(dst + 1) =
                 ((uint)(l + offset + 1) & Constants.DATA_LENGTH_MASK) |
                 (packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);

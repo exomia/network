@@ -43,10 +43,8 @@ namespace Exomia.Network.TCP
                 : Constants.TCP_PAYLOAD_SIZE_MAX;
             _payloadSize = (ushort)(PayloadEncoding.EncodedPayloadLength(_maxPayloadSize) + 1);
 
-            _bufferRead =
-                new byte[PayloadEncoding.EncodedPayloadLength(_payloadSize + Constants.TCP_HEADER_OFFSET)];
+            _bufferRead     = new byte[_payloadSize + Constants.TCP_HEADER_OFFSET];
             _circularBuffer = new CircularBuffer(_bufferRead.Length * 2);
-
             _bigDataHandler = new BigDataHandler<int>.Default();
         }
 
