@@ -56,14 +56,14 @@ namespace Exomia.Network.Serialization
             {
                 *dst                                      |= Constants.REQUEST_1_BIT;
                 *(uint*)(dst + Constants.TCP_HEADER_SIZE) =  packetInfo.RequestID;
-                offset                                    =  4;
+                offset                                    =  Constants.OFFSET_REQUEST_ID;
             }
 
             if (packetInfo.CompressionMode != CompressionMode.None)
             {
                 *dst                                              |= (byte)packetInfo.CompressionMode;
                 *(int*)(dst + Constants.TCP_HEADER_SIZE + offset) =  packetInfo.Length;
-                offset                                            += 4;
+                offset                                            += Constants.OFFSET_COMPRESSION_MODE;
             }
 
             if (packetInfo.IsChunked)
@@ -72,16 +72,15 @@ namespace Exomia.Network.Serialization
                 *(int*)(dst + Constants.TCP_HEADER_SIZE + offset)     =  packetInfo.PacketID;
                 *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + 4) =  packetInfo.ChunkOffset;
                 *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + 8) =  packetInfo.CompressedLength;
-                offset                                                += 12;
+                offset                                                += Constants.OFFSET_CHUNK_INFO;
             }
 
             ushort checksum = PayloadEncoding.Encode(
                 packetInfo.Src + packetInfo.ChunkOffset, packetInfo.ChunkLength,
                 dst + Constants.TCP_HEADER_SIZE + offset, out int l);
 
-            *(uint*)(dst + 1) =
-                ((uint)(l + offset + 1) & Constants.DATA_LENGTH_MASK) |
-                (packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
+            *(uint*)(dst + 1) = ((uint)(l + offset + 1) & Constants.DATA_LENGTH_MASK)
+                              | (packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
             *(ushort*)(dst + 5)                                   = checksum;
             *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
 
@@ -102,13 +101,13 @@ namespace Exomia.Network.Serialization
                 requestID = 0;
 
                 int offset = 0;
-                if ((packetHeader & Constants.REQUEST_BIT_MASK) != 0)
+                if ((packetHeader & Constants.REQUEST_1_BIT) != 0)
                 {
                     requestID = *(uint*)ptr;
-                    offset    = 4;
+                    offset    = Constants.OFFSET_REQUEST_ID;
                 }
 
-                isResponseBitSet = (packetHeader & Constants.RESPONSE_BIT_MASK) != 0;
+                isResponseBitSet = (packetHeader & Constants.RESPONSE_1_BIT) != 0;
 
                 int l = 0;
                 CompressionMode compressionMode =
@@ -116,7 +115,7 @@ namespace Exomia.Network.Serialization
                 if (compressionMode != CompressionMode.None)
                 {
                     l      =  *(int*)(ptr + offset);
-                    offset += 4;
+                    offset += Constants.OFFSET_COMPRESSION_MODE;
                 }
 
                 int packetId    = 0;
@@ -124,11 +123,10 @@ namespace Exomia.Network.Serialization
                 int cl          = 0;
                 if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
                 {
-                    packetId    = *(int*)(ptr + offset);
-                    chunkOffset = *(int*)(ptr + offset + 4);
-                    cl          = *(int*)(ptr + offset + 8);
-
-                    offset += 12;
+                    packetId    =  *(int*)(ptr + offset);
+                    chunkOffset =  *(int*)(ptr + offset + 4);
+                    cl          =  *(int*)(ptr + offset + 8);
+                    offset      += Constants.OFFSET_CHUNK_INFO;
                 }
 
                 fixed (byte* dst = payload = ByteArrayPool.Rent(length))

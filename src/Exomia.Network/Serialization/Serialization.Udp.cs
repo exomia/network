@@ -55,14 +55,14 @@ namespace Exomia.Network.Serialization
             {
                 *dst                                      |= Constants.REQUEST_1_BIT;
                 *(uint*)(dst + Constants.UDP_HEADER_SIZE) =  packetInfo.RequestID;
-                offset                                    =  4;
+                offset                                    =  Constants.OFFSET_REQUEST_ID;
             }
 
             if (packetInfo.CompressionMode != CompressionMode.None)
             {
                 *dst                                              |= (byte)packetInfo.CompressionMode;
                 *(int*)(dst + Constants.UDP_HEADER_SIZE + offset) =  packetInfo.Length;
-                offset                                            += 4;
+                offset                                            += Constants.OFFSET_COMPRESSION_MODE;
             }
 
             if (packetInfo.IsChunked)
@@ -71,12 +71,11 @@ namespace Exomia.Network.Serialization
                 *(int*)(dst + Constants.UDP_HEADER_SIZE + offset)     =  packetInfo.PacketID;
                 *(int*)(dst + Constants.UDP_HEADER_SIZE + offset + 4) =  packetInfo.ChunkOffset;
                 *(int*)(dst + Constants.UDP_HEADER_SIZE + offset + 8) =  packetInfo.CompressedLength;
-                offset                                                += 12;
+                offset                                                += Constants.OFFSET_CHUNK_INFO;
             }
 
-            *(uint*)(dst + 1) =
-                ((uint)(packetInfo.ChunkLength + offset) & Constants.DATA_LENGTH_MASK) |
-                (packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
+            *(uint*)(dst + 1) = ((uint)(packetInfo.ChunkLength + offset) & Constants.DATA_LENGTH_MASK)
+                              | (packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
             Mem.Cpy(
                 dst + Constants.UDP_HEADER_SIZE + offset,
                 packetInfo.Src + packetInfo.ChunkOffset,
@@ -102,15 +101,15 @@ namespace Exomia.Network.Serialization
                 deserializePacketInfo.CommandOrResponseID = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
                 deserializePacketInfo.Length              = (int)(h2 & Constants.DATA_LENGTH_MASK);
                 deserializePacketInfo.RequestID           = 0;
-                deserializePacketInfo.IsResponseBitSet    = (packetHeader & Constants.RESPONSE_BIT_MASK) != 0;
+                deserializePacketInfo.IsResponseBitSet    = (packetHeader & Constants.RESPONSE_1_BIT) != 0;
 
                 if (bytesTransferred == deserializePacketInfo.Length + Constants.UDP_HEADER_SIZE)
                 {
                     int offset = 0;
-                    if ((packetHeader & Constants.REQUEST_BIT_MASK) != 0)
+                    if ((packetHeader & Constants.REQUEST_1_BIT) != 0)
                     {
                         deserializePacketInfo.RequestID = *(uint*)(src + Constants.UDP_HEADER_SIZE);
-                        offset                          = 4;
+                        offset                          = Constants.OFFSET_REQUEST_ID;
                     }
 
                     int l = 0;
@@ -119,7 +118,7 @@ namespace Exomia.Network.Serialization
                     if (compressionMode != CompressionMode.None)
                     {
                         l      =  *(int*)(src + Constants.UDP_HEADER_SIZE + offset);
-                        offset += 4;
+                        offset += Constants.OFFSET_COMPRESSION_MODE;
                     }
 
                     if ((packetHeader & Constants.IS_CHUNKED_1_BIT) != 0)
@@ -127,7 +126,8 @@ namespace Exomia.Network.Serialization
                         int cl = *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 8);
                         byte[]? bdb = bigDataHandler.Receive(
                             keyFunc(*(int*)(src + Constants.UDP_HEADER_SIZE + offset)),
-                            src + Constants.UDP_HEADER_SIZE + offset + 12, deserializePacketInfo.Length - offset - 12,
+                            src + Constants.UDP_HEADER_SIZE + offset + Constants.OFFSET_CHUNK_INFO,
+                            deserializePacketInfo.Length - offset - Constants.OFFSET_CHUNK_INFO,
                             *(int*)(src + Constants.UDP_HEADER_SIZE + offset + 4),
                             cl);
                         deserializePacketInfo.Length = cl;
