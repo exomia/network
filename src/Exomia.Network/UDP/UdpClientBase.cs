@@ -37,7 +37,7 @@ namespace Exomia.Network.UDP
             _maxPayloadSize =
                 expectedMaxPayloadSize > 0 && expectedMaxPayloadSize < Constants.UDP_PAYLOAD_SIZE_MAX
                     ? expectedMaxPayloadSize
-                    : Constants.TCP_PAYLOAD_SIZE_MAX;
+                    : Constants.UDP_PAYLOAD_SIZE_MAX;
 
             _bigDataHandler = new BigDataHandler<int>.Timed();
         }

@@ -144,7 +144,7 @@ namespace Exomia.Network.TCP
                                                                 in PacketInfo packetInfo)
         {
             SendStateObject state;
-            state.Buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
+            state.Buffer = ByteArrayPool.Rent(_payloadSize + Constants.TCP_HEADER_OFFSET);
             state.Socket = arg0;
             int size;
             fixed (byte* dst = state.Buffer)

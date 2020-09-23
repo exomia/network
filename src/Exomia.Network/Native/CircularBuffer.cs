@@ -81,12 +81,7 @@ namespace Exomia.Network.Native
                 throw new ArgumentOutOfRangeException();
             }
 
-            uint value = (uint)capacity;
-            if (value > 0x80000000)
-            {
-                throw new ArgumentOutOfRangeException();
-            }
-            value--;
+            uint value = (uint)capacity - 1;
             value     |= value >> 1;
             value     |= value >> 2;
             value     |= value >> 4;

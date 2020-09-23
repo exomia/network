@@ -48,7 +48,7 @@ namespace Exomia.Network.Encoding
                 data   += 7;
                 length -= 7;
             }
-            
+
             if (length > 0)
             {
                 Encode(&checksum, buffer, data, length);
@@ -69,7 +69,7 @@ namespace Exomia.Network.Encoding
                 src    += 8;
                 length -= 8;
             }
-            
+
             if (length > 0)
             {
                 Decode(&checksum, dst, src, length);

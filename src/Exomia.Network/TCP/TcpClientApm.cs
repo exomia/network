@@ -106,7 +106,7 @@ namespace Exomia.Network.TCP
         private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
         {
             int    size;
-            byte[] buffer = ByteArrayPool.Rent(Constants.TCP_HEADER_OFFSET + packetInfo.ChunkLength + 1);
+            byte[] buffer = ByteArrayPool.Rent(_payloadSize + Constants.TCP_HEADER_OFFSET);
             fixed (byte* dst = buffer)
             {
                 size = Serialization.Serialization.SerializeTcp(in packetInfo, dst, _encryptionMode);
