@@ -22,9 +22,7 @@ namespace Exomia.Network.UDP
     {
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
-
-        private int s = -1;
-
+        
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpClientEap" /> class.
         /// </summary>
@@ -111,10 +109,6 @@ namespace Exomia.Network.UDP
         /// <inheritdoc />
         private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
         {
-            if (Interlocked.Increment(ref s) == 8169)
-            {
-                Console.WriteLine("FDO");
-            }
             SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
             {

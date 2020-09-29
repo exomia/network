@@ -55,7 +55,6 @@ namespace Exomia.Network
                 }
             }
 
-            //Console.WriteLine(Interlocked.Increment(ref k));
             fixed (byte* dst = bdb._data)
             {
                 Mem.Cpy(dst + chunkOffset, src, chunkLength);

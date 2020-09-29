@@ -26,8 +26,6 @@ namespace Exomia.Network.UDP
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
-        private int r = -1;
-
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerEapBase{TServerClient}" /> class.
         /// </summary>
@@ -64,12 +62,6 @@ namespace Exomia.Network.UDP
             {
                 InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Graceful);
                 return;
-            }
-            int o;
-            Console.WriteLine((o = Interlocked.Increment(ref r)) + " // " + e.BytesTransferred);
-            if (o == 8169)
-            {
-                Console.WriteLine("got");
             }
 
             if (Serialization.Serialization.DeserializeUdp(
