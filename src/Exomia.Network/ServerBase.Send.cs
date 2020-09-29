@@ -77,7 +77,7 @@ namespace Exomia.Network
         {
             TaskCompletionSource<(ushort requestID, Packet packet)> tcs =
                 new TaskCompletionSource<(ushort, Packet)>(TaskCreationOptions.None);
-            using CancellationTokenSource cts = new CancellationTokenSource(timeout.Add(TimeSpan.FromDays(1)));
+            using CancellationTokenSource cts = new CancellationTokenSource(timeout);
             ushort                        requestID;
             bool                          lockTaken = false;
             try
