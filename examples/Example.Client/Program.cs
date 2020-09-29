@@ -35,7 +35,7 @@ namespace Example.Client
 #endif
             client.Disconnected += (c, r) => { Console.WriteLine(r + " | Disconnected"); };
 
-            client.AddCommand(DeserializePacketToString, 1);
+            client.AddCommand(1, DeserializePacketToString);
 
             client.AddDataReceivedCallback(
                 1, (client1, data, responseID) =>
@@ -62,13 +62,14 @@ namespace Example.Client
             return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
         }
 
-        private static async void SendRequestAndWaitForResponse(IClient client, string data, uint responseID)
+        private static async void SendRequestAndWaitForResponse(IClient client, string data, ushort responseID)
         {
             byte[] response =
                 Encoding.UTF8.GetBytes(data + "World " + string.Join(", ", Enumerable.Range(1, 1_000_000)));
             Response<string> result = await client.SendR(
                 responseID, response, 0, response.Length, DeserializePacketToString, true);
-            Console.WriteLine("GOT: {0}", result.Result);
+
+            Console.WriteLine("GOT({1}): {0}", result.Result, result.SendError);
         }
     }
 }

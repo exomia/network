@@ -11,6 +11,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using Exomia.Network.Buffers;
 
 namespace Exomia.Network.UDP
@@ -23,6 +24,8 @@ namespace Exomia.Network.UDP
         where TServerClient : ServerClientBase<EndPoint>
     {
         private readonly ObjectPool<ServerClientStateObject> _serverClientStateObjectPool;
+
+        private int k;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerApmBase{TServerClien}" /> class.
@@ -51,6 +54,7 @@ namespace Exomia.Network.UDP
 
         private void ReceiveDataCallback(IAsyncResult iar)
         {
+            Console.WriteLine(Interlocked.Increment(ref k));
             ServerClientStateObject state = (ServerClientStateObject)iar.AsyncState!;
             int                     bytesTransferred;
             try
@@ -144,8 +148,9 @@ namespace Exomia.Network.UDP
                         state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ref state.EndPoint,
                         ReceiveDataCallback, state);
                 }
-                catch
+                catch (Exception e)
                 {
+                    Console.WriteLine(e);
                     _serverClientStateObjectPool.Return(state);
                 }
             }

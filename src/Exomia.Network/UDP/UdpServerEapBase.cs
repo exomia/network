@@ -11,6 +11,8 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Exomia.Network.UDP
 {
@@ -24,6 +26,8 @@ namespace Exomia.Network.UDP
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
 
+        private int r = -1;
+
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerEapBase{TServerClient}" /> class.
         /// </summary>
@@ -33,8 +37,8 @@ namespace Exomia.Network.UDP
                                    ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _receiveEventArgsPool = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients + 5));
-            _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients + 5));
+            _receiveEventArgsPool = new SocketAsyncEventArgsPool((ushort)((expectedMaxClients + 5) * 20));
+            _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)((expectedMaxClients + 5) * 10));
         }
 
         /// <inheritdoc />
@@ -42,8 +46,8 @@ namespace Exomia.Network.UDP
         {
             if (disposing)
             {
-                _receiveEventArgsPool?.Dispose();
-                _sendEventArgsPool?.Dispose();
+                _receiveEventArgsPool.Dispose();
+                _sendEventArgsPool.Dispose();
             }
         }
 
@@ -60,6 +64,12 @@ namespace Exomia.Network.UDP
             {
                 InvokeClientDisconnect(e.RemoteEndPoint, DisconnectReason.Graceful);
                 return;
+            }
+            int o;
+            Console.WriteLine((o = Interlocked.Increment(ref r)) + " // " + e.BytesTransferred);
+            if (o == 8169)
+            {
+                Console.WriteLine("got");
             }
 
             if (Serialization.Serialization.DeserializeUdp(
@@ -89,9 +99,7 @@ namespace Exomia.Network.UDP
                 SocketAsyncEventArgs? receiveEventArgs = _receiveEventArgsPool.Rent();
                 if (receiveEventArgs == null)
                 {
-#pragma warning disable IDE0068 // Use recommended dispose pattern
-                    receiveEventArgs = new SocketAsyncEventArgs();
-#pragma warning restore IDE0068 // Use recommended dispose pattern
+                    receiveEventArgs           =  new SocketAsyncEventArgs();
                     receiveEventArgs.Completed += ReceiveFromAsyncCompleted;
                     receiveEventArgs.SetBuffer(
                         new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
@@ -104,7 +112,7 @@ namespace Exomia.Network.UDP
                 {
                     if (!_listener!.ReceiveFromAsync(receiveEventArgs))
                     {
-                        ReceiveFromAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
+                        Task.Run(() => ReceiveFromAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs));
                     }
                 }
                 catch

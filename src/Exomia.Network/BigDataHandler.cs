@@ -55,6 +55,7 @@ namespace Exomia.Network
                 }
             }
 
+            //Console.WriteLine(Interlocked.Increment(ref k));
             fixed (byte* dst = bdb._data)
             {
                 Mem.Cpy(dst + chunkOffset, src, chunkLength);
@@ -175,7 +176,7 @@ namespace Exomia.Network
                 {
                     int bytes = base.AddBytes(count);
                     if (bytes == 0) { _timer.Dispose(); }
-                    if (bytes != 0) { _timer.Change(TIMER_INTERVAL, Timeout.Infinite); }
+                    else { _timer.Change(TIMER_INTERVAL, Timeout.Infinite); }
                     return bytes;
                 }
             }

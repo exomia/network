@@ -10,6 +10,7 @@
 
 using System;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using Exomia.Network.Native;
 
 namespace Exomia.Network.TCP
@@ -97,7 +98,10 @@ namespace Exomia.Network.TCP
                 {
                     if (!args.AcceptSocket.ReceiveAsync(args))
                     {
-                        ReceiveAsyncCompleted(args.AcceptSocket, args);
+                        // ReSharper disable AccessToDisposedClosure
+                        Task.Run(() => ReceiveAsyncCompleted(args.AcceptSocket, args));
+
+                        // ReSharper enable AccessToDisposedClosure
                     }
                 }
                 catch (ObjectDisposedException)

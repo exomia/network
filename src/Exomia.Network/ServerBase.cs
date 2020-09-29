@@ -68,7 +68,7 @@ namespace Exomia.Network
 
         private protected Socket? _listener;
         private protected int     _port;
-        private           uint    _requestID;
+        private           ushort  _requestID;
         private protected byte    _state;
 
         /// <summary>
@@ -77,15 +77,18 @@ namespace Exomia.Network
         protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
         private protected EncryptionMode _encryptionMode = EncryptionMode.None;
-        private readonly Dictionary<uint, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
-        private readonly Event<ClientCommandDataReceivedHandler<TServerClient>> _clientDataReceived;
-        private readonly Dictionary<uint, TaskCompletionSource<(uint requestID, Packet packet)>> _taskCompletionSources;
-        private readonly byte _listenerCount;
-        private SpinLock _clientsLock;
-        private SpinLock _dataReceivedCallbacksLock;
-        private SpinLock _lockTaskCompletionSources;
-        private bool _isRunning;
-        private int _packetID;
+        private readonly  Dictionary<ushort, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
+        private readonly  Event<ClientCommandDataReceivedHandler<TServerClient>> _clientDataReceived;
+
+        private readonly Dictionary<ushort, TaskCompletionSource<(ushort requestID, Packet packet)>>
+            _taskCompletionSources;
+
+        private readonly byte     _listenerCount;
+        private          SpinLock _clientsLock;
+        private          SpinLock _dataReceivedCallbacksLock;
+        private          SpinLock _lockTaskCompletionSources;
+        private          bool     _isRunning;
+        private          int      _packetID;
 
         /// <summary>
         ///     Gets the port.
@@ -217,9 +220,9 @@ namespace Exomia.Network
         private protected ServerBase(byte listenerCount = 1)
         {
             _listenerCount         = listenerCount;
-            _dataReceivedCallbacks = new Dictionary<uint, ServerClientEventEntry<TServerClient>>(INITIAL_QUEUE_SIZE);
+            _dataReceivedCallbacks = new Dictionary<ushort, ServerClientEventEntry<TServerClient>>(INITIAL_QUEUE_SIZE);
             _taskCompletionSources =
-                new Dictionary<uint, TaskCompletionSource<(uint requestID, Packet packet)>>(
+                new Dictionary<ushort, TaskCompletionSource<(ushort requestID, Packet packet)>>(
                     INITIAL_TASK_COMPLETION_QUEUE_SIZE);
             _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
 
@@ -301,13 +304,13 @@ namespace Exomia.Network
         private protected void DeserializeData(T                        arg0,
                                                in DeserializePacketInfo deserializePacketInfo)
         {
-            uint commandOrResponseID = deserializePacketInfo.CommandOrResponseID;
-            uint requestID           = deserializePacketInfo.RequestID;
+            ushort commandOrResponseID = deserializePacketInfo.CommandOrResponseID;
+            ushort requestID           = deserializePacketInfo.RequestID;
 
             if (deserializePacketInfo.IsResponseBitSet)
             {
-                TaskCompletionSource<(uint, Packet)>? cs;
-                bool                                  lockTaken = false;
+                TaskCompletionSource<(ushort, Packet)>? cs;
+                bool                                    lockTaken = false;
                 try
                 {
                     _lockTaskCompletionSources.Enter(ref lockTaken);
@@ -487,13 +490,23 @@ namespace Exomia.Network
         #region Add & Remove
 
         /// <summary>
+        ///     add a command deserializer.
+        /// </summary>
+        /// <param name="commandID">   Identifier for the command. </param>
+        /// <param name="deserialize"> The deserialize handler. </param>
+        public void AddCommand(ushort commandID, DeserializePacketHandler<object?> deserialize)
+        {
+            AddCommand(new[] { commandID }, deserialize);
+        }
+
+        /// <summary>
         ///     add commands deserializers.
         /// </summary>
+        /// <param name="commandIDs"> The command ids. </param>
         /// <param name="deserialize"> The deserialize handler. </param>
-        /// <param name="commandIDs">  A variable-length parameters list containing command ids. </param>
         /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        public void AddCommand(DeserializePacketHandler<object?> deserialize, params uint[] commandIDs)
+        public void AddCommand(ushort[] commandIDs, DeserializePacketHandler<object?> deserialize)
         {
             if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
@@ -503,7 +516,7 @@ namespace Exomia.Network
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
 
-                foreach (uint commandID in commandIDs)
+                foreach (ushort commandID in commandIDs)
                 {
                     if (commandID > Constants.USER_COMMAND_LIMIT)
                     {
@@ -533,7 +546,7 @@ namespace Exomia.Network
         /// </returns>
         /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        public bool RemoveCommands(params uint[] commandIDs)
+        public bool RemoveCommands(params ushort[] commandIDs)
         {
             if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             bool removed   = false;
@@ -541,7 +554,7 @@ namespace Exomia.Network
             try
             {
                 _dataReceivedCallbacksLock.Enter(ref lockTaken);
-                foreach (uint commandID in commandIDs)
+                foreach (ushort commandID in commandIDs)
                 {
                     if (commandID > Constants.USER_COMMAND_LIMIT)
                     {
@@ -566,7 +579,7 @@ namespace Exomia.Network
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
         /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
-        public void AddDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
+        public void AddDataReceivedCallback(ushort commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -601,7 +614,7 @@ namespace Exomia.Network
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        public void RemoveDataReceivedCallback(uint commandID, ClientDataReceivedHandler<TServerClient> callback)
+        public void RemoveDataReceivedCallback(ushort commandID, ClientDataReceivedHandler<TServerClient> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {

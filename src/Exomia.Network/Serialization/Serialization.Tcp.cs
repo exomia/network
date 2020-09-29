@@ -54,9 +54,9 @@ namespace Exomia.Network.Serialization
             int offset = 0;
             if (packetInfo.RequestID != 0)
             {
-                *dst                                      |= Constants.REQUEST_1_BIT;
-                *(uint*)(dst + Constants.TCP_HEADER_SIZE) =  packetInfo.RequestID;
-                offset                                    =  Constants.OFFSET_REQUEST_ID;
+                *dst                                        |= Constants.REQUEST_1_BIT;
+                *(ushort*)(dst + Constants.TCP_HEADER_SIZE) =  packetInfo.RequestID;
+                offset                                      =  Constants.OFFSET_REQUEST_ID;
             }
 
             if (packetInfo.CompressionMode != CompressionMode.None)
@@ -80,7 +80,7 @@ namespace Exomia.Network.Serialization
                 dst + Constants.TCP_HEADER_SIZE + offset, out int l);
 
             *(uint*)(dst + 1) = ((uint)(l + offset + 1) & Constants.DATA_LENGTH_MASK)
-                              | (packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
+                              | ((uint)packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
             *(ushort*)(dst + 5)                                   = checksum;
             *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
 
@@ -93,7 +93,7 @@ namespace Exomia.Network.Serialization
                                             BigDataHandler<int> bigDataHandler,
                                             out byte[]          payload,
                                             ref int             length,
-                                            out uint            requestID,
+                                            out ushort          requestID,
                                             out bool            isResponseBitSet)
         {
             fixed (byte* ptr = source)
@@ -103,7 +103,7 @@ namespace Exomia.Network.Serialization
                 int offset = 0;
                 if ((packetHeader & Constants.REQUEST_1_BIT) != 0)
                 {
-                    requestID = *(uint*)ptr;
+                    requestID = *(ushort*)ptr;
                     offset    = Constants.OFFSET_REQUEST_ID;
                 }
 

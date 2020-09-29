@@ -18,17 +18,17 @@ namespace Exomia.Network
         /// <summary>
         ///     Identifier for the command or response.
         /// </summary>
-        public uint CommandOrResponseID;
+        public ushort CommandOrResponseID;
+
+        /// <summary>
+        ///     Identifier for the request.
+        /// </summary>
+        public ushort RequestID;
 
         /// <summary>
         ///     True if this object is response bit set.
         /// </summary>
         public bool IsResponseBitSet;
-
-        /// <summary>
-        ///     Identifier for the request.
-        /// </summary>
-        public uint RequestID;
 
         /// <summary>
         ///     The data.

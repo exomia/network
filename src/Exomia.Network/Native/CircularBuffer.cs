@@ -292,7 +292,7 @@ namespace Exomia.Network.Native
         /// </summary>
         /// <param name="skip">         skip bytes. </param>
         /// <param name="packetHeader"> [out] The packet header. </param>
-        /// <param name="commandID">    [out] Identifier for the command. </param>
+        /// <param name="commandOrResponseID">    [out] Identifier for the command or response. </param>
         /// <param name="dataLength">   [out] Length of the data. </param>
         /// <param name="checksum">     [out] The checksum. </param>
         /// <returns>
@@ -300,7 +300,7 @@ namespace Exomia.Network.Native
         /// </returns>
         public bool PeekHeader(int        skip,
                                out byte   packetHeader,
-                               out uint   commandID,
+                               out ushort commandOrResponseID,
                                out int    dataLength,
                                out ushort checksum)
         {
@@ -310,10 +310,10 @@ namespace Exomia.Network.Native
                 _lock.Enter(ref lockTaken);
                 if (_count == 0 || _count < skip + Constants.TCP_HEADER_SIZE)
                 {
-                    commandID    = 0;
-                    dataLength   = 0;
-                    packetHeader = 0;
-                    checksum     = 0;
+                    commandOrResponseID = 0;
+                    dataLength          = 0;
+                    packetHeader        = 0;
+                    checksum            = 0;
                     return false;
                 }
 
@@ -321,9 +321,9 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + _tail + skip);
                     uint h2 = *(uint*)(_ptr + _tail + skip + 1);
-                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
-                    dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
-                    checksum   = *(ushort*)(_ptr + _tail + skip + 5);
+                    commandOrResponseID = (ushort)(h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
+                    dataLength          = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                    checksum            = *(ushort*)(_ptr + _tail + skip + 5);
                 }
                 else if (_tail + skip < _capacity)
                 {
@@ -332,8 +332,8 @@ namespace Exomia.Network.Native
                                    | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
                                    | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
                                    | *(_ptr + ((_tail + skip + 1) & _mask)));
-                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
-                    dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                    commandOrResponseID = (ushort)(h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
+                    dataLength          = (int)(h2 & Constants.DATA_LENGTH_MASK);
                     checksum = (ushort)(
                         (*(_ptr + ((_tail + skip + 6) & _mask)) << 8)
                       | *(_ptr + ((_tail + skip + 5) & _mask)));
@@ -342,9 +342,9 @@ namespace Exomia.Network.Native
                 {
                     packetHeader = *(_ptr + ((_tail + skip) & _mask));
                     uint h2 = *(uint*)(_ptr + ((_tail + skip + 1) & _mask));
-                    commandID  = h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT;
-                    dataLength = (int)(h2 & Constants.DATA_LENGTH_MASK);
-                    checksum   = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
+                    commandOrResponseID = (ushort)(h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
+                    dataLength          = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                    checksum            = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
                 }
 
                 return true;

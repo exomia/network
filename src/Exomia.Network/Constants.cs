@@ -13,7 +13,7 @@ namespace Exomia.Network
     static class Constants
     {
         // @formatter:off — disable formatter after this line
-        internal const ushort OFFSET_REQUEST_ID        = 4;
+        internal const ushort OFFSET_REQUEST_ID        = 2;
         internal const ushort OFFSET_COMPRESSION_MODE  = 4;
         internal const ushort OFFSET_CHUNK_INFO        = 12;
 

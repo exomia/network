@@ -10,6 +10,8 @@
 
 using System;
 using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Exomia.Network.UDP
 {
@@ -20,6 +22,8 @@ namespace Exomia.Network.UDP
     {
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
+
+        private int s = -1;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpClientEap" /> class.
@@ -72,19 +76,18 @@ namespace Exomia.Network.UDP
                 SocketAsyncEventArgs? receiveEventArgs = _receiveEventArgsPool.Rent();
                 if (receiveEventArgs == null)
                 {
-#pragma warning disable IDE0068 // Use recommended dispose pattern
-                    receiveEventArgs = new SocketAsyncEventArgs();
-#pragma warning restore IDE0068 // Use recommended dispose pattern
+                    receiveEventArgs           =  new SocketAsyncEventArgs();
                     receiveEventArgs.Completed += ReceiveAsyncCompleted;
                     receiveEventArgs.SetBuffer(
                         new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
                         0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
                 }
+
                 try
                 {
                     if (!_clientSocket!.ReceiveAsync(receiveEventArgs))
                     {
-                        ReceiveAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
+                        Task.Run(() => ReceiveAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs));
                     }
                 }
                 catch (ObjectDisposedException)
@@ -108,6 +111,10 @@ namespace Exomia.Network.UDP
         /// <inheritdoc />
         private protected override unsafe SendError BeginSend(in PacketInfo packetInfo)
         {
+            if (Interlocked.Increment(ref s) == 8169)
+            {
+                Console.WriteLine("FDO");
+            }
             SocketAsyncEventArgs? sendEventArgs = _sendEventArgsPool.Rent();
             if (sendEventArgs == null)
             {

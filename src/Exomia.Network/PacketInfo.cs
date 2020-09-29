@@ -16,8 +16,8 @@ namespace Exomia.Network
     unsafe struct PacketInfo
     {
         public int             PacketID;
-        public uint            CommandOrResponseID;
-        public uint            RequestID;
+        public ushort          CommandOrResponseID;
+        public ushort          RequestID;
         public bool            IsResponse;
         public byte*           Src;
         public int             ChunkLength;

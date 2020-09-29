@@ -20,7 +20,7 @@ namespace Exomia.Network
     /// <returns>
     ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
     /// </returns>
-    public delegate bool CommandDataReceivedHandler(IClient client, uint commandID, object data, uint responseID);
+    public delegate bool CommandDataReceivedHandler(IClient client, ushort commandID, object data, ushort responseID);
 
     /// <summary>
     ///     Called than a client received data from the server.
@@ -31,5 +31,5 @@ namespace Exomia.Network
     /// <returns>
     ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
     /// </returns>
-    public delegate bool DataReceivedHandler(IClient client, object data, uint responseID);
+    public delegate bool DataReceivedHandler(IClient client, object data, ushort responseID);
 }
