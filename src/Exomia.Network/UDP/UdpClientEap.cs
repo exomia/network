@@ -10,7 +10,6 @@
 
 using System;
 using System.Net.Sockets;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Exomia.Network.UDP
@@ -22,7 +21,7 @@ namespace Exomia.Network.UDP
     {
         private readonly SocketAsyncEventArgsPool _receiveEventArgsPool;
         private readonly SocketAsyncEventArgsPool _sendEventArgsPool;
-        
+
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpClientEap" /> class.
         /// </summary>

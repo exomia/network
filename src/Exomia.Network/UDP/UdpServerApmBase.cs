@@ -11,7 +11,6 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 using Exomia.Network.Buffers;
 
 namespace Exomia.Network.UDP
@@ -24,7 +23,7 @@ namespace Exomia.Network.UDP
         where TServerClient : ServerClientBase<EndPoint>
     {
         private readonly ObjectPool<ServerClientStateObject> _serverClientStateObjectPool;
-        
+
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerApmBase{TServerClien}" /> class.
         /// </summary>
