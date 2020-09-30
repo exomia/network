@@ -54,14 +54,12 @@ namespace Exomia.Network.TCP
             try
             {
                 Socket socket = _listener!.EndAccept(ar);
-#pragma warning disable IDE0068 // Use recommended dispose pattern
                 ServerClientStateObjectApm state = new ServerClientStateObjectApm(
                     new byte[_payloadSize + Constants.TCP_HEADER_OFFSET],
                     new CircularBuffer((_payloadSize + Constants.TCP_HEADER_OFFSET) * 2),
                     new BigDataHandler<int>.Default(),
                     socket,
                     new byte[_payloadSize + Constants.TCP_HEADER_OFFSET]);
-#pragma warning restore IDE0068 // Use recommended dispose pattern
                 ReceiveAsync(state);
             }
             catch (ObjectDisposedException)

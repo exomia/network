@@ -28,14 +28,12 @@ namespace Exomia.Network.UDP
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerEapBase{TServerClient}" /> class.
         /// </summary>
-        /// <param name="expectedMaxClients">     The expected maximum clients. </param>
         /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
-        protected UdpServerEapBase(ushort expectedMaxClients,
-                                   ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+        protected UdpServerEapBase(ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _receiveEventArgsPool = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients * 32));
-            _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients * 32));
+            _receiveEventArgsPool = new SocketAsyncEventArgsPool(0xFF);
+            _sendEventArgsPool    = new SocketAsyncEventArgsPool(0xFF);
         }
 
         /// <inheritdoc />

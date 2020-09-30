@@ -70,8 +70,8 @@ namespace Example.Server
     class Server : UdpServerEapBase<ServerClient>
 #endif
     {
-        public Server(ushort expectedMaxClient = 32, ushort expectedMaxPayloadSize = 512)
-            : base(expectedMaxClient, expectedMaxPayloadSize) { }
+        public Server(ushort expectedMaxPayloadSize = 512)
+            : base(expectedMaxPayloadSize) { }
 
         protected override bool CreateServerClient(out ServerClient serverClient)
         {

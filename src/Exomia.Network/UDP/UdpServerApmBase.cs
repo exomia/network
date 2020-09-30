@@ -27,13 +27,11 @@ namespace Exomia.Network.UDP
         /// <summary>
         ///     Initializes a new instance of the <see cref="UdpServerApmBase{TServerClien}" /> class.
         /// </summary>
-        /// <param name="expectedMaxClients"> The expected maximum clients. </param>
         /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
-        protected UdpServerApmBase(ushort expectedMaxClients,
-                                   ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
+        protected UdpServerApmBase(ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _serverClientStateObjectPool = new ObjectPool<ServerClientStateObject>((ushort)(expectedMaxClients * 32));
+            _serverClientStateObjectPool = new ObjectPool<ServerClientStateObject>(0xFF);
         }
 
         private void SendDataToCallback(IAsyncResult iar)

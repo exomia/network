@@ -27,13 +27,11 @@ namespace Exomia.Network.TCP
         /// <summary>
         ///     Initializes a new instance of the <see cref="TcpServerEapBase{TServerClient}" /> class.
         /// </summary>
-        /// <param name="expectedMaxClients"> (Optional) The expected maximum clients. </param>
         /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
-        protected TcpServerEapBase(ushort expectedMaxClients     = 32,
-                                   ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
+        protected TcpServerEapBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _sendEventArgsPool = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients * 32));
+            _sendEventArgsPool = new SocketAsyncEventArgsPool(0xFF);
         }
 
         private void ListenAsync(SocketAsyncEventArgs acceptArgs)
