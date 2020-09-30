@@ -61,8 +61,8 @@ class UdpServer : UdpServerEapBase<UdpServerClient>
     }
 
     /// <inheritdoc />
-    public UdpServer(ushort maxClients, ushort maxPacketSize = 65522)
-        : base(maxClients, maxPacketSize) { }
+    public UdpServer(ushort maxPacketSize = 65522)
+        : base(maxPacketSize) { }
 }
 
 class UdpServerClient : UdpServerClientBase
@@ -74,7 +74,7 @@ class UdpServerClient : UdpServerClientBase
 ```csharp
 static void Main(string[] args)
 {
-	using(UdpServer server = new UdpServer(32))
+	using(UdpServer server = new UdpServer())
 	{
 		server.ClientConnected += (server1, client) =>
 		{
@@ -154,8 +154,8 @@ class TcpServer : TcpServerEapBase<TcpServerClient>
         return true;
     }
 
-    public TcpServer(ushort expectedMaxClient = 32, ushort maxPacketSize = 65520)
-        : base(expectedMaxClient, maxPacketSize) { }
+    public TcpServer(ushort maxPacketSize = 65520)
+        : base(maxPacketSize) { }
 }
 
 class TcpServerClient : TcpServerClientBase
@@ -188,7 +188,7 @@ static void Main(string[] args)
 			string request = (string)data;
 			Console.WriteLine($"Request: {request}");
 			byte[] buffer = Encoding.UTF8.GetBytes(DateTime.Now.ToLongDateString());
-			server1.SendTo(client, 45, buffer, 0, buffer.Length, responseid);
+			server1.SendTo(client, responseid, buffer, 0, buffer.Length, true);
 			return true;
         });
         

@@ -22,7 +22,7 @@ namespace Exomia.Network
         /// <remarks>
         ///     <p>Specify this id instead of a command id in case you need to respond to a request.</p>
         /// </remarks>
-        public readonly uint ID;
+        public readonly ushort ID;
 
         /// <summary>
         ///     The result.
@@ -40,7 +40,7 @@ namespace Exomia.Network
         /// <param name="result">     The result. </param>
         /// <param name="responseID"> The result. </param>
         /// <param name="sendError">  The send error. </param>
-        internal Response(in TResult result, uint responseID, SendError sendError)
+        internal Response(in TResult result, ushort responseID, SendError sendError)
         {
             Result    = result;
             ID        = responseID;

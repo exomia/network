@@ -24,9 +24,9 @@ namespace Exomia.Network
     /// </returns>
     public delegate bool ClientCommandDataReceivedHandler<TServerClient>(IServer<TServerClient> server,
                                                                          TServerClient          client,
-                                                                         uint                   commandID,
+                                                                         ushort                 commandID,
                                                                          object                 data,
-                                                                         uint                   responseID)
+                                                                         ushort                 responseID)
         where TServerClient : IServerClient;
 
     /// <summary>
@@ -43,6 +43,6 @@ namespace Exomia.Network
     public delegate bool ClientDataReceivedHandler<TServerClient>(IServer<TServerClient> server,
                                                                   TServerClient          client,
                                                                   object                 data,
-                                                                  uint                   responseID)
+                                                                  ushort                 responseID)
         where TServerClient : IServerClient;
 }

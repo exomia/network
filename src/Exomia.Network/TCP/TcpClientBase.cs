@@ -116,7 +116,7 @@ namespace Exomia.Network.TCP
                         _circularBuffer.Read(ptr, deserializePacketInfo.Length, Constants.TCP_HEADER_SIZE);
                         if (size < bytesTransferred)
                         {
-                            _circularBuffer.Write(buffer, size, bytesTransferred - size);
+                            size += _circularBuffer.Write(buffer, size, bytesTransferred - size);
                         }
                     }
 

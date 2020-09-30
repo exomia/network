@@ -49,7 +49,7 @@ namespace Exomia.Network.Lib
         /// <param name="client">     The client. </param>
         /// <param name="data">       The data. </param>
         /// <param name="responseID"> Identifier for the response. </param>
-        public void Raise(IClient client, object data, uint responseID)
+        public void Raise(IClient client, object data, ushort responseID)
         {
             for (int i = _dataReceived.Count - 1; i >= 0; --i)
             {

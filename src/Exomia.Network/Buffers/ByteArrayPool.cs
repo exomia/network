@@ -16,11 +16,11 @@ namespace Exomia.Network.Buffers
 {
     static class ByteArrayPool
     {
-        private static          SpinLock    s_lock;
-        private static readonly byte[]?[][] s_buffers;
-        private static readonly uint[]      s_index;
-        private static readonly int[]       s_bufferLength;
-        private static readonly int[]       s_bufferCount;
+        private static          SpinLock     s_lock;
+        private static readonly byte[]?[]?[] s_buffers;
+        private static readonly uint[]       s_index;
+        private static readonly int[]        s_bufferLength;
+        private static readonly int[]        s_bufferCount;
 
         /// <summary>
         ///     Initializes static members of the <see cref="ByteArrayPool" /> class.
@@ -52,16 +52,13 @@ namespace Exomia.Network.Buffers
             {
                 s_lock.Enter(ref lockTaken);
 
-                if (s_buffers[bucketIndex] == null)
-                {
-                    s_buffers[bucketIndex] = new byte[s_bufferCount[bucketIndex]][];
-                }
+                s_buffers[bucketIndex] ??= new byte[s_bufferCount[bucketIndex]][];
 
-                if (s_index[bucketIndex] < s_buffers[bucketIndex].Length)
+                if (s_index[bucketIndex] < s_buffers[bucketIndex]!.Length)
                 {
                     uint index = s_index[bucketIndex]++;
-                    buffer                        = s_buffers[bucketIndex][index];
-                    s_buffers[bucketIndex][index] = null;
+                    buffer                         = s_buffers[bucketIndex]![index];
+                    s_buffers[bucketIndex]![index] = null;
                 }
                 return buffer ?? new byte[s_bufferLength[bucketIndex]];
             }
@@ -86,7 +83,7 @@ namespace Exomia.Network.Buffers
 
                 if (s_index[bucketIndex] != 0)
                 {
-                    s_buffers[bucketIndex][--s_index[bucketIndex]] = array;
+                    s_buffers[bucketIndex]![--s_index[bucketIndex]] = array;
                 }
             }
             finally

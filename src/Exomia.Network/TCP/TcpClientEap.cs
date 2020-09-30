@@ -10,6 +10,7 @@
 
 using System;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace Exomia.Network.TCP
 {
@@ -77,7 +78,7 @@ namespace Exomia.Network.TCP
                 {
                     if (!_clientSocket!.ReceiveAsync(_receiveEventArgs))
                     {
-                        ReceiveAsyncCompleted(_receiveEventArgs.AcceptSocket, _receiveEventArgs);
+                        Task.Run(() => ReceiveAsyncCompleted(_receiveEventArgs.AcceptSocket, _receiveEventArgs));
                     }
                 }
                 catch (ObjectDisposedException) { Disconnect(DisconnectReason.Aborted); }

@@ -92,8 +92,8 @@ namespace Exomia.Network.TCP
         {
             try
             {
-                client.Arg0?.Shutdown(SocketShutdown.Both);
-                client.Arg0?.Close(CLOSE_TIMEOUT);
+                client.Arg0.Shutdown(SocketShutdown.Both);
+                client.Arg0.Close(CLOSE_TIMEOUT);
             }
             catch
             {

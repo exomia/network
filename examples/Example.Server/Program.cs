@@ -52,7 +52,7 @@ namespace Example.Server
             byte[] request = Encoding.UTF8.GetBytes("Hello ");
             Response<string> response = await server.SendToR(
                 client, 1, request, 0, request.Length, DeserializePacketToString);
-            Console.WriteLine("GOT: {0}", response.Result);
+            Console.WriteLine("GOT({1}): {0}", response.Result, response.SendError);
 
             byte[] requestResponse = Encoding.UTF8.GetBytes($"Current server time is: {DateTime.UtcNow}");
             server.SendTo(client, response.ID, requestResponse, 0, requestResponse.Length, true);
@@ -70,8 +70,8 @@ namespace Example.Server
     class Server : UdpServerEapBase<ServerClient>
 #endif
     {
-        public Server(ushort expectedMaxClient = 32, ushort expectedMaxPayloadSize = 512)
-            : base(expectedMaxClient, expectedMaxPayloadSize) { }
+        public Server(ushort expectedMaxPayloadSize = 512)
+            : base(expectedMaxPayloadSize) { }
 
         protected override bool CreateServerClient(out ServerClient serverClient)
         {

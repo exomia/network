@@ -10,6 +10,7 @@
 
 using System;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using Exomia.Network.Native;
 
 namespace Exomia.Network.TCP
@@ -26,13 +27,11 @@ namespace Exomia.Network.TCP
         /// <summary>
         ///     Initializes a new instance of the <see cref="TcpServerEapBase{TServerClient}" /> class.
         /// </summary>
-        /// <param name="expectedMaxClients"> (Optional) The expected maximum clients. </param>
         /// <param name="expectedMaxPayloadSize"> (Optional) Size of the expected maximum payload. </param>
-        protected TcpServerEapBase(ushort expectedMaxClients     = 32,
-                                   ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
+        protected TcpServerEapBase(ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClients);
+            _sendEventArgsPool = new SocketAsyncEventArgsPool(0xFF);
         }
 
         private void ListenAsync(SocketAsyncEventArgs acceptArgs)
@@ -97,7 +96,10 @@ namespace Exomia.Network.TCP
                 {
                     if (!args.AcceptSocket.ReceiveAsync(args))
                     {
-                        ReceiveAsyncCompleted(args.AcceptSocket, args);
+                        // ReSharper disable AccessToDisposedClosure
+                        Task.Run(() => ReceiveAsyncCompleted(args.AcceptSocket, args));
+
+                        // ReSharper enable AccessToDisposedClosure
                     }
                 }
                 catch (ObjectDisposedException)

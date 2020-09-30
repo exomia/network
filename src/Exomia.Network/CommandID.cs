@@ -18,16 +18,16 @@ namespace Exomia.Network
         /// <summary>
         ///     CONNECT_ID.
         /// </summary>
-        public const uint CONNECT = 65534;
+        public const ushort CONNECT = 65534;
 
         /// <summary>
         ///     DISCONNECT_ID.
         /// </summary>
-        public const uint DISCONNECT = 65533;
+        public const ushort DISCONNECT = 65533;
 
         /// <summary>
         ///     PING_ID.
         /// </summary>
-        public const uint PING = 65532;
+        public const ushort PING = 65532;
     }
 }

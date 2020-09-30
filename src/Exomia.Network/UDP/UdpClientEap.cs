@@ -10,6 +10,7 @@
 
 using System;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace Exomia.Network.UDP
 {
@@ -72,19 +73,18 @@ namespace Exomia.Network.UDP
                 SocketAsyncEventArgs? receiveEventArgs = _receiveEventArgsPool.Rent();
                 if (receiveEventArgs == null)
                 {
-#pragma warning disable IDE0068 // Use recommended dispose pattern
-                    receiveEventArgs = new SocketAsyncEventArgs();
-#pragma warning restore IDE0068 // Use recommended dispose pattern
+                    receiveEventArgs           =  new SocketAsyncEventArgs();
                     receiveEventArgs.Completed += ReceiveAsyncCompleted;
                     receiveEventArgs.SetBuffer(
                         new byte[MaxPayloadSize + Constants.UDP_HEADER_OFFSET],
                         0, MaxPayloadSize + Constants.UDP_HEADER_OFFSET);
                 }
+
                 try
                 {
                     if (!_clientSocket!.ReceiveAsync(receiveEventArgs))
                     {
-                        ReceiveAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs);
+                        Task.Run(() => ReceiveAsyncCompleted(receiveEventArgs.RemoteEndPoint, receiveEventArgs));
                     }
                 }
                 catch (ObjectDisposedException)

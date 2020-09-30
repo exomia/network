@@ -34,7 +34,7 @@ namespace Exomia.Network
         ///     A SendError.
         /// </returns>
         SendError SendTo(TServerClient client,
-                         uint          commandOrResponseID,
+                         ushort        commandOrResponseID,
                          byte[]        data,
                          int           offset,
                          int           length,
@@ -50,7 +50,7 @@ namespace Exomia.Network
         /// <returns>
         ///     A SendError.
         /// </returns>
-        SendError SendTo(TServerClient client, uint commandOrResponseID, byte[] data, bool isResponse = false);
+        SendError SendTo(TServerClient client, ushort commandOrResponseID, byte[] data, bool isResponse = false);
 
         /// <summary>
         ///     send data to the client.
@@ -63,7 +63,7 @@ namespace Exomia.Network
         ///     A SendError.
         /// </returns>
         SendError SendTo(TServerClient client,
-                         uint          commandOrResponseID,
+                         ushort        commandOrResponseID,
                          ISerializable serializable,
                          bool          isResponse = false);
 
@@ -78,7 +78,7 @@ namespace Exomia.Network
         /// <returns>
         ///     A SendError.
         /// </returns>
-        SendError SendTo<T1>(TServerClient client, uint commandOrResponseID, in T1 data, bool isResponse = false)
+        SendError SendTo<T1>(TServerClient client, ushort commandOrResponseID, in T1 data, bool isResponse = false)
             where T1 : unmanaged;
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient client,
-                                                 uint          commandOrResponseID,
+                                                 ushort        commandOrResponseID,
                                                  byte[]        data,
                                                  int           offset,
                                                  int           length,
@@ -114,7 +114,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient client,
-                                                 uint          commandOrResponseID,
+                                                 ushort        commandOrResponseID,
                                                  byte[]        data,
                                                  bool          isResponse = false)
             where TResult : unmanaged;
@@ -134,7 +134,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient                     client,
-                                                 uint                              commandOrResponseID,
+                                                 ushort                            commandOrResponseID,
                                                  byte[]                            data,
                                                  int                               offset,
                                                  int                               length,
@@ -154,7 +154,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient                     client,
-                                                 uint                              commandOrResponseID,
+                                                 ushort                            commandOrResponseID,
                                                  byte[]                            data,
                                                  DeserializePacketHandler<TResult> deserialize,
                                                  bool                              isResponse = false);
@@ -174,7 +174,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient client,
-                                                 uint          commandOrResponseID,
+                                                 ushort        commandOrResponseID,
                                                  byte[]        data,
                                                  int           offset,
                                                  int           length,
@@ -195,7 +195,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient client,
-                                                 uint          commandOrResponseID,
+                                                 ushort        commandOrResponseID,
                                                  byte[]        data,
                                                  TimeSpan      timeout,
                                                  bool          isResponse = false)
@@ -217,7 +217,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient                     client,
-                                                 uint                              commandOrResponseID,
+                                                 ushort                            commandOrResponseID,
                                                  byte[]                            data,
                                                  int                               offset,
                                                  int                               length,
@@ -239,7 +239,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient                     client,
-                                                 uint                              commandOrResponseID,
+                                                 ushort                            commandOrResponseID,
                                                  byte[]                            data,
                                                  DeserializePacketHandler<TResult> deserialize,
                                                  TimeSpan                          timeout,
@@ -257,7 +257,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient client,
-                                                 uint          commandOrResponseID,
+                                                 ushort        commandOrResponseID,
                                                  ISerializable serializable,
                                                  bool          isResponse = false)
             where TResult : unmanaged;
@@ -275,7 +275,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient                     client,
-                                                 uint                              commandOrResponseID,
+                                                 ushort                            commandOrResponseID,
                                                  ISerializable                     serializable,
                                                  DeserializePacketHandler<TResult> deserialize,
                                                  bool                              isResponse = false);
@@ -293,7 +293,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient client,
-                                                 uint          commandOrResponseID,
+                                                 ushort        commandOrResponseID,
                                                  ISerializable serializable,
                                                  TimeSpan      timeout,
                                                  bool          isResponse = false)
@@ -313,7 +313,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<TResult>(TServerClient                     client,
-                                                 uint                              commandOrResponseID,
+                                                 ushort                            commandOrResponseID,
                                                  ISerializable                     serializable,
                                                  DeserializePacketHandler<TResult> deserialize,
                                                  TimeSpan                          timeout,
@@ -332,7 +332,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<T, TResult>(TServerClient client,
-                                                    uint          commandOrResponseID,
+                                                    ushort        commandOrResponseID,
                                                     in T          data,
                                                     bool          isResponse = false)
             where T : unmanaged
@@ -352,7 +352,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<T, TResult>(TServerClient                     client,
-                                                    uint                              commandOrResponseID,
+                                                    ushort                            commandOrResponseID,
                                                     in T                              data,
                                                     DeserializePacketHandler<TResult> deserialize,
                                                     bool                              isResponse = false)
@@ -372,7 +372,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<T, TResult>(TServerClient client,
-                                                    uint          commandOrResponseID,
+                                                    ushort        commandOrResponseID,
                                                     in T          data,
                                                     TimeSpan      timeout,
                                                     bool          isResponse = false)
@@ -394,7 +394,7 @@ namespace Exomia.Network
         ///     task of Response{TResult}
         /// </returns>
         Task<Response<TResult>> SendToR<T, TResult>(TServerClient                     client,
-                                                    uint                              commandOrResponseID,
+                                                    ushort                            commandOrResponseID,
                                                     in T                              data,
                                                     DeserializePacketHandler<TResult> deserialize,
                                                     TimeSpan                          timeout,
@@ -408,21 +408,21 @@ namespace Exomia.Network
         /// <param name="data">                The data. </param>
         /// <param name="offset">              The offset. </param>
         /// <param name="length">              The length. </param>
-        void SendToAll(uint commandOrResponseID, byte[] data, int offset, int length);
+        void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length);
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="data">                The data. </param>
-        void SendToAll(uint commandOrResponseID, byte[] data);
+        void SendToAll(ushort commandOrResponseID, byte[] data);
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="serializable">        The serializable. </param>
-        void SendToAll(uint commandOrResponseID, ISerializable serializable);
+        void SendToAll(ushort commandOrResponseID, ISerializable serializable);
 
         /// <summary>
         ///     Sends data to all clients.
@@ -430,6 +430,6 @@ namespace Exomia.Network
         /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="data">                The data. </param>
-        void SendToAll<T1>(uint commandOrResponseID, in T1 data) where T1 : unmanaged;
+        void SendToAll<T1>(ushort commandOrResponseID, in T1 data) where T1 : unmanaged;
     }
 }
