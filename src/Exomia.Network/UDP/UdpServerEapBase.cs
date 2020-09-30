@@ -34,8 +34,8 @@ namespace Exomia.Network.UDP
                                    ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _receiveEventArgsPool = new SocketAsyncEventArgsPool((ushort)((expectedMaxClients + 5) * 20));
-            _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)((expectedMaxClients + 5) * 10));
+            _receiveEventArgsPool = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients * 32));
+            _sendEventArgsPool    = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients * 32));
         }
 
         /// <inheritdoc />

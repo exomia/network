@@ -33,7 +33,7 @@ namespace Exomia.Network.TCP
                                    ushort expectedMaxPayloadSize = Constants.TCP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _sendEventArgsPool = new SocketAsyncEventArgsPool(expectedMaxClients);
+            _sendEventArgsPool = new SocketAsyncEventArgsPool((ushort)(expectedMaxClients * 32));
         }
 
         private void ListenAsync(SocketAsyncEventArgs acceptArgs)

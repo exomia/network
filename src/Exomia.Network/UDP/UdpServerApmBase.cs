@@ -33,7 +33,7 @@ namespace Exomia.Network.UDP
                                    ushort expectedMaxPayloadSize = Constants.UDP_PAYLOAD_SIZE_MAX)
             : base(expectedMaxPayloadSize)
         {
-            _serverClientStateObjectPool = new ObjectPool<ServerClientStateObject>(expectedMaxClients);
+            _serverClientStateObjectPool = new ObjectPool<ServerClientStateObject>((ushort)(expectedMaxClients * 32));
         }
 
         private void SendDataToCallback(IAsyncResult iar)
