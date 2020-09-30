@@ -79,8 +79,8 @@ namespace Exomia.Network.Serialization
                 packetInfo.Src + packetInfo.ChunkOffset, packetInfo.ChunkLength,
                 dst + Constants.TCP_HEADER_SIZE + offset, out int l);
 
-            *(uint*)(dst + 1) = ((uint)(l + offset + 1) & Constants.DATA_LENGTH_MASK)
-                              | ((uint)packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
+            *(ushort*)(dst + 1)                                   = packetInfo.CommandOrResponseID;
+            *(ushort*)(dst + 3)                                   = (ushort)(l + offset + 1);
             *(ushort*)(dst + 5)                                   = checksum;
             *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
 

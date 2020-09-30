@@ -32,9 +32,7 @@ namespace Exomia.Network
         internal const ushort UDP_PAYLOAD_SIZE_MAX = 65507 - UDP_HEADER_OFFSET;
 
         internal const uint USER_COMMAND_LIMIT = 65500;
-
-        internal const int  COMMAND_OR_RESPONSE_ID_SHIFT = 16;
-        internal const int  DATA_LENGTH_MASK             = 0xFFFF;
+        
         internal const int  LENGTH_THRESHOLD             = 1 << 12;
         internal const byte RESPONSE_1_BIT               = 1 << 5;
         internal const byte REQUEST_1_BIT                = 1 << 6;

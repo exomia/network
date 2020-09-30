@@ -319,31 +319,27 @@ namespace Exomia.Network.Native
 
                 if (_tail + skip + Constants.TCP_HEADER_SIZE < _capacity)
                 {
-                    packetHeader = *(_ptr + _tail + skip);
-                    uint h2 = *(uint*)(_ptr + _tail + skip + 1);
-                    commandOrResponseID = (ushort)(h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
-                    dataLength          = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                    packetHeader        = *(_ptr + _tail + skip);
+                    commandOrResponseID = *(ushort*)(_ptr + _tail + skip + 1);
+                    dataLength          = *(ushort*)(_ptr + _tail + skip + 3);
                     checksum            = *(ushort*)(_ptr + _tail + skip + 5);
                 }
                 else if (_tail + skip < _capacity)
                 {
                     packetHeader = *(_ptr + ((_tail + skip) & _mask));
-                    uint h2 = (uint)((*(_ptr + ((_tail + skip + 4) & _mask)) << 24)
-                                   | (*(_ptr + ((_tail + skip + 3) & _mask)) << 16)
-                                   | (*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
-                                   | *(_ptr + ((_tail + skip + 1) & _mask)));
-                    commandOrResponseID = (ushort)(h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
-                    dataLength          = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                    commandOrResponseID = (ushort)((*(_ptr + ((_tail + skip + 2) & _mask)) << 8)
+                                                 | *(_ptr + ((_tail + skip + 1) & _mask)));
+                    dataLength = (ushort)((*(_ptr + ((_tail + skip + 4) & _mask)) << 8)
+                                        | *(_ptr + ((_tail + skip + 3) & _mask)));
                     checksum = (ushort)(
                         (*(_ptr + ((_tail + skip + 6) & _mask)) << 8)
                       | *(_ptr + ((_tail + skip + 5) & _mask)));
                 }
                 else
                 {
-                    packetHeader = *(_ptr + ((_tail + skip) & _mask));
-                    uint h2 = *(uint*)(_ptr + ((_tail + skip + 1) & _mask));
-                    commandOrResponseID = (ushort)(h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
-                    dataLength          = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                    packetHeader        = *(_ptr + ((_tail + skip) & _mask));
+                    commandOrResponseID = *(ushort*)(_ptr + ((_tail + skip + 1) & _mask));
+                    dataLength          = *(ushort*)(_ptr + ((_tail + skip + 3) & _mask));
                     checksum            = *(ushort*)(_ptr + ((_tail + skip + 5) & _mask));
                 }
 

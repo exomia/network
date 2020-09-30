@@ -661,8 +661,8 @@ namespace Exomia.Network.Tests.Native
 
             Assert.AreEqual(packetHeader, buffer[0]);
 
-            Assert.AreEqual(commandID, (ushort)((buffer[4] << 8) | buffer[3]));
-            Assert.AreEqual(dataLength, (buffer[2] << 8) | buffer[1]);
+            Assert.AreEqual(commandID, (ushort)((buffer[2] << 8) | buffer[1]));
+            Assert.AreEqual(dataLength, (buffer[4] << 8) | buffer[3]);
             Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
 
             cb.Write(buffer, 0, buffer.Length);                     // 14
@@ -671,8 +671,8 @@ namespace Exomia.Network.Tests.Native
             Assert.IsTrue(cb.PeekHeader(7, out packetHeader, out commandID, out dataLength, out checksum));
             Assert.AreEqual(packetHeader, buffer[0]);
 
-            Assert.AreEqual(commandID, (ushort)((buffer[4] << 8) | buffer[3]));
-            Assert.AreEqual(dataLength, (buffer[2] << 8) | buffer[1]);
+            Assert.AreEqual(commandID, (ushort)((buffer[2] << 8) | buffer[1]));
+            Assert.AreEqual(dataLength, (buffer[4] << 8) | buffer[3]);
             Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
 
             cb.Skip(7);
@@ -682,8 +682,8 @@ namespace Exomia.Network.Tests.Native
 
             Assert.AreEqual(packetHeader, buffer[0]);
 
-            Assert.AreEqual(commandID, (ushort)((buffer[4] << 8) | buffer[3]));
-            Assert.AreEqual(dataLength, (buffer[2] << 8) | buffer[1]);
+            Assert.AreEqual(commandID, (ushort)((buffer[2] << 8) | buffer[1]));
+            Assert.AreEqual(dataLength, (buffer[4] << 8) | buffer[3]);
             Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
 
             cb.Skip(7);
@@ -693,8 +693,8 @@ namespace Exomia.Network.Tests.Native
 
             Assert.AreEqual(packetHeader, buffer[0]);
 
-            Assert.AreEqual(commandID, (ushort)((buffer[4] << 8) | buffer[3]));
-            Assert.AreEqual(dataLength, (buffer[2] << 8) | buffer[1]);
+            Assert.AreEqual(commandID, (ushort)((buffer[2] << 8) | buffer[1]));
+            Assert.AreEqual(dataLength, (buffer[4] << 8) | buffer[3]);
             Assert.AreEqual(checksum, (ushort)((buffer[6] << 8) | buffer[5]));
         }
 

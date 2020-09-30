@@ -74,8 +74,8 @@ namespace Exomia.Network.Serialization
                 offset                                                += Constants.OFFSET_CHUNK_INFO;
             }
 
-            *(uint*)(dst + 1) = ((uint)(packetInfo.ChunkLength + offset) & Constants.DATA_LENGTH_MASK)
-                              | ((uint)packetInfo.CommandOrResponseID << Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
+            *(ushort*)(dst + 1) = packetInfo.CommandOrResponseID;
+            *(ushort*)(dst + 3) = (ushort)(packetInfo.ChunkLength + offset);
             Mem.Cpy(
                 dst + Constants.UDP_HEADER_SIZE + offset,
                 packetInfo.Src + packetInfo.ChunkOffset,
@@ -97,9 +97,8 @@ namespace Exomia.Network.Serialization
             fixed (byte* src = buffer)
             {
                 byte packetHeader = *src;
-                uint h2           = *(uint*)(src + 1);
-                deserializePacketInfo.CommandOrResponseID = (ushort)(h2 >> Constants.COMMAND_OR_RESPONSE_ID_SHIFT);
-                deserializePacketInfo.Length              = (int)(h2 & Constants.DATA_LENGTH_MASK);
+                deserializePacketInfo.CommandOrResponseID = *(ushort*)(src + 1);
+                deserializePacketInfo.Length              = *(ushort*)(src + 3);
                 deserializePacketInfo.RequestID           = 0;
                 deserializePacketInfo.IsResponseBitSet    = (packetHeader & Constants.RESPONSE_1_BIT) != 0;
 
