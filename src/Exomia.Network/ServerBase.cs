@@ -67,16 +67,16 @@ namespace Exomia.Network
         /// <value>
         ///     The clients.
         /// </value>
-        protected Dictionary<T, TServerClient>.ValueCollection Clients
+        protected Dictionary<Guid, TServerClient>.ValueCollection Clients
         {
             get
             {
-                Dictionary<T, TServerClient> clients;
-                bool                         lockTaken = false;
+                Dictionary<Guid, TServerClient> clients;
+                bool                            lockTaken = false;
                 try
                 {
                     _clientsLock.Enter(ref lockTaken);
-                    clients = new Dictionary<T, TServerClient>(_clients);
+                    clients = new Dictionary<Guid, TServerClient>(_clientGuids);
                 }
                 finally
                 {
@@ -87,11 +87,12 @@ namespace Exomia.Network
             }
         }
 
-        private protected readonly Dictionary<T, TServerClient> _clients;
-        private protected          Socket?                      _listener;
-        private protected          int                          _port;
-        private                    ushort                       _requestID;
-        private protected          byte                         _state;
+        private protected readonly Dictionary<T, TServerClient>    _clients;
+        private protected readonly Dictionary<Guid, TServerClient> _clientGuids;
+        private protected          Socket?                         _listener;
+        private protected          int                             _port;
+        private                    ushort                          _requestID;
+        private protected          byte                            _state;
 
         /// <summary>
         ///     The compression mode.
@@ -246,8 +247,8 @@ namespace Exomia.Network
             _taskCompletionSources =
                 new Dictionary<ushort, TaskCompletionSource<(ushort requestID, Packet packet)>>(
                     INITIAL_TASK_COMPLETION_QUEUE_SIZE);
-            _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
-
+            _clients                   = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
+            _clientGuids               = new Dictionary<Guid, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
             _clientsLock               = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
             _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
@@ -459,6 +460,7 @@ namespace Exomia.Network
             try
             {
                 _clientsLock.Enter(ref lockTaken);
+                _clientGuids.Remove(client.Guid);
                 removed = _clients.Remove(client.Arg0);
             }
             finally
@@ -498,6 +500,7 @@ namespace Exomia.Network
                 {
                     _clientsLock.Enter(ref lockTaken);
                     _clients.Add(arg0, serverClient);
+                    _clientGuids.Add(serverClient.Guid, serverClient);
                 }
                 finally
                 {

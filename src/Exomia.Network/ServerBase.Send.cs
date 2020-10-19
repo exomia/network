@@ -326,7 +326,11 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length, TServerClient? exclude = null)
+        public void SendToAll(ushort         commandOrResponseID,
+                              byte[]         data,
+                              int            offset,
+                              int            length,
+                              TServerClient? exclude = null)
         {
             Dictionary<T, TServerClient> clients;
             bool                         lockTaken = false;
@@ -345,8 +349,10 @@ namespace Exomia.Network
                 // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
                 foreach (T arg0 in clients.Keys)
                 {
-                    if(exclude == null || exclude.Arg0 != arg0)
+                    if (exclude == null || exclude.Arg0 != arg0)
+                    {
                         SendTo(arg0, commandOrResponseID, data, offset, length);
+                    }
                 }
             }
         }
