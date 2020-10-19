@@ -19,7 +19,7 @@ namespace Exomia.Network
     /// </summary>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
     public interface IServer<in TServerClient> : IDisposable
-        where TServerClient : IServerClient
+        where TServerClient : class, IServerClient
     {
         /// <summary>
         ///     send data to the client.
@@ -408,21 +408,24 @@ namespace Exomia.Network
         /// <param name="data">                The data. </param>
         /// <param name="offset">              The offset. </param>
         /// <param name="length">              The length. </param>
-        void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length);
+        /// <param name="exclude">             (Optional) The excluded client. </param>
+        void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length, TServerClient? exclude = null);
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="data">                The data. </param>
-        void SendToAll(ushort commandOrResponseID, byte[] data);
+        /// <param name="exclude">             (Optional) The excluded client. </param>
+        void SendToAll(ushort commandOrResponseID, byte[] data, TServerClient? exclude = null);
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="serializable">        The serializable. </param>
-        void SendToAll(ushort commandOrResponseID, ISerializable serializable);
+        /// <param name="exclude">             (Optional) The excluded client. </param>
+        void SendToAll(ushort commandOrResponseID, ISerializable serializable, TServerClient? exclude = null);
 
         /// <summary>
         ///     Sends data to all clients.
@@ -430,6 +433,7 @@ namespace Exomia.Network
         /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="data">                The data. </param>
-        void SendToAll<T1>(ushort commandOrResponseID, in T1 data) where T1 : unmanaged;
+        /// <param name="exclude">             (Optional) The excluded client. </param>
+        void SendToAll<T1>(ushort commandOrResponseID, in T1 data, TServerClient? exclude = null) where T1 : unmanaged;
     }
 }

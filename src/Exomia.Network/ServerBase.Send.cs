@@ -326,7 +326,7 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length)
+        public void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length, TServerClient? exclude = null)
         {
             Dictionary<T, TServerClient> clients;
             bool                         lockTaken = false;
@@ -342,32 +342,34 @@ namespace Exomia.Network
 
             if (clients.Count > 0)
             {
+                // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
                 foreach (T arg0 in clients.Keys)
                 {
-                    SendTo(arg0, commandOrResponseID, data, offset, length);
+                    if(exclude == null || exclude.Arg0 != arg0)
+                        SendTo(arg0, commandOrResponseID, data, offset, length);
                 }
             }
         }
 
         /// <inheritdoc />
-        public void SendToAll(ushort commandOrResponseID, byte[] data)
+        public void SendToAll(ushort commandOrResponseID, byte[] data, TServerClient? exclude = null)
         {
-            SendToAll(commandOrResponseID, data, 0, data.Length);
+            SendToAll(commandOrResponseID, data, 0, data.Length, exclude);
         }
 
         /// <inheritdoc />
-        public void SendToAll<T1>(ushort commandOrResponseID, in T1 data)
+        public void SendToAll<T1>(ushort commandOrResponseID, in T1 data, TServerClient? exclude = null)
             where T1 : unmanaged
         {
             byte[] buffer = data.ToBytesUnsafe2(out int length);
-            SendToAll(commandOrResponseID, buffer, 0, length);
+            SendToAll(commandOrResponseID, buffer, 0, length, exclude);
         }
 
         /// <inheritdoc />
-        public void SendToAll(ushort commandOrResponseID, ISerializable serializable)
+        public void SendToAll(ushort commandOrResponseID, ISerializable serializable, TServerClient? exclude = null)
         {
             byte[] buffer = serializable.Serialize(out int length);
-            SendToAll(commandOrResponseID, buffer, 0, length);
+            SendToAll(commandOrResponseID, buffer, 0, length, exclude);
         }
 
         /// <summary>

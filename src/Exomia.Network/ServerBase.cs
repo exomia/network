@@ -62,14 +62,36 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     The clients.
+        ///     Gets the clients.
         /// </summary>
-        protected readonly Dictionary<T, TServerClient> _clients;
+        /// <value>
+        ///     The clients.
+        /// </value>
+        protected Dictionary<T, TServerClient>.ValueCollection Clients
+        {
+            get
+            {
+                Dictionary<T, TServerClient> clients;
+                bool                         lockTaken = false;
+                try
+                {
+                    _clientsLock.Enter(ref lockTaken);
+                    clients = new Dictionary<T, TServerClient>(_clients);
+                }
+                finally
+                {
+                    if (lockTaken) { _clientsLock.Exit(false); }
+                }
 
-        private protected Socket? _listener;
-        private protected int     _port;
-        private           ushort  _requestID;
-        private protected byte    _state;
+                return clients.Values;
+            }
+        }
+
+        private protected readonly Dictionary<T, TServerClient> _clients;
+        private protected          Socket?                      _listener;
+        private protected          int                          _port;
+        private                    ushort                       _requestID;
+        private protected          byte                         _state;
 
         /// <summary>
         ///     The compression mode.
