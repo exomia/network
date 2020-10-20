@@ -11,7 +11,7 @@
 namespace Exomia.Network.Lib
 {
     sealed class ServerClientEventEntry<TServerClient>
-        where TServerClient : IServerClient
+        where TServerClient : class, IServerClient
     {
         internal readonly DeserializePacketHandler<object?>               _deserialize;
         private readonly  Event<ClientDataReceivedHandler<TServerClient>> _dataReceived;

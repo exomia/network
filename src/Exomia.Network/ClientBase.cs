@@ -344,13 +344,13 @@ namespace Exomia.Network
         private protected abstract bool TryCreateSocket(out Socket? socket);
 #endif
 
-        private protected void Disconnect(DisconnectReason reason)
+        private protected void Disconnect(DisconnectReason reason, bool noSend = true)
         {
             if (_clientSocket != null && _state != 0)
             {
-                if (reason != DisconnectReason.Aborted && reason != DisconnectReason.Error)
+                if (!noSend && reason != DisconnectReason.Aborted && reason != DisconnectReason.Error)
                 {
-                    Send(CommandID.DISCONNECT, new byte[] { 255 }, 0, 1);
+                    Send(CommandID.DISCONNECT, new DisconnectPacket(reason));
                 }
                 _state = 0;
                 try
@@ -413,13 +413,22 @@ namespace Exomia.Network
                 case CommandID.CONNECT:
                     {
                         deserializePacketInfo.Data.FromBytesUnsafe(out ConnectPacket connectPacket);
-                        fixed (byte* ptr = _connectChecksum)
+                        if (!connectPacket.Rejected)
                         {
-                            if (SequenceEqual(connectPacket.Checksum, ptr, 16))
+                            fixed (byte* ptr = _connectChecksum)
                             {
-                                _manuelResetEvent.Set();
+                                if (SequenceEqual(connectPacket.Checksum, ptr, 16))
+                                {
+                                    _manuelResetEvent.Set();
+                                }
                             }
                         }
+                        break;
+                    }
+                case CommandID.DISCONNECT:
+                    {
+                        deserializePacketInfo.Data.FromBytesUnsafe(out DisconnectPacket disconnectPacket);
+                        Disconnect(disconnectPacket.Reason);
                         break;
                     }
                 default:

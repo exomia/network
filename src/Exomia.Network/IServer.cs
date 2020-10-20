@@ -18,9 +18,26 @@ namespace Exomia.Network
     ///     Interface for server.
     /// </summary>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
-    public interface IServer<in TServerClient> : IDisposable
+    public interface IServer<TServerClient> : IDisposable
         where TServerClient : class, IServerClient
     {
+        /// <summary>
+        ///     Disconnects the client from server side.
+        /// </summary>
+        /// <param name="client"> The client. </param>
+        /// <param name="reason"> The reason. </param>
+        void Disconnect(TServerClient client, DisconnectReason reason);
+
+        /// <summary>
+        ///     Attempts to get a client (<typeparamref name="TServerClient" />) from the given GUID.
+        /// </summary>
+        /// <param name="guid">   Unique identifier. </param>
+        /// <param name="client"> [out] The client. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
+        bool TryGetClient(Guid guid, out TServerClient client);
+
         /// <summary>
         ///     send data to the client.
         /// </summary>

@@ -400,6 +400,7 @@ namespace Exomia.Network
             {
                 Mem.Cpy(packet.Checksum, ptr, sizeof(byte) * 16);
             }
+            packet.Rejected = false;
             return Send(CommandID.CONNECT, packet);
         }
 

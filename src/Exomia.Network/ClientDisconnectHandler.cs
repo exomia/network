@@ -20,5 +20,5 @@ namespace Exomia.Network
     public delegate void ClientDisconnectHandler<TServerClient>(IServer<TServerClient> server,
                                                                 TServerClient          client,
                                                                 DisconnectReason       reason)
-        where TServerClient : IServerClient;
+        where TServerClient : class, IServerClient;
 }

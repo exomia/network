@@ -15,6 +15,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network.Buffers;
+using Exomia.Network.DefaultPackets;
+using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
 #if NETSTANDARD2_1
 using System.Diagnostics.CodeAnalysis;
@@ -91,8 +93,8 @@ namespace Exomia.Network
         private protected readonly Dictionary<Guid, TServerClient> _clientGuids;
         private protected          Socket?                         _listener;
         private protected          int                             _port;
-        private                    ushort                          _requestID;
         private protected          byte                            _state;
+        private                    ushort                          _requestID;
 
         /// <summary>
         ///     The compression mode.
@@ -366,18 +368,18 @@ namespace Exomia.Network
                     }
                 case CommandID.CONNECT:
                     {
-                        InvokeClientConnected(arg0);
-                        SendTo(
-                            arg0, CommandID.CONNECT,
-                            deserializePacketInfo.Data, 0, deserializePacketInfo.Length,
-                            requestID);
+                        deserializePacketInfo.Data.FromBytesUnsafe(out ConnectPacket connectPacket);
+                        connectPacket.Rejected = !InvokeClientConnected(arg0);
+                        connectPacket.ToBytesUnsafe2(out byte[] response, out int length);
+                        SendTo(arg0, CommandID.CONNECT, response, 0, length, requestID);
                         break;
                     }
                 case CommandID.DISCONNECT:
                     {
                         if (_clients.TryGetValue(arg0, out TServerClient sClient))
                         {
-                            InvokeClientDisconnect(sClient, DisconnectReason.Graceful);
+                            deserializePacketInfo.Data.FromBytesUnsafe(out DisconnectPacket disconnectPacket);
+                            InvokeClientDisconnect(sClient, disconnectPacket.Reason);
                         }
                         break;
                     }
@@ -490,26 +492,39 @@ namespace Exomia.Network
         /// <param name="client"> The client. </param>
         private protected virtual void OnAfterClientDisconnect(TServerClient client) { }
 
-        private void InvokeClientConnected(T arg0)
+        private bool InvokeClientConnected(T arg0)
         {
-            if (CreateServerClient(out TServerClient serverClient))
-            {
-                serverClient.Arg0 = arg0;
-                bool lockTaken = false;
-                try
-                {
-                    _clientsLock.Enter(ref lockTaken);
-                    _clients.Add(arg0, serverClient);
-                    _clientGuids.Add(serverClient.Guid, serverClient);
-                }
-                finally
-                {
-                    if (lockTaken) { _clientsLock.Exit(false); }
-                }
+            if (!CreateServerClient(out TServerClient serverClient)) { return false; }
 
-                OnClientConnected(serverClient);
-                ClientConnected?.Invoke(this, serverClient);
+            serverClient.Arg0 = arg0;
+            bool lockTaken = false;
+            try
+            {
+                _clientsLock.Enter(ref lockTaken);
+                _clients.Add(arg0, serverClient);
+                _clientGuids.Add(serverClient.Guid, serverClient);
             }
+            finally
+            {
+                if (lockTaken) { _clientsLock.Exit(false); }
+            }
+
+            OnClientConnected(serverClient);
+            ClientConnected?.Invoke(this, serverClient);
+            return true;
+        }
+
+        /// <inheritdoc />
+        public void Disconnect(TServerClient client, DisconnectReason reason)
+        {
+            InvokeClientDisconnect(client, reason);
+            SendTo(client, CommandID.DISCONNECT, new DisconnectPacket(reason));
+        }
+
+        /// <inheritdoc />
+        public bool TryGetClient(Guid guid, out TServerClient client)
+        {
+            return _clientGuids.TryGetValue(guid, out client);
         }
 
         #region Add & Remove

@@ -27,7 +27,7 @@ namespace Exomia.Network
                                                                          ushort                 commandID,
                                                                          object                 data,
                                                                          ushort                 responseID)
-        where TServerClient : IServerClient;
+        where TServerClient : class, IServerClient;
 
     /// <summary>
     ///     Handler, called when the server received client data.
@@ -44,5 +44,5 @@ namespace Exomia.Network
                                                                   TServerClient          client,
                                                                   object                 data,
                                                                   ushort                 responseID)
-        where TServerClient : IServerClient;
+        where TServerClient : class, IServerClient;
 }

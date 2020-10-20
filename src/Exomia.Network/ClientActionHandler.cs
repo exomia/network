@@ -18,5 +18,5 @@ namespace Exomia.Network
     /// <param name="client"> The client. </param>
     public delegate void ClientActionHandler<TServerClient>(IServer<TServerClient> server,
                                                             TServerClient          client)
-        where TServerClient : IServerClient;
+        where TServerClient : class, IServerClient;
 }

@@ -13,19 +13,23 @@ using System.Runtime.InteropServices;
 namespace Exomia.Network.DefaultPackets
 {
     /// <summary>
-    ///     A connect packet.
+    ///     A disconnect packet.
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Size = 16)]
-    public unsafe struct ConnectPacket
+    public struct DisconnectPacket
     {
         /// <summary>
-        ///     Gets the checksum[16].
+        ///     The reason.
         /// </summary>
-        public fixed byte Checksum[16];
+        public DisconnectReason Reason;
 
         /// <summary>
-        ///     True if rejected.
+        ///     Initializes a new instance of the <see cref="DisconnectPacket" /> struct.
         /// </summary>
-        public bool Rejected;
+        /// <param name="reason"> The reason. </param>
+        public DisconnectPacket(DisconnectReason reason)
+        {
+            Reason = reason;
+        }
     }
 }
