@@ -470,13 +470,17 @@ namespace Exomia.Network
                 if (lockTaken) { _clientsLock.Exit(false); }
             }
 
-            if (removed)
-            {
-                OnClientDisconnected(client, reason);
-                ClientDisconnected?.Invoke(this, client, reason);
-            }
+            Task.Run(
+                () =>
+                {
+                    if (removed)
+                    {
+                        OnClientDisconnected(client, reason);
+                        ClientDisconnected?.Invoke(this, client, reason);
+                    }
 
-            OnAfterClientDisconnect(client);
+                    OnAfterClientDisconnect(client);
+                });
         }
 
         /// <summary>
@@ -508,9 +512,13 @@ namespace Exomia.Network
             {
                 if (lockTaken) { _clientsLock.Exit(false); }
             }
+            Task.Run(
+                () =>
+                {
+                    OnClientConnected(serverClient);
+                    ClientConnected?.Invoke(this, serverClient);
+                });
 
-            OnClientConnected(serverClient);
-            ClientConnected?.Invoke(this, serverClient);
             return true;
         }
 
