@@ -67,7 +67,7 @@ namespace Example.Client
             byte[] response =
                 Encoding.UTF8.GetBytes(data + "World " + string.Join(", ", Enumerable.Range(1, 1_000_000)));
             Response<string> result = await client.SendR(
-                responseID, response, 0, response.Length, DeserializePacketToString, true);
+                responseID, response, 0, response.Length, DeserializePacketToString, TimeSpan.FromSeconds(30), true);
 
             Console.WriteLine("GOT({1}): {0}", result.Result, result.SendError);
         }
