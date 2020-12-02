@@ -82,7 +82,7 @@ namespace Exomia.Network.Serialization
             *(ushort*)(dst + 1)                                   = packetInfo.CommandOrResponseID;
             *(ushort*)(dst + 3)                                   = (ushort)(l + offset + 1);
             *(ushort*)(dst + 5)                                   = checksum;
-            *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
+            *(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
 
             return Constants.TCP_HEADER_SIZE + offset + l + 1;
         }

@@ -6,8 +6,8 @@ on:
     pull_request:
         branches:
             - master
-            - development      
-env:  
+            - development
+env:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
     DOTNET_NOLOGO: 1
     DOTNET_CLI_TELEMETRY_OPTOUT: 1
