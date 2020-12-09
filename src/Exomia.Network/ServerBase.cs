@@ -358,20 +358,28 @@ namespace Exomia.Network
             }
             switch (commandOrResponseID)
             {
-                case CommandID.PING:
-                    {
-                        SendTo(
-                            arg0, CommandID.PING,
-                            deserializePacketInfo.Data, 0, deserializePacketInfo.Length,
-                            requestID);
-                        break;
-                    }
                 case CommandID.CONNECT:
                     {
                         deserializePacketInfo.Data.FromBytesUnsafe(out ConnectPacket connectPacket);
-                        connectPacket.Rejected = !InvokeClientConnected(arg0);
+                        connectPacket.Rejected = !InvokeClientConnected(arg0, out ulong nonce);
+                        connectPacket.Nonce    = nonce;
                         connectPacket.ToBytesUnsafe2(out byte[] response, out int length);
                         SendTo(arg0, CommandID.CONNECT, response, 0, length, requestID);
+                        break;
+                    }
+                case CommandID.IDENTIFICATION:
+                    {
+                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                        {
+                            ulong identification = BitConverter.ToUInt64(deserializePacketInfo.Data, 0);
+
+                            if (identification == Shared.Scramble(BitConverter.ToUInt64(sClient.Guid.ToByteArray(), 8)))
+                            {
+                                SendTo(
+                                    arg0, CommandID.IDENTIFICATION, deserializePacketInfo.Data, 0, sizeof(ulong),
+                                    requestID);
+                            }
+                        }
                         break;
                     }
                 case CommandID.DISCONNECT:
@@ -381,6 +389,14 @@ namespace Exomia.Network
                             deserializePacketInfo.Data.FromBytesUnsafe(out DisconnectPacket disconnectPacket);
                             InvokeClientDisconnect(sClient, disconnectPacket.Reason);
                         }
+                        break;
+                    }
+                case CommandID.PING:
+                    {
+                        SendTo(
+                            arg0, CommandID.PING,
+                            deserializePacketInfo.Data, 0, deserializePacketInfo.Length,
+                            requestID);
                         break;
                     }
                 default:
@@ -496,9 +512,13 @@ namespace Exomia.Network
         /// <param name="client"> The client. </param>
         private protected virtual void OnAfterClientDisconnect(TServerClient client) { }
 
-        private bool InvokeClientConnected(T arg0)
+        private bool InvokeClientConnected(T arg0, out ulong nonce)
         {
-            if (!CreateServerClient(out TServerClient serverClient)) { return false; }
+            if (!CreateServerClient(out TServerClient serverClient))
+            {
+                nonce = 0;
+                return false;
+            }
 
             serverClient.Arg0 = arg0;
             bool lockTaken = false;
@@ -519,6 +539,7 @@ namespace Exomia.Network
                     ClientConnected?.Invoke(this, serverClient);
                 });
 
+            nonce = BitConverter.ToUInt64(serverClient.Guid.ToByteArray(), 8);
             return true;
         }
 

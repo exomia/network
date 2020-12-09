@@ -200,9 +200,11 @@ static void Main(string[] args)
 }
 ```
 
----
-## Social
+## Q&A, Ideas or Show & tell us
 
+You have questions, ideas or want to show or tell us something?  
+Open a new [discussion](https://github.com/exomia/network/discussions) or join an existing one!
+  
+---
 [![Discord](https://img.shields.io/discord/427640639732187136.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.com/invite/ZFJXe6f)
 [![Twitch](https://img.shields.io/twitch/status/exomia.svg?label=&logo=twitch&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://www.twitch.tv/exomia/about)
-

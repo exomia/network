@@ -80,7 +80,7 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <NoWarn>1701;1702;IDE0063</NoWarn>
+    <NoWarn>1701;1702;IDE0063;IDE0079</NoWarn>
     <WarningsAsErrors>NU1605</WarningsAsErrors>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>

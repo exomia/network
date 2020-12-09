@@ -26,8 +26,13 @@ namespace Exomia.Network
         public const ushort DISCONNECT = 65533;
 
         /// <summary>
+        ///     IDENTIFICATION_ID.
+        /// </summary>
+        public const ushort IDENTIFICATION = 65532;
+
+        /// <summary>
         ///     PING_ID.
         /// </summary>
-        public const ushort PING = 65532;
+        public const ushort PING = 65531;
     }
 }

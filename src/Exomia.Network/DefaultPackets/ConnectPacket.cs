@@ -15,13 +15,18 @@ namespace Exomia.Network.DefaultPackets
     /// <summary>
     ///     A connect packet.
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 16)]
+    [StructLayout(LayoutKind.Sequential, Size = 25)]
     public unsafe struct ConnectPacket
     {
         /// <summary>
-        ///     Gets the checksum[16].
+        ///     Gets or sets the checksum[16].
         /// </summary>
         public fixed byte Checksum[16];
+
+        /// <summary>
+        ///     The nonce.
+        /// </summary>
+        public ulong Nonce;
 
         /// <summary>
         ///     True if rejected.

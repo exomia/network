@@ -13,6 +13,15 @@ namespace Exomia.Network
     static class Constants
     {
         // @formatter:off — disable formatter after this line
+
+        private const byte   MAJOR = 1;
+        private const byte   MINOR = 0;
+        private const ushort PATCH = 0;
+
+        // ReSharper disable ShiftExpressionZeroLeftOperand
+        internal const uint PROTOCOL_VERSION = (MAJOR << 24) | (MINOR << 16) | PATCH;
+        // ReSharper enable ShiftExpressionZeroLeftOperand
+
         internal const ushort OFFSET_REQUEST_ID        = 2;
         internal const ushort OFFSET_COMPRESSION_MODE  = 4;
         internal const ushort OFFSET_CHUNK_INFO        = 12;
@@ -39,6 +48,7 @@ namespace Exomia.Network
         internal const byte IS_CHUNKED_1_BIT             = 1 << 7;
         internal const byte COMPRESSED_MODE_MASK         = 0b0001_1000;
         internal const byte ZERO_BYTE                    = 0;
+        
         // @formatter:on — enable formatter after this line
     }
 }

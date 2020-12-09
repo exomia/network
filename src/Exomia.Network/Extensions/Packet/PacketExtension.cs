@@ -35,20 +35,6 @@ namespace Exomia.Network.Extensions.Packet
         }
 
         /// <summary>
-        ///     A Network.Packet extension method that converts a packet to a structure 2.
-        /// </summary>
-        /// <typeparam name="T"> Generic type parameter. </typeparam>
-        /// <param name="packet"> The packet. </param>
-        /// <returns>
-        ///     Packet as a T.
-        /// </returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T ToStruct2<T>(this Network.Packet packet) where T : unmanaged
-        {
-            return packet.Buffer.FromBytesUnsafe2<T>(packet.Offset);
-        }
-
-        /// <summary>
         ///     A Network.Packet extension method that deserialize this packet to the class.
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>

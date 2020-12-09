@@ -68,6 +68,7 @@ namespace Exomia.Network
 
         private protected EncryptionMode _encryptionMode  = EncryptionMode.None;
         private readonly  byte[]         _connectChecksum = new byte[16];
+        private           ulong          _identification;
 
         private readonly ManualResetEvent                     _manuelResetEvent;
         private readonly Dictionary<ushort, ClientEventEntry> _dataReceivedCallbacks;
@@ -400,16 +401,6 @@ namespace Exomia.Network
             }
             switch (commandOrResponseID)
             {
-                case CommandID.PING:
-                    {
-                        PingPacket pingStruct;
-                        fixed (byte* ptr = deserializePacketInfo.Data)
-                        {
-                            pingStruct = *(PingPacket*)ptr;
-                        }
-                        Ping?.Invoke(pingStruct);
-                        break;
-                    }
                 case CommandID.CONNECT:
                     {
                         deserializePacketInfo.Data.FromBytesUnsafe(out ConnectPacket connectPacket);
@@ -419,9 +410,19 @@ namespace Exomia.Network
                             {
                                 if (SequenceEqual(connectPacket.Checksum, ptr, 16))
                                 {
-                                    _manuelResetEvent.Set();
+                                    Send(
+                                        CommandID.IDENTIFICATION,
+                                        _identification = Shared.Scramble(connectPacket.Nonce));
                                 }
                             }
+                        }
+                        break;
+                    }
+                case CommandID.IDENTIFICATION:
+                    {
+                        if (_identification == BitConverter.ToUInt64(deserializePacketInfo.Data, 0))
+                        {
+                            _manuelResetEvent.Set();
                         }
                         break;
                     }
@@ -429,6 +430,16 @@ namespace Exomia.Network
                     {
                         deserializePacketInfo.Data.FromBytesUnsafe(out DisconnectPacket disconnectPacket);
                         Disconnect(disconnectPacket.Reason);
+                        break;
+                    }
+                case CommandID.PING:
+                    {
+                        PingPacket pingStruct;
+                        fixed (byte* ptr = deserializePacketInfo.Data)
+                        {
+                            pingStruct = *(PingPacket*)ptr;
+                        }
+                        Ping?.Invoke(pingStruct);
                         break;
                     }
                 default:

@@ -293,21 +293,6 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Deserialize response.
-        /// </summary>
-        /// <typeparam name="TResult"> Type of the result. </typeparam>
-        /// <param name="packet"> The packet. </param>
-        /// <returns>
-        ///     A TResult.
-        /// </returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static TResult DeserializeResponse<TResult>(in Packet packet)
-            where TResult : unmanaged
-        {
-            return packet.Buffer.FromBytesUnsafe2<TResult>(packet.Offset);
-        }
-
-        /// <summary>
         ///     Begins send data.
         /// </summary>
         /// <param name="commandOrResponseID"> The command or response id. </param>
@@ -401,6 +386,7 @@ namespace Exomia.Network
                 Mem.Cpy(packet.Checksum, ptr, sizeof(byte) * 16);
             }
             packet.Rejected = false;
+            packet.Nonce    = 0;
             return Send(CommandID.CONNECT, packet);
         }
 
@@ -412,5 +398,20 @@ namespace Exomia.Network
         ///     A SendError.
         /// </returns>
         private protected abstract SendError BeginSend(in PacketInfo packetInfo);
+
+        /// <summary>
+        ///     Deserialize response.
+        /// </summary>
+        /// <typeparam name="TResult"> Type of the result. </typeparam>
+        /// <param name="packet"> The packet. </param>
+        /// <returns>
+        ///     A TResult.
+        /// </returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static TResult DeserializeResponse<TResult>(in Packet packet)
+            where TResult : unmanaged
+        {
+            return packet.Buffer.FromBytesUnsafe<TResult>(packet.Offset);
+        }
     }
 }
