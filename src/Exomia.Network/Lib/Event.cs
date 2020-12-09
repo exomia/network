@@ -26,7 +26,7 @@ namespace Exomia.Network.Lib
         private SpinLock _lock;
 
         /// <summary>
-        ///     the count of registered callbacks.
+        ///     The count of registered callbacks.
         /// </summary>
         /// <value>
         ///     The count.
@@ -38,8 +38,7 @@ namespace Exomia.Network.Lib
         }
 
         /// <summary>
-        ///     the event list Attention: do not use Callbacks.Length use the <see cref="Count" />
-        ///     Property instead.
+        ///     The event list entry at given <paramref name="index"/>.
         /// </summary>
         /// <param name="index"> Zero-based index of the entry to access. </param>
         /// <returns>
@@ -62,7 +61,7 @@ namespace Exomia.Network.Lib
         }
 
         /// <summary>
-        ///     adds a new callback to the event list.
+        ///     Adds a new callback to the event list.
         /// </summary>
         /// <param name="callback"> callback. </param>
         public void Add(T callback)
@@ -86,7 +85,7 @@ namespace Exomia.Network.Lib
         }
 
         /// <summary>
-        ///     removes a callback at the given index from the event list.
+        ///     Removes a callback at the given index from the event list.
         /// </summary>
         /// <param name="index"> index. </param>
         public void Remove(int index)
