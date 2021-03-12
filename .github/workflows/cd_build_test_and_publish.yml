@@ -64,9 +64,9 @@ jobs:
         os: [windows-latest, ubuntu-latest]
         include:
             - os: windows-latest
-              configurations: "Windows-Release"
+              configurations: "Windows-Debug"
             - os: ubuntu-latest
-              configurations: "Linux-Release"
+              configurations: "Linux-Debug"
     name: 'publish ${{ matrix.configurations }} to github [v${{ github.event.inputs.version }}] on ${{ matrix.os }}'
     needs: [test]
     runs-on: ubuntu-latest
