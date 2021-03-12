@@ -1,0 +1,57 @@
+name: '[CI] build & test'
+on:
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
+            - development
+env:
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+    DOTNET_NOLOGO: 1
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        include:
+            - os: windows-latest
+              configurations: [Windows-Debug, Windows-Release]
+            - os: ubuntu-latest
+              configurations: [Linux-Debug, Linux-Release]
+    name: 'build ${{ matrix.configurations }} on ${{ matrix.os }}'
+    runs-on: ${{ matrix.os }}
+    steps: 
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1   
+      with:
+        dotnet-version: 5.0.200
+    - name: 'dotnet build ${{ matrix.configurations }}'
+      run: |
+        dotnet build src/Exomia.Network --configuration ${{ matrix.configurations }} --force --nologo -p:Platform=AnyCPU
+        dotnet build src/Exomia.Network --configuration ${{ matrix.configurations }} --force --nologo -p:Platform=x86
+        dotnet build src/Exomia.Network --configuration ${{ matrix.configurations }} --force --nologo -p:Platform=x64
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        include:
+            - os: windows-latest
+              configurations: [Windows-Debug, Windows-Release]
+            - os: ubuntu-latest
+              configurations: [Linux-Debug, Linux-Release]
+    name: 'test ${{ matrix.configurations }} on ${{ matrix.os }}'
+    needs: [build]
+    runs-on: ${{ matrix.os }}
+    steps:    
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1   
+      with:
+        dotnet-version: 5.0.200
+    - name: 'dotnet test ${{ matrix.configurations }}'
+      run: |
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.configurations }} --nologo -p:Platform=AnyCPU
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.configurations }} --nologo -p:Platform=x86
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.configurations }} --nologo -p:Platform=x64
