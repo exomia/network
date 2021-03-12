@@ -16,11 +16,12 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
+        configurations: [Debug, Release]
         include:
             - os: windows-latest
-              configurations: [Windows-Debug, Windows-Release]
+              prefix: "Windows-"
             - os: ubuntu-latest
-              configurations: [Linux-Debug, Linux-Release]
+              prefix: "Linux-"
     name: 'build ${{ matrix.configurations }} on ${{ matrix.os }}'
     runs-on: ${{ matrix.os }}
     steps: 
@@ -28,20 +29,21 @@ jobs:
     - uses: actions/setup-dotnet@v1   
       with:
         dotnet-version: 5.0.200
-    - name: 'dotnet build ${{ matrix.configurations }}'
+    - name: 'dotnet build ${{ matrix.prefix }}${{ matrix.configurations }}'
       run: |
-        dotnet build src/Exomia.Network --configuration ${{ matrix.configurations }} --force --nologo -p:Platform=AnyCPU
-        dotnet build src/Exomia.Network --configuration ${{ matrix.configurations }} --force --nologo -p:Platform=x86
-        dotnet build src/Exomia.Network --configuration ${{ matrix.configurations }} --force --nologo -p:Platform=x64
+        dotnet build src/Exomia.Network --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --force --nologo -p:Platform=AnyCPU
+        dotnet build src/Exomia.Network --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --force --nologo -p:Platform=x86
+        dotnet build src/Exomia.Network --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --force --nologo -p:Platform=x64
   test:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
+        configurations: [Debug, Release]
         include:
             - os: windows-latest
-              configurations: [Windows-Debug, Windows-Release]
+              prefix: "Windows-"
             - os: ubuntu-latest
-              configurations: [Linux-Debug, Linux-Release]
+              prefix: "Linux-"
     name: 'test ${{ matrix.configurations }} on ${{ matrix.os }}'
     needs: [build]
     runs-on: ${{ matrix.os }}
@@ -50,8 +52,8 @@ jobs:
     - uses: actions/setup-dotnet@v1   
       with:
         dotnet-version: 5.0.200
-    - name: 'dotnet test ${{ matrix.configurations }}'
+    - name: 'dotnet test ${{ matrix.prefix }}${{ matrix.configurations }}'
       run: |
-        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.configurations }} --nologo -p:Platform=AnyCPU
-        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.configurations }} --nologo -p:Platform=x86
-        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.configurations }} --nologo -p:Platform=x64
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --nologo -p:Platform=AnyCPU
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --nologo -p:Platform=x86
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --nologo -p:Platform=x64
