@@ -1,0 +1,115 @@
+name: '[CD] build, test & publish'
+on: 
+  workflow_dispatch:
+    inputs:
+      version:
+        description: |
+          # Specify the project version format:
+            major.minor.patch[-rc|beta|alpha].X  
+        required: true
+        default: '0.0.0'
+env:  
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+    DOTNET_NOLOGO: 1
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        configurations: [Debug, Release]
+        include:
+            - os: windows-latest
+              prefix: "Windows-"
+            - os: ubuntu-latest
+              prefix: "Linux-"
+    name: 'build ${{ matrix.prefix }}${{ matrix.configurations }} on ${{ matrix.os }}'
+    runs-on: ${{ matrix.os }}
+    steps: 
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1   
+      with:
+        dotnet-version: 5.0.200
+    - name: 'dotnet build ${{ matrix.prefix }}${{ matrix.configurations }}'
+      run: |
+        dotnet build src/Exomia.Network --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --force --nologo -p:Platform=AnyCPU
+        dotnet build src/Exomia.Network --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --force --nologo -p:Platform=x86
+        dotnet build src/Exomia.Network --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --force --nologo -p:Platform=x64
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        configurations: [Debug, Release]
+        include:
+            - os: windows-latest
+              prefix: "Windows-"
+            - os: ubuntu-latest
+              prefix: "Linux-"
+    name: 'test ${{ matrix.prefix }}${{ matrix.configurations }} on ${{ matrix.os }}'
+    needs: [build]
+    runs-on: ${{ matrix.os }}
+    steps:    
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1   
+      with:
+        dotnet-version: 5.0.200
+    - name: 'dotnet test ${{ matrix.prefix }}${{ matrix.configurations }}'
+      run: |
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --nologo -p:Platform=AnyCPU
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --nologo -p:Platform=x86
+        dotnet test tests/L0/Exomia.Network.Tests --configuration ${{ matrix.prefix }}${{ matrix.configurations }} --nologo -p:Platform=x64
+  publish-on-github:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        include:
+            - os: windows-latest
+              configurations: "Windows-Release"
+            - os: ubuntu-latest
+              configurations: "Linux-Release"
+    name: 'publish ${{ matrix.configurations }} to github [v${{ github.event.inputs.version }}] on ${{ matrix.os }}'
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:    
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1   
+      with:
+        dotnet-version: 5.0.200
+    - name: publish ${{ github.repository }} [v${{ github.event.inputs.version }}]
+      run: |
+        dotnet pack --configuration ${{ matrix.configurations }} --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=${{ github.event.inputs.version }}
+        dotnet pack --configuration ${{ matrix.configurations }} --verbosity m --force --nologo -p:Platform=x86 -p:Version=${{ github.event.inputs.version }}
+        dotnet pack --configuration ${{ matrix.configurations }} --verbosity m --force --nologo -p:Platform=x64 -p:Version=${{ github.event.inputs.version }}
+        for f in ./*.nupkg
+           do
+             STATUSCODE=$(curl -sSX PUT --retry 3 -o /dev/null -w "%{http_code}" -u "${{ github.repository_owner }}:${{ github.token }}" -F package=@$f https://nuget.pkg.github.com/${{ github.repository_owner }}/)
+             echo "[$STATUSCODE:https://nuget.pkg.github.com/${{ github.repository_owner }}/] $f"
+             if [ "${STATUSCODE}" != 200 ] && [ "${STATUSCODE}" != 409 ]; then exit 1; fi
+           done
+      shell: bash
+      working-directory: src/Exomia.Network
+  publish-on-nuget:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        include:
+            - os: windows-latest
+              configurations: "Windows-Release"
+            - os: ubuntu-latest
+              configurations: "Linux-Release"
+    name: 'publish ${{ matrix.configurations }} to nuget [v${{ github.event.inputs.version }}] on ${{ matrix.os }}'
+    needs: [test, publish-on-github]
+    runs-on: ubuntu-latest
+    steps:    
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1   
+      with:
+        dotnet-version: 5.0.200
+    - name: publish ${{ github.repository }} [v${{ github.event.inputs.version }}]
+      run: |
+        dotnet pack --configuration ${{ matrix.configurations }} --verbosity m --force --nologo -p:Platform=AnyCPU -p:Version=${{ github.event.inputs.version }}
+        dotnet pack --configuration ${{ matrix.configurations }} --verbosity m --force --nologo -p:Platform=x86 -p:Version=${{ github.event.inputs.version }}
+        dotnet pack --configuration ${{ matrix.configurations }} --verbosity m --force --nologo -p:Platform=x64 -p:Version=${{ github.event.inputs.version }}
+        dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.EXOMIA_NUGET_API_KEY_PUSH }} --skip-duplicate
+      shell: bash
+      working-directory: src/Exomia.Network

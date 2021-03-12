@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -114,9 +114,12 @@ namespace Exomia.Network
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
                 if (packet.Buffer != null)
                 {
-                    TResult result = deserialize(in packet);
+                    if (deserialize(in packet, out TResult result))
+                    {
+                        ByteArrayPool.Return(packet.Buffer);
+                        return new Response<TResult>(result, rID, SendError.None);
+                    }
                     ByteArrayPool.Return(packet.Buffer);
-                    return new Response<TResult>(result, rID, SendError.None);
                 }
                 sendError = SendError.Unknown; //TimeOut Error
             }
@@ -144,8 +147,8 @@ namespace Exomia.Network
                                                         bool          isResponse = false)
             where TResult : unmanaged
         {
-            return SendToR(
-                client, commandOrResponseID, data, 0, data.Length, DeserializeResponse<TResult>, s_defaultTimeout,
+            return SendToR<TResult>(
+                client, commandOrResponseID, data, 0, data.Length, DeserializeResponse, s_defaultTimeout,
                 isResponse);
         }
 
@@ -158,8 +161,8 @@ namespace Exomia.Network
                                                         bool          isResponse = false)
             where TResult : unmanaged
         {
-            return SendToR(
-                client, commandOrResponseID, data, offset, length, DeserializeResponse<TResult>, s_defaultTimeout,
+            return SendToR<TResult>(
+                client, commandOrResponseID, data, offset, length, DeserializeResponse, s_defaultTimeout,
                 isResponse);
         }
 
@@ -172,7 +175,7 @@ namespace Exomia.Network
                                                         DeserializePacketHandler<TResult> deserialize,
                                                         bool                              isResponse = false)
         {
-            return SendToR(
+            return SendToR<TResult>(
                 client, commandOrResponseID, data, offset, length, deserialize, s_defaultTimeout, isResponse);
         }
 
@@ -183,7 +186,7 @@ namespace Exomia.Network
                                                         DeserializePacketHandler<TResult> deserialize,
                                                         bool                              isResponse = false)
         {
-            return SendToR(
+            return SendToR<TResult>(
                 client, commandOrResponseID, data, 0, data.Length, deserialize, s_defaultTimeout, isResponse);
         }
 
@@ -197,8 +200,8 @@ namespace Exomia.Network
                                                         bool          isResponse = false)
             where TResult : unmanaged
         {
-            return SendToR(
-                client, commandOrResponseID, data, offset, length, DeserializeResponse<TResult>, timeout, isResponse);
+            return SendToR<TResult>(
+                client, commandOrResponseID, data, offset, length, DeserializeResponse, timeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -209,8 +212,8 @@ namespace Exomia.Network
                                                         bool          isResponse = false)
             where TResult : unmanaged
         {
-            return SendToR(
-                client, commandOrResponseID, data, 0, data.Length, DeserializeResponse<TResult>, timeout, isResponse);
+            return SendToR<TResult>(
+                client, commandOrResponseID, data, 0, data.Length, DeserializeResponse, timeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -221,7 +224,8 @@ namespace Exomia.Network
                                                         TimeSpan                          timeout,
                                                         bool                              isResponse = false)
         {
-            return SendToR(client, commandOrResponseID, data, 0, data.Length, deserialize, timeout, isResponse);
+            return SendToR<TResult>(
+                client, commandOrResponseID, data, 0, data.Length, deserialize, timeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -232,8 +236,8 @@ namespace Exomia.Network
             where TResult : unmanaged
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendToR(
-                client, commandOrResponseID, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout,
+            return SendToR<TResult>(
+                client, commandOrResponseID, dataB, 0, length, DeserializeResponse, s_defaultTimeout,
                 isResponse);
         }
 
@@ -245,7 +249,8 @@ namespace Exomia.Network
                                                         bool                              isResponse = false)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendToR(client, commandOrResponseID, dataB, 0, length, deserialize, s_defaultTimeout, isResponse);
+            return SendToR<TResult>(
+                client, commandOrResponseID, dataB, 0, length, deserialize, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -257,8 +262,8 @@ namespace Exomia.Network
             where TResult : unmanaged
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendToR(
-                client, commandOrResponseID, dataB, 0, length, DeserializeResponse<TResult>, timeout, isResponse);
+            return SendToR<TResult>(
+                client, commandOrResponseID, dataB, 0, length, DeserializeResponse, timeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -270,7 +275,7 @@ namespace Exomia.Network
                                                         bool                              isResponse = false)
         {
             byte[] dataB = serializable.Serialize(out int length);
-            return SendToR(client, commandOrResponseID, dataB, 0, length, deserialize, timeout, isResponse);
+            return SendToR<TResult>(client, commandOrResponseID, dataB, 0, length, deserialize, timeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -282,8 +287,8 @@ namespace Exomia.Network
             where TResult : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendToR(
-                client, commandOrResponseID, dataB, 0, length, DeserializeResponse<TResult>, s_defaultTimeout,
+            return SendToR<TResult>(
+                client, commandOrResponseID, dataB, 0, length, DeserializeResponse, s_defaultTimeout,
                 isResponse);
         }
 
@@ -296,7 +301,8 @@ namespace Exomia.Network
             where TValue : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendToR(client, commandOrResponseID, dataB, 0, length, deserialize, s_defaultTimeout, isResponse);
+            return SendToR<TResult>(
+                client, commandOrResponseID, dataB, 0, length, deserialize, s_defaultTimeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -309,8 +315,8 @@ namespace Exomia.Network
             where TResult : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendToR(
-                client, commandOrResponseID, dataB, 0, length, DeserializeResponse<TResult>, timeout, isResponse);
+            return SendToR<TResult>(
+                client, commandOrResponseID, dataB, 0, length, DeserializeResponse, timeout, isResponse);
         }
 
         /// <inheritdoc />
@@ -322,11 +328,15 @@ namespace Exomia.Network
                                                                 bool isResponse = false) where TValue : unmanaged
         {
             data.ToBytesUnsafe2(out byte[] dataB, out int length);
-            return SendToR(client, commandOrResponseID, dataB, 0, length, deserialize, timeout, isResponse);
+            return SendToR<TResult>(client, commandOrResponseID, dataB, 0, length, deserialize, timeout, isResponse);
         }
 
         /// <inheritdoc />
-        public void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length)
+        public void SendToAll(ushort         commandOrResponseID,
+                              byte[]         data,
+                              int            offset,
+                              int            length,
+                              TServerClient? exclude = null)
         {
             Dictionary<T, TServerClient> clients;
             bool                         lockTaken = false;
@@ -342,47 +352,49 @@ namespace Exomia.Network
 
             if (clients.Count > 0)
             {
+                // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
                 foreach (T arg0 in clients.Keys)
                 {
-                    SendTo(arg0, commandOrResponseID, data, offset, length);
+                    if (exclude == null || exclude.Arg0 != arg0)
+                    {
+                        SendTo(arg0, commandOrResponseID, data, offset, length);
+                    }
                 }
             }
         }
 
         /// <inheritdoc />
-        public void SendToAll(ushort commandOrResponseID, byte[] data)
+        public void SendToAll(ushort commandOrResponseID, byte[] data, TServerClient? exclude = null)
         {
-            SendToAll(commandOrResponseID, data, 0, data.Length);
+            SendToAll(commandOrResponseID, data, 0, data.Length, exclude);
         }
 
         /// <inheritdoc />
-        public void SendToAll<T1>(ushort commandOrResponseID, in T1 data)
+        public void SendToAll<T1>(ushort commandOrResponseID, in T1 data, TServerClient? exclude = null)
             where T1 : unmanaged
         {
             byte[] buffer = data.ToBytesUnsafe2(out int length);
-            SendToAll(commandOrResponseID, buffer, 0, length);
+            SendToAll(commandOrResponseID, buffer, 0, length, exclude);
         }
 
         /// <inheritdoc />
-        public void SendToAll(ushort commandOrResponseID, ISerializable serializable)
+        public void SendToAll(ushort commandOrResponseID, ISerializable serializable, TServerClient? exclude = null)
         {
             byte[] buffer = serializable.Serialize(out int length);
-            SendToAll(commandOrResponseID, buffer, 0, length);
+            SendToAll(commandOrResponseID, buffer, 0, length, exclude);
         }
 
-        /// <summary>
-        ///     Deserialize response.
-        /// </summary>
+        /// <summary> Deserialize response. </summary>
         /// <typeparam name="TResult"> Type of the result. </typeparam>
         /// <param name="packet"> The packet. </param>
-        /// <returns>
-        ///     A TResult.
-        /// </returns>
+        /// <param name="result"> [out] The result. </param>
+        /// <returns> True if it succeeds, false if it fails. </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static TResult DeserializeResponse<TResult>(in Packet packet)
+        public static bool DeserializeResponse<TResult>(in Packet packet, out TResult result)
             where TResult : unmanaged
         {
-            return packet.Buffer.FromBytesUnsafe2<TResult>(packet.Offset);
+            packet.Buffer.FromBytesUnsafe(packet.Offset, out result);
+            return true;
         }
 
         private unsafe SendError SendTo(T      arg0,
@@ -454,14 +466,6 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     Begins send data to.
-        /// </summary>
-        /// <param name="arg0">       The argument 0. </param>
-        /// <param name="packetInfo"> Information describing the packet. </param>
-        /// <returns>
-        ///     A SendError.
-        /// </returns>
         private protected abstract SendError BeginSendTo(T             arg0,
                                                          in PacketInfo packetInfo);
     }

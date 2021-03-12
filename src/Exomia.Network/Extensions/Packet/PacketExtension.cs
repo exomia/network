@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -32,20 +32,6 @@ namespace Exomia.Network.Extensions.Packet
         public static T ToStruct<T>(this Network.Packet packet) where T : struct
         {
             return packet.Buffer.FromBytesUnsafe<T>(packet.Offset);
-        }
-
-        /// <summary>
-        ///     A Network.Packet extension method that converts a packet to a structure 2.
-        /// </summary>
-        /// <typeparam name="T"> Generic type parameter. </typeparam>
-        /// <param name="packet"> The packet. </param>
-        /// <returns>
-        ///     Packet as a T.
-        /// </returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T ToStruct2<T>(this Network.Packet packet) where T : unmanaged
-        {
-            return packet.Buffer.FromBytesUnsafe2<T>(packet.Offset);
         }
 
         /// <summary>

@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -20,10 +21,6 @@ using Exomia.Network.DefaultPackets;
 using Exomia.Network.Exceptions;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
-#if NETSTANDARD2_1
-using System.Diagnostics.CodeAnalysis;
-
-#endif
 
 namespace Exomia.Network
 {
@@ -58,16 +55,12 @@ namespace Exomia.Network
         /// </summary>
         public event Action<PingPacket>? Ping;
 
-        private protected Socket? _clientSocket;
-        private protected byte    _state;
-
         /// <summary>
         ///     The compression mode.
         /// </summary>
         protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
-        private protected EncryptionMode _encryptionMode  = EncryptionMode.None;
-        private readonly  byte[]         _connectChecksum = new byte[16];
+        private readonly byte[] _connectChecksum = new byte[16];
 
         private readonly ManualResetEvent                     _manuelResetEvent;
         private readonly Dictionary<ushort, ClientEventEntry> _dataReceivedCallbacks;
@@ -77,12 +70,18 @@ namespace Exomia.Network
 
         private readonly byte                              _listenerCount;
         private readonly Event<CommandDataReceivedHandler> _dataReceived;
+        private          ulong                             _identification;
         private          SpinLock                          _dataReceivedCallbacksLock;
         private          SpinLock                          _lockTaskCompletionSources;
         private          int                               _port;
         private          string                            _serverAddress;
         private          ushort                            _requestID;
         private          int                               _packetID;
+
+        private protected Socket? _clientSocket;
+        private protected byte    _state;
+
+        private protected EncryptionMode _encryptionMode = EncryptionMode.None;
 
         /// <summary>
         ///     Gets the port.
@@ -277,7 +276,7 @@ namespace Exomia.Network
                     bool         result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
                     _clientSocket.EndConnect(iar);
 
-                    _serverAddress = _clientSocket?.RemoteEndPoint.ToString() ?? "<invalid>";
+                    _serverAddress = _clientSocket?.RemoteEndPoint?.ToString() ?? "<invalid>";
 
                     if (result)
                     {
@@ -304,12 +303,6 @@ namespace Exomia.Network
 
             return false;
         }
-
-        /// <summary>
-        ///     Called after the <see cref="Connect(System.Net.IPAddress[],int,System.Action{Exomia.Network.ClientBase},int)" />
-        ///     method directly after the socket is successfully created.
-        /// </summary>
-        private protected abstract void Configure();
 
         /// <inheritdoc />
         public bool Connect(string              serverAddress,
@@ -338,19 +331,21 @@ namespace Exomia.Network
             return true;
         }
 
-#if NETSTANDARD2_1
-        private protected abstract bool TryCreateSocket([NotNullWhen(true)] out Socket? socket);
-#else
-        private protected abstract bool TryCreateSocket(out Socket? socket);
-#endif
+        /// <summary>
+        ///     Called after the <see cref="Connect(System.Net.IPAddress[],int,System.Action{Exomia.Network.ClientBase},int)" />
+        ///     method directly after the socket is successfully created.
+        /// </summary>
+        private protected abstract void Configure();
 
-        private protected void Disconnect(DisconnectReason reason)
+        private protected abstract bool TryCreateSocket([NotNullWhen(true)] out Socket? socket);
+
+        private protected void Disconnect(DisconnectReason reason, bool noSend = true)
         {
             if (_clientSocket != null && _state != 0)
             {
-                if (reason != DisconnectReason.Aborted && reason != DisconnectReason.Error)
+                if (!noSend && reason != DisconnectReason.Aborted && reason != DisconnectReason.Error)
                 {
-                    Send(CommandID.DISCONNECT, new byte[] { 255 }, 0, 1);
+                    Send(CommandID.DISCONNECT, new DisconnectPacket(reason));
                 }
                 _state = 0;
                 try
@@ -400,6 +395,37 @@ namespace Exomia.Network
             }
             switch (commandOrResponseID)
             {
+                case CommandID.CONNECT:
+                    {
+                        deserializePacketInfo.Data.FromBytesUnsafe(out ConnectPacket connectPacket);
+                        if (!connectPacket.Rejected)
+                        {
+                            fixed (byte* ptr = _connectChecksum)
+                            {
+                                if (SequenceEqual(connectPacket.Checksum, ptr, 16))
+                                {
+                                    Send(
+                                        CommandID.IDENTIFICATION,
+                                        _identification = Shared.Scramble(connectPacket.Nonce));
+                                }
+                            }
+                        }
+                        break;
+                    }
+                case CommandID.IDENTIFICATION:
+                    {
+                        if (_identification == BitConverter.ToUInt64(deserializePacketInfo.Data, 0))
+                        {
+                            _manuelResetEvent.Set();
+                        }
+                        break;
+                    }
+                case CommandID.DISCONNECT:
+                    {
+                        deserializePacketInfo.Data.FromBytesUnsafe(out DisconnectPacket disconnectPacket);
+                        Disconnect(disconnectPacket.Reason);
+                        break;
+                    }
                 case CommandID.PING:
                     {
                         PingPacket pingStruct;
@@ -408,18 +434,6 @@ namespace Exomia.Network
                             pingStruct = *(PingPacket*)ptr;
                         }
                         Ping?.Invoke(pingStruct);
-                        break;
-                    }
-                case CommandID.CONNECT:
-                    {
-                        deserializePacketInfo.Data.FromBytesUnsafe(out ConnectPacket connectPacket);
-                        fixed (byte* ptr = _connectChecksum)
-                        {
-                            if (SequenceEqual(connectPacket.Checksum, ptr, 16))
-                            {
-                                _manuelResetEvent.Set();
-                            }
-                        }
                         break;
                     }
                 default:
@@ -431,19 +445,15 @@ namespace Exomia.Network
                             ThreadPool.QueueUserWorkItem(
                                 x =>
                                 {
-                                    object? res = cee._deserialize(in packet);
-                                    ByteArrayPool.Return(packet.Buffer);
-
-                                    if (res != null)
+                                    if (cee._deserializeAndRaise(in packet, this, requestID, out object? res))
                                     {
                                         for (int i = _dataReceived.Count - 1; i >= 0; --i)
                                         {
-                                            if (!_dataReceived[i].Invoke(this, commandOrResponseID, res, requestID))
+                                            if (!_dataReceived[i].Invoke(this, commandOrResponseID, res!, requestID))
                                             {
                                                 _dataReceived.Remove(i);
                                             }
                                         }
-                                        cee.Raise(this, res, requestID);
                                     }
                                 });
                             return;
@@ -456,24 +466,28 @@ namespace Exomia.Network
 
         #region Add & Remove
 
-        /// <summary>
-        ///     add a command deserializer.
-        /// </summary>
+        /// <summary> add a command deserializer. </summary>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
         /// <param name="deserialize"> The deserialize handler. </param>
-        public void AddCommand(ushort commandID, DeserializePacketHandler<object?> deserialize)
+        public void AddCommand<T>(ushort commandID, DeserializePacketHandler<T> deserialize)
         {
             AddCommand(new[] { commandID }, deserialize);
         }
 
-        /// <summary>
-        ///     add commands deserializers.
-        /// </summary>
-        /// <param name="commandIDs"> The command ids. </param>
+        /// <summary> add commands deserializers. </summary>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
+        /// <param name="commandIDs">  The command ids. </param>
         /// <param name="deserialize"> The deserialize handler. </param>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        public void AddCommand(ushort[] commandIDs, DeserializePacketHandler<object?> deserialize)
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        public void AddCommand<T>(ushort[] commandIDs, DeserializePacketHandler<T> deserialize)
         {
             if (commandIDs == null || commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
 
@@ -492,7 +506,7 @@ namespace Exomia.Network
                     if (!_dataReceivedCallbacks.TryGetValue(
                         commandID, out ClientEventEntry? buffer))
                     {
-                        buffer = new ClientEventEntry(deserialize);
+                        buffer = ClientEventEntry.Create(deserialize);
                         _dataReceivedCallbacks.Add(commandID, buffer);
                     }
                 }
@@ -536,15 +550,23 @@ namespace Exomia.Network
             return removed;
         }
 
-        /// <summary>
-        ///     add a data received callback.
-        /// </summary>
+        /// <summary> add a data received callback. </summary>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  The callback. </param>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
-        public void AddDataReceivedCallback(ushort commandID, DataReceivedHandler callback)
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="Exception">
+        ///     Thrown when an exception error condition
+        ///     occurs.
+        /// </exception>
+        public void AddDataReceivedCallback<T>(ushort commandID, DataReceivedHandler<T> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -561,10 +583,16 @@ namespace Exomia.Network
                 if (!_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry? buffer))
                 {
                     throw new Exception(
-                        $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(DeserializeData, params uint[])' first.");
+                        $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(uint[], DeserializeData)' first.");
                 }
 
-                buffer.Add(callback);
+                if (!(buffer is ClientEventEntry<T> entry))
+                {
+                    throw new Exception(
+                        $"Invalid parameter '{nameof(callback)}'! {nameof(commandID)} and callback type do not match!");
+                }
+
+                entry.Add(callback);
             }
             finally
             {
@@ -579,7 +607,7 @@ namespace Exomia.Network
         /// <param name="callback">  The callback. </param>
         /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
         /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        public void RemoveDataReceivedCallback(ushort commandID, DataReceivedHandler callback)
+        public void RemoveDataReceivedCallback<T>(ushort commandID, DataReceivedHandler<T> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -589,9 +617,10 @@ namespace Exomia.Network
 
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
-            if (_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry? buffer))
+            if (_dataReceivedCallbacks.TryGetValue(commandID, out ClientEventEntry? buffer) &&
+                buffer is ClientEventEntry<T> entry)
             {
-                buffer.Remove(callback);
+                entry.Remove(callback);
             }
         }
 

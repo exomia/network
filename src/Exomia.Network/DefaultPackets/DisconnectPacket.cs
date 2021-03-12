@@ -13,23 +13,23 @@ using System.Runtime.InteropServices;
 namespace Exomia.Network.DefaultPackets
 {
     /// <summary>
-    ///     A ping packet.
+    ///     A disconnect packet.
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 8)]
-    public struct PingPacket
+    [StructLayout(LayoutKind.Sequential, Size = 16)]
+    public struct DisconnectPacket
     {
         /// <summary>
-        ///     The timestamp.
+        ///     The reason.
         /// </summary>
-        public long Timestamp;
+        public DisconnectReason Reason;
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="PingPacket" /> struct.
+        ///     Initializes a new instance of the <see cref="DisconnectPacket" /> struct.
         /// </summary>
-        /// <param name="timestamp"> The timestamp. </param>
-        public PingPacket(long timestamp)
+        /// <param name="reason"> The reason. </param>
+        public DisconnectPacket(DisconnectReason reason)
         {
-            Timestamp = timestamp;
+            Reason = reason;
         }
     }
 }

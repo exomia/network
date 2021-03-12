@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -34,7 +34,7 @@ namespace Exomia.Network.Encoding
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int DecodedPayloadLength(int length)
         {
-            return length - Math2.Ceiling(length / 8.0);
+            return length - Math2.Ceiling(length / 8.0f);
         }
 
         internal static ushort Encode(byte* data, int length, byte* buffer, out int bufferLength)

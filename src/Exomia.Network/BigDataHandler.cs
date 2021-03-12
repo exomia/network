@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -38,7 +38,7 @@ namespace Exomia.Network
                                         int   chunkOffset,
                                         int   length)
         {
-            if (!_bigDataBuffers.TryGetValue(key, out Buffer bdb))
+            if (!_bigDataBuffers.TryGetValue(key, out Buffer? bdb))
             {
                 bool lockTaken = false;
                 try
@@ -104,9 +104,9 @@ namespace Exomia.Network
                     {
                         if (Remove(key))
                         {
-                            ByteArrayPool.Return(((Buffer.Time)state)._data);
+                            ByteArrayPool.Return(((Buffer.Time)state!)._data);
                         }
-                        ((Buffer.Time)state).Dispose();
+                        ((Buffer.Time)state!).Dispose();
                     });
             }
         }

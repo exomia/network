@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -79,10 +79,10 @@ namespace Exomia.Network.Serialization
                 packetInfo.Src + packetInfo.ChunkOffset, packetInfo.ChunkLength,
                 dst + Constants.TCP_HEADER_SIZE + offset, out int l);
 
-            *(ushort*)(dst + 1)                                   = packetInfo.CommandOrResponseID;
-            *(ushort*)(dst + 3)                                   = (ushort)(l + offset + 1);
-            *(ushort*)(dst + 5)                                   = checksum;
-            *(int*)(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
+            *(ushort*)(dst + 1)                             = packetInfo.CommandOrResponseID;
+            *(ushort*)(dst + 3)                             = (ushort)(l + offset + 1);
+            *(ushort*)(dst + 5)                             = checksum;
+            *(dst + Constants.TCP_HEADER_SIZE + offset + l) = Constants.ZERO_BYTE;
 
             return Constants.TCP_HEADER_SIZE + offset + l + 1;
         }

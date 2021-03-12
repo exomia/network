@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -50,7 +50,7 @@ namespace Example.Server
         private static async void SendRequestAndWaitForResponse(IServer<ServerClient> server, ServerClient client)
         {
             byte[] request = Encoding.UTF8.GetBytes("Hello ");
-            Response<string> response = await server.SendToR(
+            Response<string> response = await server.SendToR<string>(
                 client, 1, request, 0, request.Length, DeserializePacketToString);
             Console.WriteLine("GOT({1}): {0}", response.Result, response.SendError);
 
@@ -58,9 +58,10 @@ namespace Example.Server
             server.SendTo(client, response.ID, requestResponse, 0, requestResponse.Length, true);
         }
 
-        private static string DeserializePacketToString(in Packet packet)
+        private static bool DeserializePacketToString(in Packet packet, out string s)
         {
-            return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
+            s = packet.ToString(Encoding.UTF8);
+            return true;
         }
     }
 
@@ -71,7 +72,20 @@ namespace Example.Server
 #endif
     {
         public Server(ushort expectedMaxPayloadSize = 512)
-            : base(expectedMaxPayloadSize) { }
+            : base(expectedMaxPayloadSize)
+        {
+            AddCommand<int>(123, DeserializeResponse);
+            AddDataReceivedCallback<int>(123, ReceiveCommand123Int);
+        }
+
+        private bool ReceiveCommand123Int(IServer<ServerClient> server,
+                                          ServerClient          client,
+                                          in int                data,
+                                          ushort                responseID)
+        {
+            Console.WriteLine(data);
+            return true;
+        }
 
         protected override bool CreateServerClient(out ServerClient serverClient)
         {

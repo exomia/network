@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -8,7 +8,6 @@
 
 #endregion
 
-using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -20,191 +19,101 @@ namespace Exomia.Network.Extensions.Struct
     public static class ToBytesExtension
     {
         /// <summary>
-        ///     converts a struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
-        /// <param name="length"> [out] out the size of T. </param>
+        /// <param name="length"> [out] The size of T. </param>
         /// <returns>
-        ///     byte array.
+        ///     The byte array representing the <paramref name="data" />.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe byte[] ToBytesUnsafe<T>(this T data, out int length) where T : struct
-        {
-            length = Marshal.SizeOf(typeof(T));
-            byte[] arr = new byte[length];
-            fixed (byte* ptr = arr)
-            {
-                Marshal.StructureToPtr(data, new IntPtr(ptr), true);
-            }
-            return arr;
-        }
-
-        /// <summary>
-        ///     converts a struct into a byte array.
-        /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   The data. </param>
-        /// <param name="arr">    [out] out byte array. </param>
-        /// <param name="length"> [out] out the size of T. </param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void ToBytesUnsafe<T>(this T data, out byte[] arr, out int length) where T : struct
-        {
-            length = Marshal.SizeOf(typeof(T));
-            arr    = new byte[length];
-            fixed (byte* ptr = arr)
-            {
-                Marshal.StructureToPtr(data, new IntPtr(ptr), true);
-            }
-        }
-
-        /// <summary>
-        ///     converts a struct into a byte array.
-        /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   The data. </param>
-        /// <param name="arr">    [in,out] out byte array. </param>
-        /// <param name="offset"> offset. </param>
-        /// <param name="length"> [out] out the size of T. </param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void ToBytesUnsafe<T>(this T data, ref byte[] arr, int offset, out int length)
+        public static byte[] ToBytesUnsafe<T>(this T data, out int length)
             where T : struct
         {
-            length = Marshal.SizeOf(typeof(T));
-            fixed (byte* ptr = arr)
-            {
-                Marshal.StructureToPtr(data, new IntPtr(ptr + offset), true);
-            }
+            byte[] bytes = new byte[length = Marshal.SizeOf(typeof(T))];
+            Unsafe.As<byte, T>(ref bytes[0]) = data;
+            return bytes;
         }
 
         /// <summary>
-        ///     converts a struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
-        /// <param name="length"> [out] out the size of T. </param>
+        /// <param name="bytes">  [out] The bytes. </param>
+        /// <param name="length"> [out] The size of T. </param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ToBytesUnsafe<T>(this T data, out byte[] bytes, out int length)
+            where T : struct
+        {
+            bytes                            = new byte[length = Marshal.SizeOf(typeof(T))];
+            Unsafe.As<byte, T>(ref bytes[0]) = data;
+        }
+
+        /// <summary>
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
+        /// </summary>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
+        /// <param name="data">   The data. </param>
+        /// <param name="bytes">  [in,out] The bytes. </param>
+        /// <param name="offset"> The offset. </param>
+        /// <param name="length"> [out] The size of T. </param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ToBytesUnsafe<T>(this T data, ref byte[] bytes, int offset, out int length)
+            where T : struct
+        {
+            length                                = Marshal.SizeOf(typeof(T));
+            Unsafe.As<byte, T>(ref bytes[offset]) = data;
+        }
+
+        /// <summary>
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
+        /// </summary>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
+        /// <param name="data">   The data. </param>
+        /// <param name="length"> [out] The size of T. </param>
         /// <returns>
-        ///     byte array.
+        ///     The byte array representing the <paramref name="data" />.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe byte[] ToBytesUnsafe2<T>(this T data, out int length) where T : unmanaged
-        {
-            length = sizeof(T);
-            byte[] arr = new byte[length];
-            fixed (byte* ptr = arr)
-            {
-                *(T*)ptr = data;
-            }
-            return arr;
-        }
-
-        /// <summary>
-        ///     converts a struct into a byte array.
-        /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   The data. </param>
-        /// <param name="arr">    [out] out byte array. </param>
-        /// <param name="length"> [out] out the size of T. </param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void ToBytesUnsafe2<T>(this T data, out byte[] arr, out int length) where T : unmanaged
-        {
-            length = sizeof(T);
-            arr    = new byte[length];
-            fixed (byte* ptr = arr)
-            {
-                *(T*)ptr = data;
-            }
-        }
-
-        /// <summary>
-        ///     converts a struct into a byte array.
-        /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   The data. </param>
-        /// <param name="arr">    [in,out] out byte array. </param>
-        /// <param name="offset"> offset. </param>
-        /// <param name="length"> [out] out the size of T. </param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void ToBytesUnsafe2<T>(this T data, ref byte[] arr, int offset, out int length)
+        public static unsafe byte[] ToBytesUnsafe2<T>(this T data, out int length)
             where T : unmanaged
         {
-            length = Marshal.SizeOf(typeof(T));
-            fixed (byte* ptr = arr)
-            {
-                Marshal.StructureToPtr(data, new IntPtr(ptr + offset), true);
-            }
+            byte[] bytes = new byte[length = sizeof(T)];
+            Unsafe.As<byte, T>(ref bytes[0]) = data;
+            return bytes;
         }
 
         /// <summary>
-        ///     converts a struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
-        /// <param name="length"> [out] out the size of T. </param>
-        /// <returns>
-        ///     byte array.
-        /// </returns>
+        /// <param name="bytes">  [out] The bytes. </param>
+        /// <param name="length"> [out] The size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte[] ToBytes<T>(this T data, out int length) where T : struct
+        public static unsafe void ToBytesUnsafe2<T>(this T data, out byte[] bytes, out int length)
+            where T : unmanaged
         {
-            length = Marshal.SizeOf(typeof(T));
-            byte[]   arr    = new byte[length];
-            GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
-            try
-            {
-                Marshal.StructureToPtr(data, handle.AddrOfPinnedObject(), false);
-                return arr;
-            }
-            finally
-            {
-                handle.Free();
-            }
+            bytes                            = new byte[length = sizeof(T)];
+            Unsafe.As<byte, T>(ref bytes[0]) = data;
         }
 
         /// <summary>
-        ///     converts a struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
+        /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
-        /// <param name="arr">    [out] out byte array. </param>
-        /// <param name="length"> [out] out the size of T. </param>
+        /// <param name="bytes">  [in,out] The bytes. </param>
+        /// <param name="offset"> The offset. </param>
+        /// <param name="length"> [out] The size of T. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ToBytes<T>(this T data, out byte[] arr, out int length) where T : struct
+        public static unsafe void ToBytesUnsafe2<T>(this T data, ref byte[] bytes, int offset, out int length)
+            where T : unmanaged
         {
-            length = Marshal.SizeOf(typeof(T));
-            arr    = new byte[length];
-            GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
-            try
-            {
-                Marshal.StructureToPtr(data, handle.AddrOfPinnedObject(), false);
-            }
-            finally
-            {
-                handle.Free();
-            }
-        }
-
-        /// <summary>
-        ///     converts a struct into a byte array.
-        /// </summary>
-        /// <typeparam name="T"> struct type. </typeparam>
-        /// <param name="data">   The data. </param>
-        /// <param name="arr">    [in,out] ref byte array. </param>
-        /// <param name="offset"> offset. </param>
-        /// <param name="length"> [out] out the size of T. </param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ToBytes<T>(this T data, ref byte[] arr, int offset, out int length) where T : struct
-        {
-            length = Marshal.SizeOf(typeof(T));
-            GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);
-            try
-            {
-                Marshal.StructureToPtr(data, handle.AddrOfPinnedObject() + offset, false);
-            }
-            finally
-            {
-                handle.Free();
-            }
+            length                                = sizeof(T);
+            Unsafe.As<byte, T>(ref bytes[offset]) = data;
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -8,48 +8,66 @@
 
 #endregion
 
+using System.Diagnostics.CodeAnalysis;
+using Exomia.Network.Buffers;
+
 namespace Exomia.Network.Lib
 {
-    sealed class ClientEventEntry
+    class ClientEventEntry
     {
-        internal readonly DeserializePacketHandler<object?> _deserialize;
-        private readonly  Event<DataReceivedHandler>        _dataReceived;
+        internal DeserializeAndRaiseHandler _deserializeAndRaise = null!;
 
-        /// <summary>
-        ///     Initializes a new instance of the <see cref="ClientEventEntry" /> class.
-        /// </summary>
-        /// <param name="deserialize"> The deserialize. </param>
-        public ClientEventEntry(DeserializePacketHandler<object?> deserialize)
+        internal static ClientEventEntry Create<T>(DeserializePacketHandler<T> deserialize)
         {
-            _dataReceived = new Event<DataReceivedHandler>();
-            _deserialize  = deserialize;
+            ClientEventEntry<T> entry = new ClientEventEntry<T>();
+            entry._deserializeAndRaise = (in Packet packet, IClient client, ushort responseID, out object? result) =>
+            {
+                if (deserialize(in packet, out T value))
+                {
+                    ByteArrayPool.Return(packet.Buffer);
+                    entry.Raise(client, value, responseID);
+
+                    // ReSharper disable once HeapView.PossibleBoxingAllocation
+                    result = value;
+                    return true;
+                }
+
+                ByteArrayPool.Return(packet.Buffer);
+                result = null;
+                return false;
+            };
+            return entry;
         }
 
+        internal delegate bool DeserializeAndRaiseHandler(in Packet                       packet,
+                                                          IClient                         client,
+                                                          ushort                          responseID,
+                                                          [NotNullWhen(true)] out object? res);
+    }
+
+    sealed class ClientEventEntry<T> : ClientEventEntry
+    {
+        private readonly Event<DataReceivedHandler<T>> _dataReceived;
+
         /// <summary>
-        ///     Adds callback.
+        ///     Initializes a new instance of the <see cref="ClientEventEntry{T}" /> class.
         /// </summary>
-        /// <param name="callback"> The callback to remove. </param>
-        public void Add(DataReceivedHandler callback)
+        public ClientEventEntry()
+        {
+            _dataReceived = new Event<DataReceivedHandler<T>>();
+        }
+
+        public void Add(DataReceivedHandler<T> callback)
         {
             _dataReceived.Add(callback);
         }
 
-        /// <summary>
-        ///     Removes the given callback.
-        /// </summary>
-        /// <param name="callback"> The callback to remove. </param>
-        public void Remove(DataReceivedHandler callback)
+        public void Remove(DataReceivedHandler<T> callback)
         {
             _dataReceived.Remove(callback);
         }
 
-        /// <summary>
-        ///     Raises.
-        /// </summary>
-        /// <param name="client">     The client. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="responseID"> Identifier for the response. </param>
-        public void Raise(IClient client, object data, ushort responseID)
+        public void Raise(IClient client, T data, ushort responseID)
         {
             for (int i = _dataReceived.Count - 1; i >= 0; --i)
             {

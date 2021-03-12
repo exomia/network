@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -53,11 +53,7 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-#if NETSTANDARD2_1
         private protected override bool OnRun(int port, [NotNullWhen(true)] out Socket? listener)
-#else
-        private protected override bool OnRun(int port, out Socket? listener)
-#endif
         {
             try
             {

@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -18,9 +18,26 @@ namespace Exomia.Network
     ///     Interface for server.
     /// </summary>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
-    public interface IServer<in TServerClient> : IDisposable
-        where TServerClient : IServerClient
+    public interface IServer<TServerClient> : IDisposable
+        where TServerClient : class, IServerClient
     {
+        /// <summary>
+        ///     Disconnects the client from server side.
+        /// </summary>
+        /// <param name="client"> The client. </param>
+        /// <param name="reason"> The reason. </param>
+        void Disconnect(TServerClient client, DisconnectReason reason);
+
+        /// <summary>
+        ///     Attempts to get a client (<typeparamref name="TServerClient" />) from the given GUID.
+        /// </summary>
+        /// <param name="guid">   Unique identifier. </param>
+        /// <param name="client"> [out] The client. </param>
+        /// <returns>
+        ///     True if it succeeds, false if it fails.
+        /// </returns>
+        bool TryGetClient(Guid guid, out TServerClient? client);
+
         /// <summary>
         ///     send data to the client.
         /// </summary>
@@ -408,21 +425,24 @@ namespace Exomia.Network
         /// <param name="data">                The data. </param>
         /// <param name="offset">              The offset. </param>
         /// <param name="length">              The length. </param>
-        void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length);
+        /// <param name="exclude">             (Optional) The excluded client. </param>
+        void SendToAll(ushort commandOrResponseID, byte[] data, int offset, int length, TServerClient? exclude = null);
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="data">                The data. </param>
-        void SendToAll(ushort commandOrResponseID, byte[] data);
+        /// <param name="exclude">             (Optional) The excluded client. </param>
+        void SendToAll(ushort commandOrResponseID, byte[] data, TServerClient? exclude = null);
 
         /// <summary>
         ///     Sends data to all clients.
         /// </summary>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="serializable">        The serializable. </param>
-        void SendToAll(ushort commandOrResponseID, ISerializable serializable);
+        /// <param name="exclude">             (Optional) The excluded client. </param>
+        void SendToAll(ushort commandOrResponseID, ISerializable serializable, TServerClient? exclude = null);
 
         /// <summary>
         ///     Sends data to all clients.
@@ -430,6 +450,7 @@ namespace Exomia.Network
         /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandOrResponseID"> Identifier for the command or response. </param>
         /// <param name="data">                The data. </param>
-        void SendToAll<T1>(ushort commandOrResponseID, in T1 data) where T1 : unmanaged;
+        /// <param name="exclude">             (Optional) The excluded client. </param>
+        void SendToAll<T1>(ushort commandOrResponseID, in T1 data, TServerClient? exclude = null) where T1 : unmanaged;
     }
 }

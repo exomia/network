@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -15,15 +15,22 @@ namespace Exomia.Network.DefaultPackets
     /// <summary>
     ///     A connect packet.
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, Size = 16)]
+    [StructLayout(LayoutKind.Sequential, Size = 25)]
     public unsafe struct ConnectPacket
     {
         /// <summary>
-        ///     Gets the checksum[16].
+        ///     Gets or sets the checksum[16].
         /// </summary>
-        /// <value>
-        ///     The checksum[16].
-        /// </value>
         public fixed byte Checksum[16];
+
+        /// <summary>
+        ///     The nonce.
+        /// </summary>
+        public ulong Nonce;
+
+        /// <summary>
+        ///     True if rejected.
+        /// </summary>
+        public bool Rejected;
     }
 }

@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -20,6 +20,7 @@ namespace Exomia.Network
     public abstract class ServerClientBase<T> : IServerClient
         where T : class
     {
+        private readonly  Guid     _guid;
         private           DateTime _lastReceivedPacketTimeStamp;
         private protected T        _arg0;
 
@@ -32,6 +33,17 @@ namespace Exomia.Network
             get { return _lastReceivedPacketTimeStamp; }
         }
 
+        /// <summary>
+        ///     Gets a unique identifier.
+        /// </summary>
+        /// <value>
+        ///     The identifier of the unique.
+        /// </value>
+        public Guid Guid
+        {
+            get { return _guid; }
+        }
+
         internal T Arg0
         {
             get { return _arg0; }
@@ -42,7 +54,15 @@ namespace Exomia.Network
         ///     Initializes a new instance of the <see cref="ServerClientBase{T}" /> class.
         /// </summary>
         private protected ServerClientBase()
+            : this(Guid.NewGuid()) { }
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="ServerClientBase{T}" /> class.
+        /// </summary>
+        /// <param name="guid"> The identifier of the unique. </param>
+        private protected ServerClientBase(Guid guid)
         {
+            _guid = guid;
             _arg0 = null!;
         }
 

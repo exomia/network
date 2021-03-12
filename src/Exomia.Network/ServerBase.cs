@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -11,15 +11,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Exomia.Network.Buffers;
+using Exomia.Network.DefaultPackets;
+using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
-#if NETSTANDARD2_1
-using System.Diagnostics.CodeAnalysis;
-
-#endif
 
 namespace Exomia.Network
 {
@@ -62,33 +61,31 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     The clients.
-        /// </summary>
-        protected readonly Dictionary<T, TServerClient> _clients;
-
-        private protected Socket? _listener;
-        private protected int     _port;
-        private           ushort  _requestID;
-        private protected byte    _state;
-
-        /// <summary>
         ///     The compression mode.
         /// </summary>
         protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
-        private protected EncryptionMode _encryptionMode = EncryptionMode.None;
-        private readonly  Dictionary<ushort, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
-        private readonly  Event<ClientCommandDataReceivedHandler<TServerClient>> _clientDataReceived;
+        private readonly Dictionary<ushort, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
+        private readonly Event<ClientCommandDataReceivedHandler<TServerClient>>    _clientDataReceived;
 
         private readonly Dictionary<ushort, TaskCompletionSource<(ushort requestID, Packet packet)>>
             _taskCompletionSources;
 
         private readonly byte     _listenerCount;
+        private          ushort   _requestID;
         private          SpinLock _clientsLock;
         private          SpinLock _dataReceivedCallbacksLock;
         private          SpinLock _lockTaskCompletionSources;
         private          bool     _isRunning;
         private          int      _packetID;
+
+        private protected readonly Dictionary<T, TServerClient>    _clients;
+        private protected readonly Dictionary<Guid, TServerClient> _clientGuids;
+        private protected          Socket?                         _listener;
+        private protected          int                             _port;
+        private protected          byte                            _state;
+
+        private protected EncryptionMode _encryptionMode = EncryptionMode.None;
 
         /// <summary>
         ///     Gets the port.
@@ -211,6 +208,32 @@ namespace Exomia.Network
             }
         }
 
+        /// <summary>
+        ///     Gets the clients.
+        /// </summary>
+        /// <value>
+        ///     The clients.
+        /// </value>
+        protected Dictionary<Guid, TServerClient>.ValueCollection Clients
+        {
+            get
+            {
+                Dictionary<Guid, TServerClient> clients;
+                bool                            lockTaken = false;
+                try
+                {
+                    _clientsLock.Enter(ref lockTaken);
+                    clients = new Dictionary<Guid, TServerClient>(_clientGuids);
+                }
+                finally
+                {
+                    if (lockTaken) { _clientsLock.Exit(false); }
+                }
+
+                return clients.Values;
+            }
+        }
+
         private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
@@ -224,8 +247,8 @@ namespace Exomia.Network
             _taskCompletionSources =
                 new Dictionary<ushort, TaskCompletionSource<(ushort requestID, Packet packet)>>(
                     INITIAL_TASK_COMPLETION_QUEUE_SIZE);
-            _clients = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
-
+            _clients                   = new Dictionary<T, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
+            _clientGuids               = new Dictionary<Guid, TServerClient>(INITIAL_CLIENT_QUEUE_SIZE);
             _clientsLock               = new SpinLock(Debugger.IsAttached);
             _dataReceivedCallbacksLock = new SpinLock(Debugger.IsAttached);
             _lockTaskCompletionSources = new SpinLock(Debugger.IsAttached);
@@ -242,6 +265,19 @@ namespace Exomia.Network
         ~ServerBase()
         {
             Dispose(false);
+        }
+
+        /// <inheritdoc />
+        public void Disconnect(TServerClient client, DisconnectReason reason)
+        {
+            InvokeClientDisconnect(client, reason);
+            SendTo(client, CommandID.DISCONNECT, new DisconnectPacket(reason));
+        }
+
+        /// <inheritdoc />
+        public bool TryGetClient(Guid guid, [NotNullWhen(true)] out TServerClient? client)
+        {
+            return _clientGuids.TryGetValue(guid, out client);
         }
 
         /// <summary>
@@ -274,6 +310,59 @@ namespace Exomia.Network
         }
 
         /// <summary>
+        ///     Called than a new client is connected.
+        /// </summary>
+        /// <param name="client"> The client. </param>
+        protected virtual void OnClientConnected(TServerClient client) { }
+
+        /// <summary>
+        ///     Create a new ServerClient than a client connects.
+        /// </summary>
+        /// <param name="serverClient"> [out] out new ServerClient. </param>
+        /// <returns>
+        ///     <c>true</c> if the new ServerClient should be added to the clients list; <c>false</c> otherwise.
+        /// </returns>
+        protected abstract bool CreateServerClient(out TServerClient serverClient);
+
+        /// <summary>
+        ///     Called then the client is disconnected.
+        /// </summary>
+        /// <param name="client"> The client. </param>
+        /// <param name="reason"> DisconnectReason. </param>
+        protected virtual void OnClientDisconnected(TServerClient client, DisconnectReason reason) { }
+
+        private bool InvokeClientConnected(T arg0, out ulong nonce)
+        {
+            if (!CreateServerClient(out TServerClient serverClient))
+            {
+                nonce = 0;
+                return false;
+            }
+
+            serverClient.Arg0 = arg0;
+            bool lockTaken = false;
+            try
+            {
+                _clientsLock.Enter(ref lockTaken);
+                _clients.Add(arg0, serverClient);
+                _clientGuids.Add(serverClient.Guid, serverClient);
+            }
+            finally
+            {
+                if (lockTaken) { _clientsLock.Exit(false); }
+            }
+            Task.Run(
+                () =>
+                {
+                    OnClientConnected(serverClient);
+                    ClientConnected?.Invoke(this, serverClient);
+                });
+
+            nonce = BitConverter.ToUInt64(serverClient.Guid.ToByteArray(), 8);
+            return true;
+        }
+
+        /// <summary>
         ///     Called after the <see cref="Run" /> method directly after the socket is successfully created.
         /// </summary>
         private protected abstract void Configure();
@@ -286,11 +375,8 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-#if NETSTANDARD2_1
         private protected abstract bool OnRun(int port, [NotNullWhen(true)] out Socket? listener);
-#else
-        private protected abstract bool OnRun(int port, out Socket? listener);
-#endif
+
         /// <summary>
         ///     Listen asynchronous.
         /// </summary>
@@ -333,6 +419,39 @@ namespace Exomia.Network
             }
             switch (commandOrResponseID)
             {
+                case CommandID.CONNECT:
+                    {
+                        deserializePacketInfo.Data.FromBytesUnsafe(out ConnectPacket connectPacket);
+                        connectPacket.Rejected = !InvokeClientConnected(arg0, out ulong nonce);
+                        connectPacket.Nonce    = nonce;
+                        connectPacket.ToBytesUnsafe2(out byte[] response, out int length);
+                        SendTo(arg0, CommandID.CONNECT, response, 0, length, requestID);
+                        break;
+                    }
+                case CommandID.IDENTIFICATION:
+                    {
+                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
+                        {
+                            ulong identification = BitConverter.ToUInt64(deserializePacketInfo.Data, 0);
+
+                            if (identification == Shared.Scramble(BitConverter.ToUInt64(sClient.Guid.ToByteArray(), 8)))
+                            {
+                                SendTo(
+                                    arg0, CommandID.IDENTIFICATION, deserializePacketInfo.Data, 0, sizeof(ulong),
+                                    requestID);
+                            }
+                        }
+                        break;
+                    }
+                case CommandID.DISCONNECT:
+                    {
+                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
+                        {
+                            deserializePacketInfo.Data.FromBytesUnsafe(out DisconnectPacket disconnectPacket);
+                            InvokeClientDisconnect(sClient, disconnectPacket.Reason);
+                        }
+                        break;
+                    }
                 case CommandID.PING:
                     {
                         SendTo(
@@ -341,26 +460,9 @@ namespace Exomia.Network
                             requestID);
                         break;
                     }
-                case CommandID.CONNECT:
-                    {
-                        InvokeClientConnected(arg0);
-                        SendTo(
-                            arg0, CommandID.CONNECT,
-                            deserializePacketInfo.Data, 0, deserializePacketInfo.Length,
-                            requestID);
-                        break;
-                    }
-                case CommandID.DISCONNECT:
-                    {
-                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
-                        {
-                            InvokeClientDisconnect(sClient, DisconnectReason.Graceful);
-                        }
-                        break;
-                    }
                 default:
                     {
-                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
                         {
                             if (commandOrResponseID <= Constants.USER_COMMAND_LIMIT &&
                                 _dataReceivedCallbacks.TryGetValue(
@@ -372,20 +474,17 @@ namespace Exomia.Network
                                 ThreadPool.QueueUserWorkItem(
                                     x =>
                                     {
-                                        object? res = scee._deserialize(in packet);
-                                        ByteArrayPool.Return(packet.Buffer);
-
-                                        if (res != null)
+                                        if (scee._deserializeAndRaise(
+                                            in packet, this, sClient, requestID, out object? res))
                                         {
                                             for (int i = _clientDataReceived.Count - 1; i >= 0; --i)
                                             {
                                                 if (!_clientDataReceived[i]
-                                                    .Invoke(this, sClient, commandOrResponseID, res, requestID))
+                                                    .Invoke(this, sClient, commandOrResponseID, res!, requestID))
                                                 {
                                                     _clientDataReceived.Remove(i);
                                                 }
                                             }
-                                            scee.Raise(this, sClient, res, requestID);
                                         }
                                     });
                                 return;
@@ -398,28 +497,13 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Called than a new client is connected.
-        /// </summary>
-        /// <param name="client"> The client. </param>
-        protected virtual void OnClientConnected(TServerClient client) { }
-
-        /// <summary>
-        ///     Create a new ServerClient than a client connects.
-        /// </summary>
-        /// <param name="serverClient"> [out] out new ServerClient. </param>
-        /// <returns>
-        ///     <c>true</c> if the new ServerClient should be added to the clients list; <c>false</c> otherwise.
-        /// </returns>
-        protected abstract bool CreateServerClient(out TServerClient serverClient);
-
-        /// <summary>
         ///     Executes the client disconnect on a different thread, and waits for the result.
         /// </summary>
         /// <param name="arg0">   Socket|Endpoint. </param>
         /// <param name="reason"> DisconnectReason. </param>
         private protected void InvokeClientDisconnect(T? arg0, DisconnectReason reason)
         {
-            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient client))
+            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient? client))
             {
                 InvokeClientDisconnect(client, reason);
             }
@@ -437,6 +521,7 @@ namespace Exomia.Network
             try
             {
                 _clientsLock.Enter(ref lockTaken);
+                _clientGuids.Remove(client.Guid);
                 removed = _clients.Remove(client.Arg0);
             }
             finally
@@ -444,21 +529,18 @@ namespace Exomia.Network
                 if (lockTaken) { _clientsLock.Exit(false); }
             }
 
-            if (removed)
-            {
-                OnClientDisconnected(client, reason);
-                ClientDisconnected?.Invoke(this, client, reason);
-            }
+            Task.Run(
+                () =>
+                {
+                    if (removed)
+                    {
+                        OnClientDisconnected(client, reason);
+                        ClientDisconnected?.Invoke(this, client, reason);
+                    }
 
-            OnAfterClientDisconnect(client);
+                    OnAfterClientDisconnect(client);
+                });
         }
-
-        /// <summary>
-        ///     Called then the client is disconnected.
-        /// </summary>
-        /// <param name="client"> The client. </param>
-        /// <param name="reason"> DisconnectReason. </param>
-        protected virtual void OnClientDisconnected(TServerClient client, DisconnectReason reason) { }
 
         /// <summary>
         ///     called after <see cref="InvokeClientDisconnect(TServerClient, DisconnectReason)" />.
@@ -466,47 +548,30 @@ namespace Exomia.Network
         /// <param name="client"> The client. </param>
         private protected virtual void OnAfterClientDisconnect(TServerClient client) { }
 
-        private void InvokeClientConnected(T arg0)
-        {
-            if (CreateServerClient(out TServerClient serverClient))
-            {
-                serverClient.Arg0 = arg0;
-                bool lockTaken = false;
-                try
-                {
-                    _clientsLock.Enter(ref lockTaken);
-                    _clients.Add(arg0, serverClient);
-                }
-                finally
-                {
-                    if (lockTaken) { _clientsLock.Exit(false); }
-                }
-
-                OnClientConnected(serverClient);
-                ClientConnected?.Invoke(this, serverClient);
-            }
-        }
-
         #region Add & Remove
 
-        /// <summary>
-        ///     add a command deserializer.
-        /// </summary>
+        /// <summary> add a command deserializer. </summary>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
         /// <param name="deserialize"> The deserialize handler. </param>
-        public void AddCommand(ushort commandID, DeserializePacketHandler<object?> deserialize)
+        public void AddCommand<T1>(ushort commandID, DeserializePacketHandler<T1> deserialize)
         {
             AddCommand(new[] { commandID }, deserialize);
         }
 
-        /// <summary>
-        ///     add commands deserializers.
-        /// </summary>
-        /// <param name="commandIDs"> The command ids. </param>
+        /// <summary> add commands deserializers. </summary>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
+        /// <param name="commandIDs">  The command ids. </param>
         /// <param name="deserialize"> The deserialize handler. </param>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        public void AddCommand(ushort[] commandIDs, DeserializePacketHandler<object?> deserialize)
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        public void AddCommand<T1>(ushort[] commandIDs, DeserializePacketHandler<T1> deserialize)
         {
             if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
@@ -526,7 +591,7 @@ namespace Exomia.Network
                     if (!_dataReceivedCallbacks.TryGetValue(
                         commandID, out ServerClientEventEntry<TServerClient>? buffer))
                     {
-                        buffer = new ServerClientEventEntry<TServerClient>(deserialize);
+                        buffer = ServerClientEventEntry<TServerClient>.Create(deserialize);
                         _dataReceivedCallbacks.Add(commandID, buffer);
                     }
                 }
@@ -537,15 +602,17 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     Removes the commands described by commandIDs.
-        /// </summary>
+        /// <summary> Removes the commands described by commandIDs. </summary>
         /// <param name="commandIDs"> A variable-length parameters list containing command ids. </param>
-        /// <returns>
-        ///     True if at least one command is removed, false otherwise.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
+        /// <returns> True if at least one command is removed, false otherwise. </returns>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
         public bool RemoveCommands(params ushort[] commandIDs)
         {
             if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
@@ -571,15 +638,23 @@ namespace Exomia.Network
             return removed;
         }
 
-        /// <summary>
-        ///     add a data received callback.
-        /// </summary>
+        /// <summary> add a data received callback. </summary>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
-        public void AddDataReceivedCallback(ushort commandID, ClientDataReceivedHandler<TServerClient> callback)
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="Exception">
+        ///     Thrown when an exception error condition
+        ///     occurs.
+        /// </exception>
+        public void AddDataReceivedCallback<T1>(ushort commandID, ClientDataReceivedHandler<TServerClient, T1> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -599,7 +674,13 @@ namespace Exomia.Network
                         $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(DeserializeData, params uint[])' first.");
                 }
 
-                buffer.Add(callback);
+                if (!(buffer is ServerClientEventEntry<TServerClient, T1> entry))
+                {
+                    throw new Exception(
+                        $"Invalid parameter '{nameof(callback)}'! {nameof(commandID)} and callback type do not match!");
+                }
+
+                entry.Add(callback);
             }
             finally
             {
@@ -607,14 +688,20 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     remove a data received callback.
-        /// </summary>
+        /// <summary> remove a data received callback. </summary>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        public void RemoveDataReceivedCallback(ushort commandID, ClientDataReceivedHandler<TServerClient> callback)
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        public void RemoveDataReceivedCallback<T1>(ushort                                       commandID,
+                                                   ClientDataReceivedHandler<TServerClient, T1> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -624,9 +711,10 @@ namespace Exomia.Network
 
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
-            if (_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient>? buffer))
+            if (_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient>? buffer) &&
+                buffer is ServerClientEventEntry<TServerClient, T1> entry)
             {
-                buffer.Remove(callback);
+                entry.Remove(callback);
             }
         }
 

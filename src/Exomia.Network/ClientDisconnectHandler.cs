@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -20,5 +20,5 @@ namespace Exomia.Network
     public delegate void ClientDisconnectHandler<TServerClient>(IServer<TServerClient> server,
                                                                 TServerClient          client,
                                                                 DisconnectReason       reason)
-        where TServerClient : IServerClient;
+        where TServerClient : class, IServerClient;
 }
