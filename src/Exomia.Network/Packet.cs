@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -13,15 +13,12 @@ using System.Runtime.CompilerServices;
 
 namespace Exomia.Network
 {
-    /// <summary>
-    ///     Handler, called when the deserialize packet.
-    /// </summary>
+    /// <summary> Handler, called when the deserialize packet. </summary>
     /// <typeparam name="TResult"> Type of the result. </typeparam>
     /// <param name="packet"> The packet. </param>
-    /// <returns>
-    ///     A TResult.
-    /// </returns>
-    public delegate TResult DeserializePacketHandler<out TResult>(in Packet packet);
+    /// <param name="result"> [out] The result. </param>
+    /// <returns> <c>true</c> if deserialization was successful; <c>false</c> otherwise. </returns>
+    public delegate bool DeserializePacketHandler<TResult>(in Packet packet, out TResult result);
 
     /// <summary>
     ///     Packet readonly struct.
@@ -56,7 +53,12 @@ namespace Exomia.Network
             Length = length;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        ///     Convert this packets raw data into a utf8 string representation.
+        /// </summary>
+        /// <returns>
+        ///     A utf8 string that represents this packets raw data.
+        /// </returns>
         public override string ToString()
         {
             return ToString(System.Text.Encoding.UTF8);
@@ -67,7 +69,7 @@ namespace Exomia.Network
         /// </summary>
         /// <param name="encoding"> The encoding. </param>
         /// <returns>
-        ///     A string that represents this packets raw date.
+        ///     A string that represents this packets raw data.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string ToString(System.Text.Encoding encoding)

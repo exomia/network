@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -22,7 +22,7 @@ namespace Exomia.Network.Extensions.Struct
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="bytes"> The bytes to act on. </param>
-        /// <param name="value"> [out] The reinterpreted <paramref name="bytes"/> as <typeparamref name="T"/>. </param>
+        /// <param name="value"> [out] The reinterpreted <paramref name="bytes" /> as <typeparamref name="T" />. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FromBytesUnsafe<T>(this byte[] bytes, out T value)
             where T : struct
@@ -36,7 +36,7 @@ namespace Exomia.Network.Extensions.Struct
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="bytes">  The bytes to act on. </param>
         /// <param name="offset"> The offset. </param>
-        /// <param name="value"> [out] The reinterpreted <paramref name="bytes"/> as <typeparamref name="T"/>. </param>
+        /// <param name="value"> [out] The reinterpreted <paramref name="bytes" /> as <typeparamref name="T" />. </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FromBytesUnsafe<T>(this byte[] bytes, int offset, out T value)
             where T : struct
@@ -50,7 +50,7 @@ namespace Exomia.Network.Extensions.Struct
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="bytes"> The bytes to act on. </param>
         /// <returns>
-        ///     The reinterpreted <paramref name="bytes"/> as <typeparamref name="T"/>.
+        ///     The reinterpreted <paramref name="bytes" /> as <typeparamref name="T" />.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FromBytesUnsafe<T>(this byte[] bytes)
@@ -66,7 +66,7 @@ namespace Exomia.Network.Extensions.Struct
         /// <param name="bytes">  The bytes to act on. </param>
         /// <param name="offset"> The offset. </param>
         /// <returns>
-        ///     The reinterpreted <paramref name="bytes"/> as <typeparamref name="T"/>.
+        ///     The reinterpreted <paramref name="bytes" /> as <typeparamref name="T" />.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T FromBytesUnsafe<T>(this byte[] bytes, int offset)

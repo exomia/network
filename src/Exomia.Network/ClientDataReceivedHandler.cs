@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -29,20 +29,17 @@ namespace Exomia.Network
                                                                          ushort                 responseID)
         where TServerClient : class, IServerClient;
 
-    /// <summary>
-    ///     Handler, called when the server received client data.
-    /// </summary>
+    /// <summary> Handler, called when the server received client data. </summary>
     /// <typeparam name="TServerClient"> Type of the server client. </typeparam>
+    /// <typeparam name="T">             Generic type parameter. </typeparam>
     /// <param name="server">     The server. </param>
     /// <param name="client">     The client. </param>
     /// <param name="data">       The data. </param>
     /// <param name="responseID"> The responseID. </param>
-    /// <returns>
-    ///     <b>true</b> if you want to handle more data; <b>false</b> otherwise.
-    /// </returns>
-    public delegate bool ClientDataReceivedHandler<TServerClient>(IServer<TServerClient> server,
-                                                                  TServerClient          client,
-                                                                  object                 data,
-                                                                  ushort                 responseID)
+    /// <returns> <b>true</b> if you want to handle more data; <b>false</b> otherwise. </returns>
+    public delegate bool ClientDataReceivedHandler<TServerClient, T>(IServer<TServerClient> server,
+                                                                     TServerClient          client,
+                                                                     in T                   data,
+                                                                     ushort                 responseID)
         where TServerClient : class, IServerClient;
 }

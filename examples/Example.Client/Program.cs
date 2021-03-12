@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -35,15 +35,13 @@ namespace Example.Client
 #endif
             client.Disconnected += (c, r) => { Console.WriteLine(r + " | Disconnected"); };
 
-            client.AddCommand(1, DeserializePacketToString);
+            client.AddCommand<string>(1, DeserializePacketToString);
 
             client.AddDataReceivedCallback(
-                1, (client1, data, responseID) =>
+                1, (IClient client1, in string request, ushort responseID) =>
                 {
-                    string request = (string)data;
-
+                    client1.Send(123, BitConverter.GetBytes(33));
                     SendRequestAndWaitForResponse(client1, request, responseID);
-
                     return true;
                 });
 
@@ -57,16 +55,17 @@ namespace Example.Client
             Console.ReadKey();
         }
 
-        private static string DeserializePacketToString(in Packet packet)
+        private static bool DeserializePacketToString(in Packet packet, out string s)
         {
-            return Encoding.UTF8.GetString(packet.Buffer, packet.Offset, packet.Length);
+            s = packet.ToString();
+            return true;
         }
 
         private static async void SendRequestAndWaitForResponse(IClient client, string data, ushort responseID)
         {
             byte[] response =
                 Encoding.UTF8.GetBytes(data + "World " + string.Join(", ", Enumerable.Range(1, 1_000_000)));
-            Response<string> result = await client.SendR(
+            Response<string> result = await client.SendR<string>(
                 responseID, response, 0, response.Length, DeserializePacketToString, TimeSpan.FromSeconds(30), true);
 
             Console.WriteLine("GOT({1}): {0}", result.Result, result.SendError);

@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -19,13 +19,13 @@ namespace Exomia.Network.Extensions.Struct
     public static class ToBytesExtension
     {
         /// <summary>
-        ///     Converts the given <paramref name="data"/> struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
         /// <param name="length"> [out] The size of T. </param>
         /// <returns>
-        ///     The byte array representing the <paramref name="data"/>.
+        ///     The byte array representing the <paramref name="data" />.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte[] ToBytesUnsafe<T>(this T data, out int length)
@@ -37,7 +37,7 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     Converts the given <paramref name="data"/> struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
@@ -52,7 +52,7 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     Converts the given <paramref name="data"/> struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
@@ -68,13 +68,13 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     Converts the given <paramref name="data"/> struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
         /// <param name="length"> [out] The size of T. </param>
         /// <returns>
-        ///     The byte array representing the <paramref name="data"/>.
+        ///     The byte array representing the <paramref name="data" />.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe byte[] ToBytesUnsafe2<T>(this T data, out int length)
@@ -86,7 +86,7 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     Converts the given <paramref name="data"/> struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>
@@ -101,7 +101,7 @@ namespace Exomia.Network.Extensions.Struct
         }
 
         /// <summary>
-        ///     Converts the given <paramref name="data"/> struct into a byte array.
+        ///     Converts the given <paramref name="data" /> struct into a byte array.
         /// </summary>
         /// <typeparam name="T"> Generic type parameter. </typeparam>
         /// <param name="data">   The data. </param>

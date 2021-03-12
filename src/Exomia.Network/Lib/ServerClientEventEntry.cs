@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -8,50 +8,79 @@
 
 #endregion
 
+using Exomia.Network.Buffers;
+#if NETSTANDARD2_1
+using System.Diagnostics.CodeAnalysis;
+#endif
+
 namespace Exomia.Network.Lib
 {
-    sealed class ServerClientEventEntry<TServerClient>
+    class ServerClientEventEntry<TServerClient>
         where TServerClient : class, IServerClient
     {
-        internal readonly DeserializePacketHandler<object?>               _deserialize;
-        private readonly  Event<ClientDataReceivedHandler<TServerClient>> _dataReceived;
+#if NETSTANDARD2_1
+        internal delegate bool DeserializeAndRaiseHandler(in Packet                       packet,
+                                                          IServer<TServerClient>          server,
+                                                          TServerClient                   client,
+                                                          ushort                          responseID,
+                                                          [NotNullWhen(true)] out object? res);
+#else
+        internal delegate bool DeserializeAndRaiseHandler(in Packet packet, IServer<TServerClient> server, TServerClient client, ushort responseID, out object? res);
+#endif
+        internal DeserializeAndRaiseHandler _deserializeAndRaise = null!;
+
+        internal static ServerClientEventEntry<TServerClient> Create<T>(DeserializePacketHandler<T> deserialize)
+        {
+            ServerClientEventEntry<TServerClient, T> entry = new ServerClientEventEntry<TServerClient, T>();
+            entry._deserializeAndRaise = (in Packet              packet,
+                                          IServer<TServerClient> server,
+                                          TServerClient          client,
+                                          ushort                 responseID,
+                                          out object?            result) =>
+            {
+                if (deserialize(in packet, out T value))
+                {
+                    ByteArrayPool.Return(packet.Buffer);
+                    entry.Raise(server, client, value, responseID);
+
+                    // ReSharper disable once HeapView.PossibleBoxingAllocation
+                    result = value;
+                    return true;
+                }
+
+                ByteArrayPool.Return(packet.Buffer);
+                result = null;
+                return false;
+            };
+
+            return entry;
+        }
+    }
+
+    sealed class ServerClientEventEntry<TServerClient, T> : ServerClientEventEntry<TServerClient>
+        where TServerClient : class, IServerClient
+    {
+        private readonly Event<ClientDataReceivedHandler<TServerClient, T>> _dataReceived;
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="ServerClientEventEntry{TServerClient}" /> class.
+        ///     Initializes a new instance of the <see cref="ClientEventEntry" /> class.
         /// </summary>
-        /// <param name="deserialize"> The deserialize. </param>
-        public ServerClientEventEntry(DeserializePacketHandler<object?> deserialize)
+        public ServerClientEventEntry()
         {
-            _deserialize  = deserialize;
-            _dataReceived = new Event<ClientDataReceivedHandler<TServerClient>>();
+            _dataReceived = new Event<ClientDataReceivedHandler<TServerClient, T>>();
         }
 
-        /// <summary>
-        ///     Adds callback.
-        /// </summary>
-        /// <param name="callback"> The callback to remove. </param>
-        public void Add(ClientDataReceivedHandler<TServerClient> callback)
+        public void Add(ClientDataReceivedHandler<TServerClient, T> callback)
         {
             _dataReceived.Add(callback);
         }
 
-        /// <summary>
-        ///     Removes the given callback.
-        /// </summary>
-        /// <param name="callback"> The callback to remove. </param>
-        public void Remove(ClientDataReceivedHandler<TServerClient> callback)
+        public void Remove(ClientDataReceivedHandler<TServerClient, T> callback)
         {
             _dataReceived.Remove(callback);
         }
 
-        /// <summary>
-        ///     Raises the event entries.
-        /// </summary>
-        /// <param name="server">     The server. </param>
-        /// <param name="client">     The client. </param>
-        /// <param name="data">       The data. </param>
-        /// <param name="responseID"> The responseID. </param>
-        public void Raise(IServer<TServerClient> server, TServerClient client, object data, ushort responseID)
+        public void Raise(IServer<TServerClient> server, TServerClient client, T data, ushort responseID)
         {
             for (int i = _dataReceived.Count - 1; i >= 0; --i)
             {

@@ -1,6 +1,6 @@
 ﻿#region License
 
-// Copyright (c) 2018-2020, exomia
+// Copyright (c) 2018-2021, exomia
 // All rights reserved.
 // 
 // This source code is licensed under the BSD-style license found in the
@@ -413,20 +413,17 @@ namespace Exomia.Network
                                 ThreadPool.QueueUserWorkItem(
                                     x =>
                                     {
-                                        object? res = scee._deserialize(in packet);
-                                        ByteArrayPool.Return(packet.Buffer);
-
-                                        if (res != null)
+                                        if (scee._deserializeAndRaise(
+                                            in packet, this, sClient, requestID, out object? res))
                                         {
                                             for (int i = _clientDataReceived.Count - 1; i >= 0; --i)
                                             {
                                                 if (!_clientDataReceived[i]
-                                                    .Invoke(this, sClient, commandOrResponseID, res, requestID))
+                                                    .Invoke(this, sClient, commandOrResponseID, res!, requestID))
                                                 {
                                                     _clientDataReceived.Remove(i);
                                                 }
                                             }
-                                            scee.Raise(this, sClient, res, requestID);
                                         }
                                     });
                                 return;
@@ -558,24 +555,28 @@ namespace Exomia.Network
 
         #region Add & Remove
 
-        /// <summary>
-        ///     add a command deserializer.
-        /// </summary>
+        /// <summary> add a command deserializer. </summary>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandID">   Identifier for the command. </param>
         /// <param name="deserialize"> The deserialize handler. </param>
-        public void AddCommand(ushort commandID, DeserializePacketHandler<object?> deserialize)
+        public void AddCommand<T1>(ushort commandID, DeserializePacketHandler<T1> deserialize)
         {
             AddCommand(new[] { commandID }, deserialize);
         }
 
-        /// <summary>
-        ///     add commands deserializers.
-        /// </summary>
-        /// <param name="commandIDs"> The command ids. </param>
+        /// <summary> add commands deserializers. </summary>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
+        /// <param name="commandIDs">  The command ids. </param>
         /// <param name="deserialize"> The deserialize handler. </param>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        public void AddCommand(ushort[] commandIDs, DeserializePacketHandler<object?> deserialize)
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        public void AddCommand<T1>(ushort[] commandIDs, DeserializePacketHandler<T1> deserialize)
         {
             if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
             if (deserialize == null) { throw new ArgumentNullException(nameof(deserialize)); }
@@ -595,7 +596,7 @@ namespace Exomia.Network
                     if (!_dataReceivedCallbacks.TryGetValue(
                         commandID, out ServerClientEventEntry<TServerClient>? buffer))
                     {
-                        buffer = new ServerClientEventEntry<TServerClient>(deserialize);
+                        buffer = ServerClientEventEntry<TServerClient>.Create(deserialize);
                         _dataReceivedCallbacks.Add(commandID, buffer);
                     }
                 }
@@ -606,15 +607,17 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     Removes the commands described by commandIDs.
-        /// </summary>
+        /// <summary> Removes the commands described by commandIDs. </summary>
         /// <param name="commandIDs"> A variable-length parameters list containing command ids. </param>
-        /// <returns>
-        ///     True if at least one command is removed, false otherwise.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
+        /// <returns> True if at least one command is removed, false otherwise. </returns>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
         public bool RemoveCommands(params ushort[] commandIDs)
         {
             if (commandIDs.Length <= 0) { throw new ArgumentNullException(nameof(commandIDs)); }
@@ -640,15 +643,23 @@ namespace Exomia.Network
             return removed;
         }
 
-        /// <summary>
-        ///     add a data received callback.
-        /// </summary>
+        /// <summary> add a data received callback. </summary>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        /// <exception cref="Exception">                   Thrown when an exception error condition occurs. </exception>
-        public void AddDataReceivedCallback(ushort commandID, ClientDataReceivedHandler<TServerClient> callback)
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        /// <exception cref="Exception">
+        ///     Thrown when an exception error condition
+        ///     occurs.
+        /// </exception>
+        public void AddDataReceivedCallback<T1>(ushort commandID, ClientDataReceivedHandler<TServerClient, T1> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -668,7 +679,13 @@ namespace Exomia.Network
                         $"Invalid parameter '{nameof(commandID)}'! Use 'AddCommand(DeserializeData, params uint[])' first.");
                 }
 
-                buffer.Add(callback);
+                if (!(buffer is ServerClientEventEntry<TServerClient, T1> entry))
+                {
+                    throw new Exception(
+                        $"Invalid parameter '{nameof(callback)}'! {nameof(commandID)} and callback type do not match!");
+                }
+
+                entry.Add(callback);
             }
             finally
             {
@@ -676,14 +693,20 @@ namespace Exomia.Network
             }
         }
 
-        /// <summary>
-        ///     remove a data received callback.
-        /// </summary>
+        /// <summary> remove a data received callback. </summary>
+        /// <typeparam name="T1"> Generic type parameter. </typeparam>
         /// <param name="commandID"> Identifier for the command. </param>
         /// <param name="callback">  ClientDataReceivedHandler{Socket|Endpoint} </param>
-        /// <exception cref="ArgumentOutOfRangeException"> Thrown when one or more arguments are outside the required range. </exception>
-        /// <exception cref="ArgumentNullException">       Thrown when one or more required arguments are null. </exception>
-        public void RemoveDataReceivedCallback(ushort commandID, ClientDataReceivedHandler<TServerClient> callback)
+        /// <exception cref="ArgumentOutOfRangeException">
+        ///     Thrown when one or more arguments are outside
+        ///     the required range.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Thrown when one or more required arguments
+        ///     are null.
+        /// </exception>
+        public void RemoveDataReceivedCallback<T1>(ushort                                       commandID,
+                                                   ClientDataReceivedHandler<TServerClient, T1> callback)
         {
             if (commandID > Constants.USER_COMMAND_LIMIT)
             {
@@ -693,9 +716,10 @@ namespace Exomia.Network
 
             if (callback == null) { throw new ArgumentNullException(nameof(callback)); }
 
-            if (_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient>? buffer))
+            if (_dataReceivedCallbacks.TryGetValue(commandID, out ServerClientEventEntry<TServerClient>? buffer) &&
+                buffer is ServerClientEventEntry<TServerClient, T1> entry)
             {
-                buffer.Remove(callback);
+                entry.Remove(callback);
             }
         }
 
