@@ -55,17 +55,12 @@ namespace Exomia.Network
         /// </summary>
         public event Action<PingPacket>? Ping;
 
-        private protected Socket? _clientSocket;
-        private protected byte    _state;
-
         /// <summary>
         ///     The compression mode.
         /// </summary>
         protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
-        private protected EncryptionMode _encryptionMode  = EncryptionMode.None;
-        private readonly  byte[]         _connectChecksum = new byte[16];
-        private           ulong          _identification;
+        private readonly byte[] _connectChecksum = new byte[16];
 
         private readonly ManualResetEvent                     _manuelResetEvent;
         private readonly Dictionary<ushort, ClientEventEntry> _dataReceivedCallbacks;
@@ -75,12 +70,18 @@ namespace Exomia.Network
 
         private readonly byte                              _listenerCount;
         private readonly Event<CommandDataReceivedHandler> _dataReceived;
+        private          ulong                             _identification;
         private          SpinLock                          _dataReceivedCallbacksLock;
         private          SpinLock                          _lockTaskCompletionSources;
         private          int                               _port;
         private          string                            _serverAddress;
         private          ushort                            _requestID;
         private          int                               _packetID;
+
+        private protected Socket? _clientSocket;
+        private protected byte    _state;
+
+        private protected EncryptionMode _encryptionMode = EncryptionMode.None;
 
         /// <summary>
         ///     Gets the port.
@@ -303,12 +304,6 @@ namespace Exomia.Network
             return false;
         }
 
-        /// <summary>
-        ///     Called after the <see cref="Connect(System.Net.IPAddress[],int,System.Action{Exomia.Network.ClientBase},int)" />
-        ///     method directly after the socket is successfully created.
-        /// </summary>
-        private protected abstract void Configure();
-
         /// <inheritdoc />
         public bool Connect(string              serverAddress,
                             int                 port,
@@ -335,9 +330,15 @@ namespace Exomia.Network
             }
             return true;
         }
-        
+
+        /// <summary>
+        ///     Called after the <see cref="Connect(System.Net.IPAddress[],int,System.Action{Exomia.Network.ClientBase},int)" />
+        ///     method directly after the socket is successfully created.
+        /// </summary>
+        private protected abstract void Configure();
+
         private protected abstract bool TryCreateSocket([NotNullWhen(true)] out Socket? socket);
-        
+
         private protected void Disconnect(DisconnectReason reason, bool noSend = true)
         {
             if (_clientSocket != null && _state != 0)

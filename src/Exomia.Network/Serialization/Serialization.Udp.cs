@@ -88,7 +88,6 @@ namespace Exomia.Network.Serialization
                                                   BigDataHandler<TKey>                          bigDataHandler,
                                                   Func<int, TKey>                               keyFunc,
                                                   [NotNullWhen(true)] out DeserializePacketInfo deserializePacketInfo)
-
             where TKey : struct
         {
             fixed (byte* src = buffer)

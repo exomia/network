@@ -16,11 +16,6 @@ namespace Exomia.Network.Lib
     class ServerClientEventEntry<TServerClient>
         where TServerClient : class, IServerClient
     {
-        internal delegate bool DeserializeAndRaiseHandler(in Packet                       packet,
-                                                          IServer<TServerClient>          server,
-                                                          TServerClient                   client,
-                                                          ushort                          responseID,
-                                                          [NotNullWhen(true)] out object? res);
         internal DeserializeAndRaiseHandler _deserializeAndRaise = null!;
 
         internal static ServerClientEventEntry<TServerClient> Create<T>(DeserializePacketHandler<T> deserialize)
@@ -49,6 +44,12 @@ namespace Exomia.Network.Lib
 
             return entry;
         }
+
+        internal delegate bool DeserializeAndRaiseHandler(in Packet                       packet,
+                                                          IServer<TServerClient>          server,
+                                                          TServerClient                   client,
+                                                          ushort                          responseID,
+                                                          [NotNullWhen(true)] out object? res);
     }
 
     sealed class ServerClientEventEntry<TServerClient, T> : ServerClientEventEntry<TServerClient>

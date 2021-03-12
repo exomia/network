@@ -61,56 +61,31 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Gets the clients.
+        ///     The compression mode.
         /// </summary>
-        /// <value>
-        ///     The clients.
-        /// </value>
-        protected Dictionary<Guid, TServerClient>.ValueCollection Clients
-        {
-            get
-            {
-                Dictionary<Guid, TServerClient> clients;
-                bool                            lockTaken = false;
-                try
-                {
-                    _clientsLock.Enter(ref lockTaken);
-                    clients = new Dictionary<Guid, TServerClient>(_clientGuids);
-                }
-                finally
-                {
-                    if (lockTaken) { _clientsLock.Exit(false); }
-                }
+        protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
-                return clients.Values;
-            }
-        }
+        private readonly Dictionary<ushort, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
+        private readonly Event<ClientCommandDataReceivedHandler<TServerClient>>    _clientDataReceived;
+
+        private readonly Dictionary<ushort, TaskCompletionSource<(ushort requestID, Packet packet)>>
+            _taskCompletionSources;
+
+        private readonly byte     _listenerCount;
+        private          ushort   _requestID;
+        private          SpinLock _clientsLock;
+        private          SpinLock _dataReceivedCallbacksLock;
+        private          SpinLock _lockTaskCompletionSources;
+        private          bool     _isRunning;
+        private          int      _packetID;
 
         private protected readonly Dictionary<T, TServerClient>    _clients;
         private protected readonly Dictionary<Guid, TServerClient> _clientGuids;
         private protected          Socket?                         _listener;
         private protected          int                             _port;
         private protected          byte                            _state;
-        private                    ushort                          _requestID;
-
-        /// <summary>
-        ///     The compression mode.
-        /// </summary>
-        protected CompressionMode _compressionMode = CompressionMode.Lz4;
 
         private protected EncryptionMode _encryptionMode = EncryptionMode.None;
-        private readonly  Dictionary<ushort, ServerClientEventEntry<TServerClient>> _dataReceivedCallbacks;
-        private readonly  Event<ClientCommandDataReceivedHandler<TServerClient>> _clientDataReceived;
-
-        private readonly Dictionary<ushort, TaskCompletionSource<(ushort requestID, Packet packet)>>
-            _taskCompletionSources;
-
-        private readonly byte     _listenerCount;
-        private          SpinLock _clientsLock;
-        private          SpinLock _dataReceivedCallbacksLock;
-        private          SpinLock _lockTaskCompletionSources;
-        private          bool     _isRunning;
-        private          int      _packetID;
 
         /// <summary>
         ///     Gets the port.
@@ -233,6 +208,32 @@ namespace Exomia.Network
             }
         }
 
+        /// <summary>
+        ///     Gets the clients.
+        /// </summary>
+        /// <value>
+        ///     The clients.
+        /// </value>
+        protected Dictionary<Guid, TServerClient>.ValueCollection Clients
+        {
+            get
+            {
+                Dictionary<Guid, TServerClient> clients;
+                bool                            lockTaken = false;
+                try
+                {
+                    _clientsLock.Enter(ref lockTaken);
+                    clients = new Dictionary<Guid, TServerClient>(_clientGuids);
+                }
+                finally
+                {
+                    if (lockTaken) { _clientsLock.Exit(false); }
+                }
+
+                return clients.Values;
+            }
+        }
+
         private protected abstract ushort MaxPayloadSize { get; }
 
         /// <summary>
@@ -266,6 +267,19 @@ namespace Exomia.Network
             Dispose(false);
         }
 
+        /// <inheritdoc />
+        public void Disconnect(TServerClient client, DisconnectReason reason)
+        {
+            InvokeClientDisconnect(client, reason);
+            SendTo(client, CommandID.DISCONNECT, new DisconnectPacket(reason));
+        }
+
+        /// <inheritdoc />
+        public bool TryGetClient(Guid guid, [NotNullWhen(true)] out TServerClient? client)
+        {
+            return _clientGuids.TryGetValue(guid, out client);
+        }
+
         /// <summary>
         ///     Runs.
         /// </summary>
@@ -296,6 +310,59 @@ namespace Exomia.Network
         }
 
         /// <summary>
+        ///     Called than a new client is connected.
+        /// </summary>
+        /// <param name="client"> The client. </param>
+        protected virtual void OnClientConnected(TServerClient client) { }
+
+        /// <summary>
+        ///     Create a new ServerClient than a client connects.
+        /// </summary>
+        /// <param name="serverClient"> [out] out new ServerClient. </param>
+        /// <returns>
+        ///     <c>true</c> if the new ServerClient should be added to the clients list; <c>false</c> otherwise.
+        /// </returns>
+        protected abstract bool CreateServerClient(out TServerClient serverClient);
+
+        /// <summary>
+        ///     Called then the client is disconnected.
+        /// </summary>
+        /// <param name="client"> The client. </param>
+        /// <param name="reason"> DisconnectReason. </param>
+        protected virtual void OnClientDisconnected(TServerClient client, DisconnectReason reason) { }
+
+        private bool InvokeClientConnected(T arg0, out ulong nonce)
+        {
+            if (!CreateServerClient(out TServerClient serverClient))
+            {
+                nonce = 0;
+                return false;
+            }
+
+            serverClient.Arg0 = arg0;
+            bool lockTaken = false;
+            try
+            {
+                _clientsLock.Enter(ref lockTaken);
+                _clients.Add(arg0, serverClient);
+                _clientGuids.Add(serverClient.Guid, serverClient);
+            }
+            finally
+            {
+                if (lockTaken) { _clientsLock.Exit(false); }
+            }
+            Task.Run(
+                () =>
+                {
+                    OnClientConnected(serverClient);
+                    ClientConnected?.Invoke(this, serverClient);
+                });
+
+            nonce = BitConverter.ToUInt64(serverClient.Guid.ToByteArray(), 8);
+            return true;
+        }
+
+        /// <summary>
         ///     Called after the <see cref="Run" /> method directly after the socket is successfully created.
         /// </summary>
         private protected abstract void Configure();
@@ -309,7 +376,7 @@ namespace Exomia.Network
         ///     True if it succeeds, false if it fails.
         /// </returns>
         private protected abstract bool OnRun(int port, [NotNullWhen(true)] out Socket? listener);
-        
+
         /// <summary>
         ///     Listen asynchronous.
         /// </summary>
@@ -430,21 +497,6 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Called than a new client is connected.
-        /// </summary>
-        /// <param name="client"> The client. </param>
-        protected virtual void OnClientConnected(TServerClient client) { }
-
-        /// <summary>
-        ///     Create a new ServerClient than a client connects.
-        /// </summary>
-        /// <param name="serverClient"> [out] out new ServerClient. </param>
-        /// <returns>
-        ///     <c>true</c> if the new ServerClient should be added to the clients list; <c>false</c> otherwise.
-        /// </returns>
-        protected abstract bool CreateServerClient(out TServerClient serverClient);
-
-        /// <summary>
         ///     Executes the client disconnect on a different thread, and waits for the result.
         /// </summary>
         /// <param name="arg0">   Socket|Endpoint. </param>
@@ -491,61 +543,10 @@ namespace Exomia.Network
         }
 
         /// <summary>
-        ///     Called then the client is disconnected.
-        /// </summary>
-        /// <param name="client"> The client. </param>
-        /// <param name="reason"> DisconnectReason. </param>
-        protected virtual void OnClientDisconnected(TServerClient client, DisconnectReason reason) { }
-
-        /// <summary>
         ///     called after <see cref="InvokeClientDisconnect(TServerClient, DisconnectReason)" />.
         /// </summary>
         /// <param name="client"> The client. </param>
         private protected virtual void OnAfterClientDisconnect(TServerClient client) { }
-
-        private bool InvokeClientConnected(T arg0, out ulong nonce)
-        {
-            if (!CreateServerClient(out TServerClient serverClient))
-            {
-                nonce = 0;
-                return false;
-            }
-
-            serverClient.Arg0 = arg0;
-            bool lockTaken = false;
-            try
-            {
-                _clientsLock.Enter(ref lockTaken);
-                _clients.Add(arg0, serverClient);
-                _clientGuids.Add(serverClient.Guid, serverClient);
-            }
-            finally
-            {
-                if (lockTaken) { _clientsLock.Exit(false); }
-            }
-            Task.Run(
-                () =>
-                {
-                    OnClientConnected(serverClient);
-                    ClientConnected?.Invoke(this, serverClient);
-                });
-
-            nonce = BitConverter.ToUInt64(serverClient.Guid.ToByteArray(), 8);
-            return true;
-        }
-
-        /// <inheritdoc />
-        public void Disconnect(TServerClient client, DisconnectReason reason)
-        {
-            InvokeClientDisconnect(client, reason);
-            SendTo(client, CommandID.DISCONNECT, new DisconnectPacket(reason));
-        }
-
-        /// <inheritdoc />
-        public bool TryGetClient(Guid guid, [NotNullWhen(true)] out TServerClient? client)
-        {
-            return _clientGuids.TryGetValue(guid, out client);
-        }
 
         #region Add & Remove
 
