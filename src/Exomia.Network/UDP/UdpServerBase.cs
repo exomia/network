@@ -21,7 +21,7 @@ namespace Exomia.Network.UDP
     public abstract class UdpServerBase<TServerClient> : ServerBase<EndPoint, TServerClient>
         where TServerClient : ServerClientBase<EndPoint>
     {
-        private readonly           ushort                          _maxPayloadSize;
+        private readonly           ushort                           _maxPayloadSize;
         private protected readonly BigDataHandler<(EndPoint, int)> _bigDataHandler;
 
         /// <inheritdoc />
@@ -53,11 +53,7 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-#if NETSTANDARD2_1
         private protected override bool OnRun(int port, [NotNullWhen(true)] out Socket? listener)
-#else
-        private protected override bool OnRun(int port, out Socket? listener)
-#endif
         {
             try
             {

@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -20,10 +21,6 @@ using Exomia.Network.DefaultPackets;
 using Exomia.Network.Exceptions;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
-#if NETSTANDARD2_1
-using System.Diagnostics.CodeAnalysis;
-
-#endif
 
 namespace Exomia.Network
 {
@@ -278,7 +275,7 @@ namespace Exomia.Network
                     bool         result = iar.AsyncWaitHandle.WaitOne(timeout * 1000, true);
                     _clientSocket.EndConnect(iar);
 
-                    _serverAddress = _clientSocket?.RemoteEndPoint.ToString() ?? "<invalid>";
+                    _serverAddress = _clientSocket?.RemoteEndPoint?.ToString() ?? "<invalid>";
 
                     if (result)
                     {
@@ -338,13 +335,9 @@ namespace Exomia.Network
             }
             return true;
         }
-
-#if NETSTANDARD2_1
+        
         private protected abstract bool TryCreateSocket([NotNullWhen(true)] out Socket? socket);
-#else
-        private protected abstract bool TryCreateSocket(out Socket? socket);
-#endif
-
+        
         private protected void Disconnect(DisconnectReason reason, bool noSend = true)
         {
             if (_clientSocket != null && _state != 0)

@@ -94,7 +94,7 @@ namespace Exomia.Network.TCP
             {
                 try
                 {
-                    if (!args.AcceptSocket.ReceiveAsync(args))
+                    if (!args.AcceptSocket!.ReceiveAsync(args))
                     {
                         // ReSharper disable AccessToDisposedClosure
                         Task.Run(() => ReceiveAsyncCompleted(args.AcceptSocket, args));
@@ -105,19 +105,19 @@ namespace Exomia.Network.TCP
                 catch (ObjectDisposedException)
                 {
                     InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Aborted);
-                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    ((ServerClientStateObject)args.UserToken!).Dispose();
                     args.Dispose();
                 }
                 catch (SocketException)
                 {
                     InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Error);
-                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    ((ServerClientStateObject)args.UserToken!).Dispose();
                     args.Dispose();
                 }
                 catch
                 {
                     InvokeClientDisconnect(args.AcceptSocket, DisconnectReason.Unspecified);
-                    ((ServerClientStateObject)args.UserToken).Dispose();
+                    ((ServerClientStateObject)args.UserToken!).Dispose();
                     args.Dispose();
                 }
             }
@@ -128,19 +128,19 @@ namespace Exomia.Network.TCP
             if (e.SocketError != SocketError.Success)
             {
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Error);
-                ((ServerClientStateObject)e.UserToken).Dispose();
+                ((ServerClientStateObject)e.UserToken!).Dispose();
                 e.Dispose();
                 return;
             }
             if (e.BytesTransferred <= 0)
             {
                 InvokeClientDisconnect(e.AcceptSocket, DisconnectReason.Graceful);
-                ((ServerClientStateObject)e.UserToken).Dispose();
+                ((ServerClientStateObject)e.UserToken!).Dispose();
                 e.Dispose();
                 return;
             }
 
-            Receive(e.AcceptSocket, e.Buffer, e.BytesTransferred, (ServerClientStateObject)e.UserToken);
+            Receive(e.AcceptSocket!, e.Buffer!, e.BytesTransferred, (ServerClientStateObject)e.UserToken!);
             ReceiveAsync(e);
         }
 

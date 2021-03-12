@@ -36,7 +36,7 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-        bool TryGetClient(Guid guid, out TServerClient client);
+        bool TryGetClient(Guid guid, out TServerClient? client);
 
         /// <summary>
         ///     send data to the client.

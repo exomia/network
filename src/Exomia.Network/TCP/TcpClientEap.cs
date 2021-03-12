@@ -56,7 +56,7 @@ namespace Exomia.Network.TCP
                 return;
             }
 
-            Receive(e.Buffer, e.BytesTransferred);
+            Receive(e.Buffer!, e.BytesTransferred);
             ReceiveAsync();
         }
 

@@ -63,14 +63,9 @@ namespace Exomia.Network.TCP
             ReceiveBufferSize = 8 * 1024; //8kb
             SendBufferSize    = 8 * 1024; //8kb
         }
-
-#if NETSTANDARD2_1
+        
         /// <inheritdoc />
         private protected override bool TryCreateSocket([NotNullWhen(true)] out Socket? socket)
-#else
-        /// <inheritdoc/>
-        private protected override bool TryCreateSocket(out Socket? socket)
-#endif
         {
             try
             {

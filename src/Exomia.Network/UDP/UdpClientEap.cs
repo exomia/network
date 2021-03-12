@@ -49,7 +49,7 @@ namespace Exomia.Network.UDP
             ReceiveAsync();
 
             if (Serialization.Serialization.DeserializeUdp(
-                e.Buffer, e.BytesTransferred, _bigDataHandler, i => i,
+                e.Buffer!, e.BytesTransferred, _bigDataHandler, i => i,
                 out DeserializePacketInfo deserializePacketInfo))
             {
                 DeserializeData(in deserializePacketInfo);

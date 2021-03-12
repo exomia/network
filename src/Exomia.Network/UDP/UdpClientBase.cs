@@ -59,11 +59,7 @@ namespace Exomia.Network.UDP
         }
 
         /// <inheritdoc />
-#if NETSTANDARD2_1
         private protected override bool TryCreateSocket([NotNullWhen(true)] out Socket? socket)
-#else
-        private protected override bool TryCreateSocket(out Socket? socket)
-#endif
         {
             try
             {

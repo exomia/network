@@ -83,15 +83,12 @@ namespace Exomia.Network.Serialization
             return Constants.UDP_HEADER_SIZE + offset + packetInfo.ChunkLength;
         }
 
-        internal static bool DeserializeUdp<TKey>(byte[]               buffer,
-                                                  int                  bytesTransferred,
-                                                  BigDataHandler<TKey> bigDataHandler,
-                                                  Func<int, TKey>      keyFunc,
-#if NETSTANDARD2_1
+        internal static bool DeserializeUdp<TKey>(byte[]                                        buffer,
+                                                  int                                           bytesTransferred,
+                                                  BigDataHandler<TKey>                          bigDataHandler,
+                                                  Func<int, TKey>                               keyFunc,
                                                   [NotNullWhen(true)] out DeserializePacketInfo deserializePacketInfo)
-#else
-                                                  out DeserializePacketInfo deserializePacketInfo)
-#endif
+
             where TKey : struct
         {
             fixed (byte* src = buffer)

@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,10 +19,6 @@ using Exomia.Network.Buffers;
 using Exomia.Network.DefaultPackets;
 using Exomia.Network.Extensions.Struct;
 using Exomia.Network.Lib;
-#if NETSTANDARD2_1
-using System.Diagnostics.CodeAnalysis;
-
-#endif
 
 namespace Exomia.Network
 {
@@ -311,11 +308,8 @@ namespace Exomia.Network
         /// <returns>
         ///     True if it succeeds, false if it fails.
         /// </returns>
-#if NETSTANDARD2_1
         private protected abstract bool OnRun(int port, [NotNullWhen(true)] out Socket? listener);
-#else
-        private protected abstract bool OnRun(int port, out Socket? listener);
-#endif
+        
         /// <summary>
         ///     Listen asynchronous.
         /// </summary>
@@ -369,7 +363,7 @@ namespace Exomia.Network
                     }
                 case CommandID.IDENTIFICATION:
                     {
-                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
                         {
                             ulong identification = BitConverter.ToUInt64(deserializePacketInfo.Data, 0);
 
@@ -384,7 +378,7 @@ namespace Exomia.Network
                     }
                 case CommandID.DISCONNECT:
                     {
-                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
                         {
                             deserializePacketInfo.Data.FromBytesUnsafe(out DisconnectPacket disconnectPacket);
                             InvokeClientDisconnect(sClient, disconnectPacket.Reason);
@@ -401,7 +395,7 @@ namespace Exomia.Network
                     }
                 default:
                     {
-                        if (_clients.TryGetValue(arg0, out TServerClient sClient))
+                        if (_clients.TryGetValue(arg0, out TServerClient? sClient))
                         {
                             if (commandOrResponseID <= Constants.USER_COMMAND_LIMIT &&
                                 _dataReceivedCallbacks.TryGetValue(
@@ -457,7 +451,7 @@ namespace Exomia.Network
         /// <param name="reason"> DisconnectReason. </param>
         private protected void InvokeClientDisconnect(T? arg0, DisconnectReason reason)
         {
-            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient client))
+            if (arg0 != null && _clients.TryGetValue(arg0, out TServerClient? client))
             {
                 InvokeClientDisconnect(client, reason);
             }
@@ -548,7 +542,7 @@ namespace Exomia.Network
         }
 
         /// <inheritdoc />
-        public bool TryGetClient(Guid guid, out TServerClient client)
+        public bool TryGetClient(Guid guid, [NotNullWhen(true)] out TServerClient? client)
         {
             return _clientGuids.TryGetValue(guid, out client);
         }

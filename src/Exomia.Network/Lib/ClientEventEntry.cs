@@ -8,23 +8,18 @@
 
 #endregion
 
-using Exomia.Network.Buffers;
-#if NETSTANDARD2_1
 using System.Diagnostics.CodeAnalysis;
-#endif
+using Exomia.Network.Buffers;
 
 namespace Exomia.Network.Lib
 {
     class ClientEventEntry
     {
-#if NETSTANDARD2_1
         internal delegate bool DeserializeAndRaiseHandler(in Packet                       packet,
                                                           IClient                         client,
                                                           ushort                          responseID,
                                                           [NotNullWhen(true)] out object? res);
-#else
-        internal delegate bool DeserializeAndRaiseHandler(in Packet packet, IClient client, ushort responseID, out object? res);
-#endif
+
         internal DeserializeAndRaiseHandler _deserializeAndRaise = null!;
 
         internal static ClientEventEntry Create<T>(DeserializePacketHandler<T> deserialize)
